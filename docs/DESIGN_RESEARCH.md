@@ -265,3 +265,84 @@ Rules for this round: **a goal you can explain in one sentence, lots of funny wa
 - Simple goal, many failure modes.
 - Every mechanic is easy to build: view cones, timers, grab points, emotes.
 - Lots of room for dumb content: new hiding spots, new cursed objects, new boss types.
+
+---
+
+## Part 6: Round 3 — even more dumb ideas
+
+### STOP / SLOW
+> 🛑 one of you holds the sign. the rest of you are carrying a toilet across 6 lanes of traffic. the sign guy is on his phone. **STOP / SLOW**
+
+- **Goal:** get all the materials across the road.
+- **How it plays:** co-op Frogger. One player flips the sign, but drivers only *sometimes* obey.
+- **How you fail:** the sign guy flips it at the wrong time, a bus ignores it, or someone drops the toilet in lane 4.
+
+### BLUEPRINT TELEPHONE
+> 📐 only the foreman can see the blueprint. he can only describe it with his mouth. the client wanted a house. we built a horse. **BLUEPRINT TELEPHONE** 🐴
+
+- **Goal:** build what's on the blueprint. The foreman sees it and the builders don't.
+- **Scoring:** a side-by-side reveal grades the match against the blueprint.
+- **How you fail:** "no, the OTHER left," or a roof on the ground.
+- **Tech:** snap-together blocks. Very easy, and very good for streams.
+
+### SCAFFOLD
+> 🧽 4 window washers. 1 platform. 60 floors up. the platform tilts toward whoever's standing on that side. somebody brought a vending machine. **SCAFFOLD**
+
+- **Goal:** clean or paint every window on the building.
+- **How it plays:** the platform tilts based on where everyone stands, so the crew has to spread out.
+- **How you fail:**
+  - Everyone runs to the same side.
+  - Pigeons, and wind.
+  - A guy on the next platform over throws a sandwich.
+
+### TAKE YOUR KID TO WORK DAY
+> 👶 the boss brought his son to the job site. you are responsible for him. he wants to touch the saw. he wants to drive the excavator. he is FAST. **TAKE YOUR KID TO WORK DAY**
+
+- **Goal:** finish the job while keeping the kid alive.
+- **How it plays:** an escort mission where the kid is a chaotic NPC who beelines for the most dangerous thing on site.
+- **How you fail:**
+  - The kid starts the cement mixer.
+  - The kid locks someone in the porta-potty.
+  - The kid is somehow on the crane.
+
+### WHO TOOK MY HAMMER
+> 🔨 one of you is stealing tools and selling them out of his truck. finish the house before you run out of tools. vote somebody off the site. it's always Dave. **WHO TOOK MY HAMMER**
+
+- **Goal:** finish the build and catch the thief.
+- **How it plays:** Among Us on a job site. The thief also has to *look* like they're working.
+- **How you fail:** you fire the wrong guy and the actual thief steals the porta-potty.
+
+### JACKHAMMER RODEO
+> 🤠 break up the old parking lot. jackhammers have one speed: TOO MUCH. you can't really steer. there's an open manhole. **JACKHAMMER RODEO**
+
+- **Goal:** smash every cracked tile.
+- **How it plays:** the jackhammers hop around barely under control, like bumper cars on pogo sticks.
+- **How you fail:** you bounce into a friend, into the manhole, or into the boss's car.
+
+### MANHOLE
+> 🐊 one guy goes down the sewer. one guy holds the rope and the only flashlight. the radio is crackly. something down there is breathing. **MANHOLE**
+
+- **Goal:** fix 3 pipes and come back up.
+- **How it plays:** an asymmetric comms game, like a goofier Lethal Company. Up top has the map; down below has the hands.
+- **How you fail:** the rope guy drops the flashlight, wanders off for a hot dog, or reels in the alligator.
+
+### ROOF PITCH
+> 🏠 shingle the roof. the roof is very steep. your boots are not very grippy. there is a trampoline in the yard. **ROOF PITCH**
+
+- **Goal:** nail down every shingle.
+- **How it plays:** everyone slides, and grabbing a friend or the chimney is the only friction.
+- **How you fail:** domino sliding. The whole crew ends up in the pool.
+
+---
+
+## Umbrella idea: ONE WEEK ON SITE
+
+Don't pick just one. **Make a WarioWare / Mario Party-style collection of the best mini-jobs, each 3–5 minutes.**
+
+- **Structure:** each "workday" is a playlist of 3–4 jobs (HOLD THIS, STOP/SLOW, WET CEMENT, BLUEPRINT TELEPHONE…).
+- **Throughline:** LOOK BUSY runs the whole time as the "boss walks around" layer.
+- **Ending:** SAFETY THIRD plays the blooper VHS at the end of every day. Friday is payday and a surprise boss inspection.
+- **Why it suits vibe coding:**
+  - Each job is a tiny, separate game you can build in a day or two.
+  - It ships with 4–5 jobs and grows by adding more.
+  - You find out quickly which jobs make people laugh and cut the ones that don't.
