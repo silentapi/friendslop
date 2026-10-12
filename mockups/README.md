@@ -32,3 +32,17 @@ To preview one live, open `index.html?mod=site&shot=N`. The scenes are in `site.
   - post-processing: GTAO ambient occlusion, bloom, and colour grade with vignette and grain
 - `hud.css`: the game HUD system (objective tracker, compass, player card, radio feed, hotbar, world-anchored prompts, sound pings)
 - Rendering takes about 15s per shot under software WebGL.
+
+## Trailer (54s, 24fps, 1280×720)
+- `trailer.html` + `trailer/`:
+  - `core.js`: rigs, poses, particles, overlay helpers
+  - `sets.js`: environments
+  - `scenes.js`: the 20 shots
+  - `main.js`: frame driver
+  - `audio.py`: the procedural score, SFX and voices
+- To render, run these from `mockups/` with the local server on port 8123:
+  1. `node trailer/preview.mjs out scene:sabotage:0.2,0.8` to preview stills.
+  2. `node trailer/render.mjs frames 3` to render all frames on 3 workers (~25 min).
+  3. `python3 trailer/audio.py trailer.wav` to build the soundtrack.
+  4. `ffmpeg -framerate 24 -i frames/f%05d.jpg -i trailer.wav -c:v libx264 -crf 21 -pix_fmt yuv420p -c:a aac -shortest out.mp4` to encode.
+- The output is `/trailer/over_budget_trailer.mp4`, and the shot plan is in `docs/TRAILER_PLAN.md`.

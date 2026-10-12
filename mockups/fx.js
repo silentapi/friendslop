@@ -323,18 +323,20 @@ export function surf(w, h, d, tex, size = 2, opts = {}) {
 export function setup({
   bg = 0xffd6a5, fog = [0xffd6a5, 30, 140], exposure = 1.0, env = 0.35,
   sunPos = [-30, 18, 20], sunColor = 0xffc48a, sunInt = 3.0, hemiSky = 0xbfd8ff, hemiGround = 0x8a6a4a, hemiInt = 0.7,
-  shadowBox = 30,
+  shadowBox = 30, renderer: existing = null, shadowMap = 4096,
 } = {}) {
   seed = 1337;
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(1);
-  renderer.setSize(W, H);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  const renderer = existing || new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+  if (!existing) {
+    renderer.setPixelRatio(1);
+    renderer.setSize(W, H);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    document.getElementById('stage').appendChild(renderer.domElement);
+  }
   renderer.toneMappingExposure = exposure;
-  document.getElementById('stage').appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(bg);
@@ -348,7 +350,7 @@ export function setup({
   const sun = new THREE.DirectionalLight(sunColor, sunInt);
   sun.position.set(...sunPos);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(4096, 4096);
+  sun.shadow.mapSize.set(shadowMap, shadowMap);
   Object.assign(sun.shadow.camera, { left: -shadowBox, right: shadowBox, top: shadowBox, bottom: -shadowBox, near: 0.5, far: 200 });
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.02;
@@ -823,8 +825,12 @@ const gradeShader = {
     }`,
 };
 
-export function renderFx({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6, bloom = 0.35, bloomThreshold = 0.85, grade = {}, before } = {}) {
-  if (before) before();
+export function renderFx(ctx, opts = {}) {
+  if (opts.before) opts.before();
+  makeComposer(ctx, opts).render();
+}
+
+export function makeComposer({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6, aoSamples = 16, bloom = 0.35, bloomThreshold = 0.85, grade = {} } = {}) {
   const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
@@ -833,8 +839,8 @@ export function renderFx({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6
   if (ao) {
     const aoPass = new GTAOPass(scene, camera, W, H);
     aoPass.blendIntensity = ao;
-    aoPass.updateGtaoMaterial({ radius: aoRadius, distanceExponent: 1.5, thickness: 1.5, scale: 1.2, samples: 16 });
-    aoPass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+    aoPass.updateGtaoMaterial({ radius: aoRadius, distanceExponent: 1.5, thickness: 1.5, scale: 1.2, samples: aoSamples });
+    aoPass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: aoSamples });
     composer.addPass(aoPass);
   }
   if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), bloom, 0.5, bloomThreshold));
@@ -842,5 +848,7 @@ export function renderFx({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6
   const gp = new ShaderPass(gradeShader);
   for (const [k, v] of Object.entries(grade)) gp.uniforms[k].value = v;
   composer.addPass(gp);
-  composer.render();
+  composer.grade = gp;
+  composer.dispose2 = () => { composer.dispose(); rt.dispose(); };
+  return composer;
 }

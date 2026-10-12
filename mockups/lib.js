@@ -4,8 +4,8 @@ import * as THREE from 'three';
 
 export { THREE };
 
-export const W = 1600;
-export const H = 900;
+export const W = globalThis.__W || 1600;
+export const H = globalThis.__H || 900;
 
 export const PAL = {
   sky: 0xbfe6ff,
