@@ -34,9 +34,9 @@ It borrows from two games:
 
 | Zone | Travel | Highlights | Dangers |
 |---|---|---|---|
-| **The Lawn** | The nest is here | Seeds, berries, dropped crumbs | Tall grass (lose sight of friends), the sprinkler, the lawn mower (a once-a-day event) |
-| **The Garden Bed** | 2 min | Strawberries, a rotting apple (bonus) | Mud, the garden hose bridge, a spider web |
-| **The Patio** | 4 min | Grill drippings, a dropped hot dog, chips | Hot grill grate, gaps between stones, wind |
+| **The Lawn** | The nest is here | Seeds, berries, dropped crumbs | Tall grass (lose sight of friends), birds, falling acorns, the sprinkler, rain streams, the lawn mower (a once-a-day event) |
+| **The Garden Bed** | 2 min | Strawberries, a rotting apple (bonus) | Dirt slides, thorny roses, the garden hose bridge, a spider web, the toad, falling branches |
+| **The Patio** | 4 min | Grill drippings, a dropped hot dog, chips | Gaps between stones (ant bridges), the drain grate, sticky soda, birds, wind gusts |
 | **The Back Door** | 5 min | The crack under the door (single file) | It opens |
 | **The Kitchen** | 6–7 min | Cereal, sugar, cake, a whole donut | Counter edge (huge fall), the sink, **the Mom** |
 
@@ -53,6 +53,63 @@ The **path home always matters**. You choose: the short route along the counter 
 - **Wind** on the patio turns flat food (chips) into a sail.
 - **Other ants and bugs.** A spider web catches stragglers, so friends cut you free.
 - **Getting squished** (see below). You pop back at the nest after a short timer, unless a friend peels you up first.
+
+---
+
+## Obstacles & hazards
+
+Everything here follows the same three rules:
+
+1. **Telegraph it** about 2–3 s ahead with a sound, a shadow or a shake. Getting caught is then your fault, and that's what makes it funny.
+2. **Cost time or position, never progress.** Food can be lost, but it's always somewhere you can go and get.
+3. **Have a co-op answer** that's better than going solo, and keep it physical: no menus.
+
+### 1. Terrain: the route itself (static, it's the level design)
+
+| Obstacle | What happens | Co-op answer |
+|---|---|---|
+| **Holes & gaps** (gaps between patio stones, garden-bed cracks, the drain grate) | Too wide to jump while carrying. Missing the jump drops you into the hole, and the food tumbles in with you. Climbing out costs time. | **Ant bridge:** two or more ants grab each other's legs to span the gap while the rest walk the snack across. The last ant across pulls the bridge up. |
+| **Block ledges** (one block is a step, two is a climb, three needs a rope) | Climbing with food drains grip. | Push from below while a friend pulls from above. An **ant chain** works as a rope down the other side. |
+| **Loose dirt slopes** (molehills, the garden bed) | Each step slides you back a little, and round food rolls back down. | Zig-zag together, and have one ant wedge behind the snack. |
+| **Sticky spills** (soda on the patio, honey near the jar) | Feet stick and you move at half speed. Food dropped in it is glued down. | Two ants are needed to un-stick the snack. |
+| **Thorny bushes and rose stems** | They snag what you carry. A big snack has to be turned to fit through the gap. | Steering together. This is the "PIVOT" puzzle. |
+| **Spider web** (between flower stems) | You're stuck until someone chews you free. | Rescue. |
+| **Puddles & streams** | Ants can't swim far, and food floats away. | **Leaf boat:** put the snack on a leaf and paddle with four ants. |
+
+### 2. Creatures
+
+- **Birds.** A shadow crosses the lawn, then a "caw" from above, then a swoop about 2 s later. A bird snatches *exposed* food from open ground, flies off, and drops it somewhere new (sometimes on the roof, sometimes back in the nest by luck). Duck under a leaf, a flower or a pebble, or keep the snack under cover by sticking to tall grass. One brave ant can wave its antennae as a distraction.
+- **The toad** (garden bed, dusk). It sits very still. Its tongue grabs the shiniest thing nearby, so a sugar cube is a bad idea. You're spat back out, sticky.
+- **Beetle bully.** A big, slow beetle that pushes your snack the other way. It's a tug-of-war, so four ants beat one beetle.
+- **Bees.** They aren't hostile, but there's a big wind gust when they fly past low, which can knock carrying ants over.
+
+### 3. "Natural disasters": world events that hit everyone
+
+- **Falling branch or twig.** First a creak overhead, then a growing shadow, then CRACK. It blocks the path, so you either go around or climb over. Anything under it gets pinned, and friends have to lift it together.
+- **Dirt slide.** On slopes after rain, the ground rumbles and the dirt blocks start to *shift*. The whole slope slides downhill like a conveyor, carrying ants and food with it. You run sideways out of it.
+- **Rain shower.** The sky darkens and the first drops thud down like bombs. Each drop knocks over whatever it hits. Puddles grow, and streams form along the path, so a crossing that was dry now needs a leaf boat. Take shelter under a mushroom or a leaf.
+- **Flash stream** (after heavy rain, or when Dad turns on the hose). A wave of water rushes down the gutter or garden path, sweeping up loose food, ants and leaves. Grab a leaf and ride it.
+- **Wind gust.** The grass bends and seeds fly first. Flat food (chips, crackers) turns into a sail. Hold on with more ants, or go parasailing.
+- **Falling acorns and berries** (under trees). They bounce, roll and squish, and you can hear them land nearby first. Sometimes it's a free snack.
+- **Sprinkler sweep.** It ticks and turns: a rotating wall of drops you time your crossing around.
+
+### Daily weather (variety without more rules)
+
+Each day rolls the weather: **sunny**, **windy**, **rainy** or **stormy (late game)**. The weather sets which disasters can happen and how often, so the same route plays differently:
+- A rainy day turns the lawn into streams and slides.
+- A windy day is chip-parasailing day.
+
+The map is the same; the trip is different every time.
+
+### By zone
+
+| Zone | Terrain | Creatures | Disasters |
+|---|---|---|---|
+| **Lawn** | Tall grass, molehills, pebbles | Birds (open patches), bees | Falling acorns, sprinkler, rain streams, the mower |
+| **Garden Bed** | Loose dirt slopes, the hose bridge, thorny roses | Toad, spider, beetle | Dirt slides, falling branch, rain flooding the rows |
+| **Patio** | Stone gaps (holes), the drain grate, sticky soda | Birds (wide open), wasps around the grill | Wind gusts, hot grill drips, flash stream from the hose |
+| **Back door** | The door crack (single file), the step | — | The door opening |
+| **Kitchen** | Counter edge, table legs, the sink | — (the Mom is enough) | The dishwasher steam vent, crumbs falling from the table |
 
 ---
 
@@ -101,3 +158,9 @@ The giants are never *killers*. They're **chaos events** that scatter the team a
 2. **"Are setbacks PEAK-like: costly, recoverable, funny?"** Falls cost time and position, not progress. The food is always recoverable. Every hazard has a visible warning.
 3. **"Is the giant fair?"** Rumble, shadow and hum come ~3 s before she arrives, and freezing always works. Getting spotted is your fault, which is why it's funny.
 4. **"Does it stay simple?"** The controls are still move, jump, grab and ping. The new systems (grip, scent trail, freeze) are all *physical*: no menus, no numbers on screen except the grip ring while you climb.
+5. **"Is the world itself dangerous, or only the giant?"** v2 leaned almost entirely on the Mom. v3 makes the *trip* the antagonist:
+   - terrain you solve (holes, ledges, slopes, water);
+   - creatures that want your snack (birds, the toad, the beetle);
+   - weather-driven disasters (falling branches, dirt slides, rain streams, wind).
+
+   Each one has a warning, a recoverable cost and a co-op answer: ant bridges, ant chains, leaf boats, sheltering together. Daily weather remixes the same map so no two trips feel the same.
