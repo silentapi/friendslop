@@ -37,6 +37,7 @@ export async function renderTime(t) {
   const lt = t - starts[i];
   cur.update(lt);
   cur.camera.updateMatrixWorld(true);
+  if (cur.post) cur.post(lt, composer);
   composer.render();
   const pins = document.getElementById('pins');
   pins.innerHTML = '';

@@ -41,7 +41,19 @@ export function bean(who, { hat, scale = BEAN_SCALE } = {}) {
   head.add(mouth);
   w.userData.mouth = mouth;
   w.userData.eyes = head.children.filter((c) => c.isMesh && c.geometry.parameters && c.geometry.parameters.radius === 0.075);
+  w.userData.shines = head.children.filter((c) => c.isMesh && c.geometry.parameters && c.geometry.parameters.radius === 0.025);
+  for (const e of [...w.userData.eyes, ...w.userData.shines]) e.userData.base = e.position.clone();
+  // Hard hat on its own pivot so it can lag / wobble after the head stops (follow-through).
+  const hatParts = head.children.filter((c) => c.isMesh && c.position.y > 0.12 && c !== mouth);
+  if (hatParts.length) {
+    const hat = new THREE.Group();
+    hat.position.set(0, 0.2, 0);
+    for (const m of hatParts) { head.remove(m); m.position.y -= 0.2; hat.add(m); }
+    head.add(hat);
+    w.userData.hat = hat;
+  }
   w.scale.setScalar(scale);
+  w.userData.baseScale = scale;
   w.userData.who = who;
   return addOutlines(w);
 }
@@ -58,8 +70,12 @@ export function face(o, x, z) { o.rotation.y = Math.atan2(x - o.position.x, z - 
 export function neutral(w) {
   const P = w.userData.parts;
   for (const k of ['legL', 'legR', 'torso', 'head']) P[k]?.rotation.set(0, 0, 0);
+  P.torso?.scale.set(1, 1, 1);
   P.armL.rotation.set(0, 0, -0.25);
   P.armR.rotation.set(0, 0, 0.25);
+  if (w.userData.baseScale) w.scale.setScalar(w.userData.baseScale);
+  if (w.userData.hat) w.userData.hat.rotation.set(0, 0, 0);
+  for (const e of [...(w.userData.eyes || []), ...(w.userData.shines || [])]) if (e.userData.base) e.position.copy(e.userData.base);
   if (w.userData.mouth) w.userData.mouth.scale.set(1, 0.05, 0.5);
   for (const e of w.userData.eyes || []) e.scale.set(1, 1.3, 0.6);
 }
@@ -365,4 +381,191 @@ export function timerStr(sec) {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+
+// ================================================================== animation principles
+// All helpers are pure functions of time so any frame can be rendered alone.
+export const FPS = 24;
+export const FR = 1 / FPS;
+
+// Damped spring response to a kick at t0: 0 before, amp at t0, then oscillates and settles.
+// freq in Hz, damp = damping ratio (0.22 = loose wobble, 0.55 = firm settle).
+export function spring(t, t0, { amp = 1, freq = 2.2, damp = 0.22 } = {}) {
+  const dt = t - t0;
+  if (dt < 0) return 0;
+  const w = 2 * Math.PI * freq;
+  const wd = w * Math.sqrt(Math.max(1e-4, 1 - damp * damp));
+  return amp * Math.exp(-damp * w * dt) * Math.cos(wd * dt);
+}
+
+// Anticipation: 0 → 1 over `dur` seconds leading into tAction, then releases fast.
+export function anticipate(t, tAction, dur = 0.3) {
+  if (t < tAction - dur) return 0;
+  if (t <= tAction) return easeInOut((t - (tAction - dur)) / dur);
+  return 1 - easeOut(seg(t, tAction, tAction + 0.08));
+}
+
+// Volume-preserving squash (s > 0 flattens, s < 0 stretches) pivoting at the feet.
+export function squash(w, s) {
+  const b = w.userData.baseScale || 1;
+  const sy = Math.max(0.35, 1 - s);
+  const sxz = 1 / Math.sqrt(sy);
+  w.scale.set(b * sxz, b * sy, b * sxz);
+}
+
+// Landing / impact squash: peak `strength` at t0, overshoots into a little stretch, settles (damping 0.55).
+export function impactSquash(t, t0, strength = 0.3) {
+  return spring(t, t0, { amp: strength, freq: 3.2, damp: 0.55 });
+}
+
+// Takeoff stretch for `dur` after t0 (negative squash = stretch).
+export function takeoffStretch(t, t0, amount = 0.28, dur = 0.16) {
+  if (t < t0 || t > t0 + dur) return 0;
+  return -amount * Math.sin(Math.PI * (t - t0) / dur);
+}
+
+// Overlapping action: evaluate the pose at slightly earlier times for limbs, so arms trail
+// the body by `arms` seconds and legs by `legs` seconds. poseFn(lt) must fully pose `w`.
+export function overlap(w, t, poseFn, { arms = 4 * FR / 2.5, legs = 6 * FR / 2.5 } = {}) {
+  const P = w.userData.parts;
+  const grab = (keys) => keys.map((k) => (P[k] ? P[k].rotation.clone() : null));
+  const put = (keys, vals) => keys.forEach((k, i) => { if (P[k] && vals[i]) P[k].rotation.copy(vals[i]); });
+  poseFn(t - arms);
+  const a = grab(['armL', 'armR']);
+  poseFn(t - legs);
+  const l = grab(['legL', 'legR']);
+  poseFn(t);
+  put(['armL', 'armR'], a);
+  put(['legL', 'legR'], l);
+}
+
+// Follow-through for the hard hat after the body stops or gets hit at t0.
+export function hatWobble(w, t, t0, amp = 0.35, freq = 2.2, damp = 0.22) {
+  if (!w.userData.hat) return;
+  const v = spring(t, t0, { amp, freq, damp });
+  w.userData.hat.rotation.z += v;
+  w.userData.hat.rotation.x += v * 0.5;
+}
+
+// Eyes glance toward a world point (readable reactions: look at the thing, then react).
+const _gl = new THREE.Vector3();
+export function glance(w, target, amt = 1) {
+  const head = w.userData.parts.head;
+  head.updateWorldMatrix(true, false);
+  _gl.copy(target);
+  head.worldToLocal(_gl);
+  const len = Math.hypot(_gl.x, _gl.y, _gl.z) || 1;
+  const dx = clamp01(Math.abs(_gl.x / len)) * Math.sign(_gl.x) * 0.07 * amt;
+  const dy = clamp01(Math.abs(_gl.y / len)) * Math.sign(_gl.y) * 0.05 * amt;
+  for (const e of [...(w.userData.eyes || []), ...(w.userData.shines || [])]) {
+    if (!e.userData.base) continue;
+    e.position.set(e.userData.base.x + dx, e.userData.base.y + dy, e.userData.base.z);
+  }
+}
+
+// Ballistic arc between two points with a given apex height (arcs, not straight lines).
+export function arcPoint(a, b, u, apex) {
+  const x = lerp(a[0], b[0], u);
+  const z = lerp(a[2], b[2], u);
+  const y = lerp(a[1], b[1], u) + 4 * apex * u * (1 - u);
+  return [x, y, z];
+}
+
+// Camera punch-in: narrows FOV by `amt` on each event time, easing back over `dur`.
+export function punch(camera, baseFov, t, events, amt = 0.045, dur = 0.45) {
+  let k = 0;
+  for (const t0 of events) {
+    const dt = t - t0;
+    if (dt >= 0 && dt < dur) k = Math.max(k, dt < 0.05 ? dt / 0.05 : 1 - easeOut((dt - 0.05) / (dur - 0.05)));
+  }
+  const fov = baseFov * (1 - amt * k);
+  if (Math.abs(camera.fov - fov) > 1e-4) { camera.fov = fov; camera.updateProjectionMatrix(); }
+}
+
+// Lens families: one focal length per location type instead of ad-hoc FOVs.
+export const LENS = { bath: 56, close: 42, street: 46, interior: 52, wide: 56, fp: 70 };
+
+// ================================================================== life + friends
+// Deterministic hash noise (no Math.random, so any frame renders identically on its own).
+const hash = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+const vnoise = (x, seed = 0) => { const i = Math.floor(x); const f = x - i; const a = hash(i + seed * 57); const b = hash(i + 1 + seed * 57); const u = f * f * (3 - 2 * f); return a + (b - a) * u; };
+const seedOf = (w) => ({ kev: 1, mo: 2, you: 3, gus: 4 }[w.userData.who] || 5);
+
+// Idle life: breathing, weight shift, little head drift, and blinks at irregular (seeded) times.
+// `k` scales everything (0 while ragdolling). Call after a pose.
+export function alive(w, t, k = 1) {
+  const P = w.userData.parts;
+  const sd = seedOf(w);
+  if (P.torso) {
+    const br = Math.sin(t * 2 * Math.PI * (0.32 + sd * 0.02) + sd) * 0.022 * k;
+    P.torso.scale.set(1 + br * 0.5, 1 + br, 1 + br * 0.5);
+  }
+  w.rotation.z += (vnoise(t * 0.6, sd) - 0.5) * 0.06 * k;
+  P.head.rotation.y += (vnoise(t * 0.45, sd + 9) - 0.5) * 0.35 * k;
+  P.head.rotation.x += (vnoise(t * 0.5, sd + 19) - 0.5) * 0.12 * k;
+  // blink: ~every 2.2–3.6 s, 0.09 s long
+  const period = 2.2 + hash(sd * 3.1) * 1.4;
+  const ph = (t + hash(sd) * period) % period;
+  if (ph < 0.09 && k > 0.5) for (const e of w.userData.eyes || []) e.scale.y = 0.15;
+}
+
+// Turn the head toward a world point (clamped), like someone glancing over at a friend.
+const _hl = new THREE.Vector3();
+export function headLook(w, target, amt = 1) {
+  const head = w.userData.parts.head;
+  w.updateWorldMatrix(true, false);
+  _hl.copy(target);
+  w.worldToLocal(_hl);
+  _hl.y -= head.position.y;
+  const yaw = Math.atan2(_hl.x, _hl.z);
+  const pitch = Math.atan2(_hl.y, Math.hypot(_hl.x, _hl.z));
+  head.rotation.y += THREE.MathUtils.clamp(yaw, -1.3, 1.3) * amt;
+  head.rotation.x += THREE.MathUtils.clamp(-pitch, -0.5, 0.5) * amt;
+}
+
+// Point-and-laugh reaction at someone. Bouncy, irregular, head thrown back.
+export function laugh(w, t, target, k = 1) {
+  const sd = seedOf(w);
+  const ha = Math.abs(Math.sin(t * (13 + sd)));
+  if (target) {
+    face(w, target.x, target.z);
+    arm(w, 'R', 1.5, 0.15 + Math.sin(t * 11) * 0.05);
+  } else arm(w, 'R', 0.7 + ha * 0.3, 0.5);
+  arm(w, 'L', 0.9 + ha * 0.25, -0.4);
+  w.userData.parts.torso.rotation.x = -0.15 - ha * 0.12 * k;
+  w.userData.parts.head.rotation.x = -0.25 - ha * 0.15 * k;
+  mouth(w, 0.55 + ha * 0.45);
+  eyes(w, -0.3);
+  w.position.y += ha * 0.06 * k;
+}
+
+// Gentle handheld drift so locked-off shots don't feel like a tripod.
+export function handheld(camera, t, amt = 1, seed = 0) {
+  camera.rotation.x += (vnoise(t * 0.7, seed + 3) - 0.5) * 0.012 * amt;
+  camera.rotation.y += (vnoise(t * 0.6, seed + 7) - 0.5) * 0.014 * amt;
+  camera.rotation.z += (vnoise(t * 0.5, seed + 11) - 0.5) * 0.008 * amt;
+}
+
+// Per-friend gait: speed multiplier and bounce so they don't all walk the same.
+export const GAIT = { kev: { rate: 1.0, amp: 0.65 }, mo: { rate: 0.85, amp: 0.5 }, you: { rate: 1.12, amp: 0.75 }, gus: { rate: 1.25, amp: 0.85 } };
+export function stroll(w, t, base = 10) {
+  const g = GAIT[w.userData.who] || { rate: 1, amp: 0.6 };
+  return walk(w, t * base * g.rate, g.amp);
+}
+
+// Discord-style voice chat: up to 3 overlapping lines, newest at the bottom, each with a talking ring.
+const CHAT_COL = { kev: '#4f8dff', gus: '#a65cff', mo: '#3ccf7a', you: '#ff8a3d', everyone: '#ffd23f' };
+export function chatStack(lt, lines) {
+  const live = lines.filter((l) => lt >= l.t0 - 0.02 && lt <= l.t1).slice(-3);
+  if (!live.length) return '';
+  const rows = live.map((l) => {
+    const a = Math.min(seg(lt, l.t0, l.t0 + 0.08), 1 - seg(lt, l.t1 - 0.12, l.t1));
+    const pop = 0.92 + 0.08 * easeBack(seg(lt, l.t0, l.t0 + 0.18));
+    const talk = 0.35 + Math.abs(Math.sin(lt * 21 + l.t0 * 7)) * 0.65;
+    const c = CHAT_COL[l.who] || '#fff';
+    const name = l.who === 'you' ? 'YOU' : l.who.toUpperCase();
+    return `<div class="row" style="opacity:${a};transform:scale(${pop})"><i style="--c:${c};box-shadow:0 0 0 ${2 + talk * 3}px ${c}55"></i><b style="color:${c}">${name}</b><span${l.muffled ? ' class="muf"' : ''}>${l.text}</span></div>`;
+  }).join('');
+  return `<div class="tr-chat">${rows}</div>`;
 }

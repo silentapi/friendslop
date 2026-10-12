@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 
 // ---------------------------------------------------------------- deterministic randomness
 let seed = 1337;
@@ -821,6 +822,9 @@ const gradeShader = {
       vec2 d = (vUv - 0.5) * vec2(1.0, 0.75);
       c.rgb *= 1.0 - vig * smoothstep(0.25, 0.75, length(d));
       c.rgb += (rand(vUv * 1000.0) - 0.5) * grain;
+      // TPDF dither (±1/255) so sky / backdrop gradients don't band after 8-bit + H.264.
+      float dth = rand(vUv * 1731.0 + 0.37) + rand(vUv * 913.0 + 0.71) - 1.0;
+      c.rgb += dth / 255.0;
       gl_FragColor = c;
     }`,
 };
@@ -830,7 +834,7 @@ export function renderFx(ctx, opts = {}) {
   makeComposer(ctx, opts).render();
 }
 
-export function makeComposer({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6, aoSamples = 16, bloom = 0.35, bloomThreshold = 0.85, grade = {} } = {}) {
+export function makeComposer({ renderer, scene, camera }, { ao = 1.0, aoRadius = 0.6, aoSamples = 16, bloom = 0.35, bloomThreshold = 0.85, grade = {}, dof = null } = {}) {
   const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
   const composer = new EffectComposer(renderer, rt);
   composer.setPixelRatio(1);
@@ -844,6 +848,12 @@ export function makeComposer({ renderer, scene, camera }, { ao = 1.0, aoRadius =
     composer.addPass(aoPass);
   }
   if (bloom) composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), bloom, 0.5, bloomThreshold));
+  if (dof) {
+    // Depth of field: scenes update composer.bokeh.uniforms.focus each frame to stay on the hero.
+    const bp = new BokehPass(scene, camera, { focus: dof.focus ?? 8, aperture: dof.aperture ?? 0.0025, maxblur: dof.maxblur ?? 0.008 });
+    composer.addPass(bp);
+    composer.bokeh = bp;
+  }
   composer.addPass(new OutputPass());
   const gp = new ShaderPass(gradeShader);
   for (const [k, v] of Object.entries(grade)) gp.uniforms[k].value = v;
@@ -851,4 +861,27 @@ export function makeComposer({ renderer, scene, camera }, { ao = 1.0, aoRadius =
   composer.grade = gp;
   composer.dispose2 = () => { composer.dispose(); rt.dispose(); };
   return composer;
+}
+
+
+// Three-point rig on top of setup(): warm key from the camera's front-right (~28° off axis),
+// cool rim from behind-left to edge silhouettes, and the scene's hemi/env kept low as fill.
+// camPos/target describe the shot's general framing so the rig follows the camera side.
+export function keyRim(scene, camPos, target, { key = 0xffd7b0, keyInt = 1.6, rim = 0xbcd6ff, rimInt = 2.2, dist = 12, shadows = false } = {}) {
+  const c = new THREE.Vector3(...camPos);
+  const t = new THREE.Vector3(...target);
+  const fwd = t.clone().sub(c).setY(0).normalize();
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const ang = THREE.MathUtils.degToRad(28);
+  const keyDir = fwd.clone().multiplyScalar(-Math.cos(ang)).add(right.clone().multiplyScalar(Math.sin(ang))).normalize();
+  const k = new THREE.DirectionalLight(key, keyInt);
+  k.position.copy(t).addScaledVector(keyDir, dist).add(new THREE.Vector3(0, dist * 0.6, 0));
+  k.target.position.copy(t);
+  k.castShadow = shadows;
+  const rimDir = fwd.clone().add(right.clone().multiplyScalar(-0.8)).normalize();
+  const r = new THREE.DirectionalLight(rim, rimInt);
+  r.position.copy(t).addScaledVector(rimDir, dist).add(new THREE.Vector3(0, dist * 0.45, 0));
+  r.target.position.copy(t);
+  scene.add(k, k.target, r, r.target);
+  return { key: k, rim: r };
 }
