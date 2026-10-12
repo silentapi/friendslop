@@ -1,0 +1,430 @@
+{
+  "fps": 24,
+  "bpm": 120,
+  "audioLagFrames": 1,
+  "note": "BIG CRUMB trailer v4: see docs/TRAILER.md for the per-shot intent sheet. HOOK (donut walks, spins) → WHY (hungry Queen) → JOURNEY in threes (trek, hose fall, climb save) → threshold → HEIST (kitchen, grab) → TENSION (freeze/sneeze) → CLIMAX in threes (swat, fall, nope) → REST (roll home) → PAYOFF (home, gulp, again) → END SLATE → STINGER. Shot lengths on the 120 BPM eighth grid; cue times local to each shot.",
+  "shots": [
+    {
+      "name": "donut",
+      "dur": 3.0,
+      "cues": {
+        "reveal": 0.9
+      }
+    },
+    {
+      "name": "spin",
+      "dur": 2.5,
+      "cues": {
+        "argue": 0.3,
+        "spin": 0.8,
+        "fling": 1.9
+      }
+    },
+    {
+      "name": "hungry",
+      "dur": 3.0,
+      "cues": {
+        "growl": 0.4
+      }
+    },
+    {
+      "name": "out",
+      "dur": 3.0,
+      "cues": {
+        "pops": [
+          0.2,
+          0.45,
+          0.65,
+          0.9
+        ],
+        "point": 1.4,
+        "card": 1.15
+      }
+    },
+    {
+      "name": "trek",
+      "dur": 2.5,
+      "cues": {
+        "land": 1.5
+      }
+    },
+    {
+      "name": "hose",
+      "dur": 2.5,
+      "cues": {
+        "slip": 0.9,
+        "splash": 1.45
+      }
+    },
+    {
+      "name": "climb",
+      "dur": 2.5,
+      "cues": {
+        "slip": 1.0,
+        "catch": 1.25
+      }
+    },
+    {
+      "name": "kitchen",
+      "dur": 3.0,
+      "cues": {
+        "crest": 0.5,
+        "glint": 1.5
+      }
+    },
+    {
+      "name": "grab",
+      "dur": 2.0,
+      "cues": {
+        "grabs": [
+          0.1,
+          0.25,
+          0.4,
+          0.55
+        ],
+        "lift": 0.85
+      }
+    },
+    {
+      "name": "freeze",
+      "dur": 4.5,
+      "cues": {
+        "thumps": [
+          0.0,
+          0.35
+        ],
+        "freeze": 0.6,
+        "card": 0.7,
+        "glance": 1.7,
+        "away": 2.7,
+        "sneeze": 4.2
+      }
+    },
+    {
+      "name": "spotted",
+      "dur": 1.5,
+      "cues": {
+        "whip": 0.0,
+        "scream": 0.25
+      }
+    },
+    {
+      "name": "swat",
+      "dur": 1.75,
+      "cues": {
+        "raise": 0.0,
+        "hit": 0.5,
+        "tip": 0.95
+      }
+    },
+    {
+      "name": "fall",
+      "dur": 2.0,
+      "cues": {
+        "land": 1.35
+      }
+    },
+    {
+      "name": "nope",
+      "dur": 1.5,
+      "cues": {}
+    },
+    {
+      "name": "roll",
+      "dur": 2.5,
+      "cues": {}
+    },
+    {
+      "name": "home",
+      "dur": 2.0,
+      "cues": {
+        "plop": 0.4,
+        "cheer": 0.8
+      }
+    },
+    {
+      "name": "gulp",
+      "dur": 3.0,
+      "cues": {
+        "pop": 0.1,
+        "gulp": 0.7,
+        "silence": 1.05,
+        "growl": 2.3
+      }
+    },
+    {
+      "name": "again",
+      "dur": 2.0,
+      "cues": {
+        "slump": 0.1
+      }
+    },
+    {
+      "name": "title",
+      "dur": 4.0,
+      "cues": {
+        "slam": 0.25,
+        "tagline": 1.0,
+        "badges": 1.6,
+        "sting": 2.75
+      }
+    },
+    {
+      "name": "button",
+      "dur": 3.0,
+      "cues": {
+        "open": 0.25,
+        "light": 0.45,
+        "line": 1.3,
+        "scream": 2.2,
+        "black": 2.4
+      }
+    }
+  ],
+  "strength": {
+    "spin.fling": 0.6,
+    "hungry.growl": 0.9,
+    "trek.land": 0.4,
+    "hose.splash": 0.8,
+    "climb.catch": 0.6,
+    "grab.lift": 0.7,
+    "freeze.thumps": 0.7,
+    "spotted.scream": 1.0,
+    "swat.hit": 1.0,
+    "fall.land": 0.9,
+    "home.plop": 0.9,
+    "gulp.gulp": 1.0,
+    "gulp.growl": 0.9,
+    "title.slam": 1.0
+  },
+  "cards": [
+    {
+      "shot": "out",
+      "cue": "card",
+      "text": "THE SNACKS ARE IN THE HOUSE.",
+      "note": "E5"
+    },
+    {
+      "shot": "freeze",
+      "cue": "card",
+      "text": "SHE SEES MOVEMENT.",
+      "note": "A5"
+    }
+  ],
+  "chat": [
+    {
+      "shot": "donut",
+      "t0": 0.3,
+      "t1": 1.3,
+      "who": "dot",
+      "text": "okay okay okay"
+    },
+    {
+      "shot": "donut",
+      "t0": 1.15,
+      "t1": 2.2,
+      "who": "moss",
+      "text": "don't drop it don't drop it"
+    },
+    {
+      "shot": "donut",
+      "t0": 2.1,
+      "t1": 3.0,
+      "who": "pip",
+      "text": "we got this"
+    },
+    {
+      "shot": "spin",
+      "t0": 0.25,
+      "t1": 0.95,
+      "who": "dot",
+      "text": "LEFT"
+    },
+    {
+      "shot": "spin",
+      "t0": 0.7,
+      "t1": 1.6,
+      "who": "pip",
+      "text": "MY left or YOUR left"
+    },
+    {
+      "shot": "spin",
+      "t0": 1.5,
+      "t1": 2.5,
+      "who": "bean",
+      "text": "WAAAAA"
+    },
+    {
+      "shot": "hungry",
+      "t0": 1.0,
+      "t1": 1.95,
+      "who": "dot",
+      "text": "she's hungry."
+    },
+    {
+      "shot": "hungry",
+      "t0": 1.85,
+      "t1": 3.0,
+      "who": "moss",
+      "text": "she's ALWAYS hungry."
+    },
+    {
+      "shot": "out",
+      "t0": 1.8,
+      "t1": 2.95,
+      "who": "pip",
+      "text": "donut run. let's go"
+    },
+    {
+      "shot": "trek",
+      "t0": 0.2,
+      "t1": 1.1,
+      "who": "bean",
+      "text": "how far is it"
+    },
+    {
+      "shot": "trek",
+      "t0": 1.2,
+      "t1": 2.3,
+      "who": "moss",
+      "text": "yes."
+    },
+    {
+      "shot": "hose",
+      "t0": 0.1,
+      "t1": 0.85,
+      "who": "dot",
+      "text": "single file. careful."
+    },
+    {
+      "shot": "hose",
+      "t0": 0.9,
+      "t1": 1.4,
+      "who": "bean",
+      "text": "wOAH"
+    },
+    {
+      "shot": "hose",
+      "t0": 1.7,
+      "t1": 2.5,
+      "who": "bean",
+      "text": "i'm fine",
+      "muffled": true
+    },
+    {
+      "shot": "climb",
+      "t0": 1.0,
+      "t1": 1.6,
+      "who": "moss",
+      "text": "AAA"
+    },
+    {
+      "shot": "climb",
+      "t0": 1.4,
+      "t1": 2.5,
+      "who": "dot",
+      "text": "got you"
+    },
+    {
+      "shot": "kitchen",
+      "t0": 1.0,
+      "t1": 1.8,
+      "who": "bean",
+      "text": "we can take it"
+    },
+    {
+      "shot": "kitchen",
+      "t0": 1.7,
+      "t1": 2.95,
+      "who": "moss",
+      "text": "we can NOT take it"
+    },
+    {
+      "shot": "grab",
+      "t0": 1.0,
+      "t1": 1.95,
+      "who": "everyone",
+      "text": "HNNNGH"
+    },
+    {
+      "shot": "freeze",
+      "t0": 0.55,
+      "t1": 1.2,
+      "who": "dot",
+      "text": "FREEZE"
+    },
+    {
+      "shot": "freeze",
+      "t0": 1.6,
+      "t1": 2.5,
+      "who": "moss",
+      "text": "she's looking",
+      "whisper": true
+    },
+    {
+      "shot": "freeze",
+      "t0": 2.9,
+      "t1": 3.8,
+      "who": "bean",
+      "text": "guys i need to sneeze",
+      "whisper": true
+    },
+    {
+      "shot": "freeze",
+      "t0": 3.65,
+      "t1": 4.2,
+      "who": "everyone",
+      "text": "NO",
+      "whisper": true
+    },
+    {
+      "shot": "nope",
+      "t0": 0.1,
+      "t1": 1.4,
+      "who": "mom",
+      "text": "nope nope nope nope"
+    },
+    {
+      "shot": "roll",
+      "t0": 0.2,
+      "t1": 1.2,
+      "who": "pip",
+      "text": "ROLL IT"
+    },
+    {
+      "shot": "roll",
+      "t0": 1.1,
+      "t1": 2.3,
+      "who": "dot",
+      "text": "this is genius"
+    },
+    {
+      "shot": "home",
+      "t0": 0.7,
+      "t1": 2.0,
+      "who": "everyone",
+      "text": "WE DID IT"
+    },
+    {
+      "shot": "again",
+      "t0": 0.3,
+      "t1": 1.15,
+      "who": "bean",
+      "text": "…again?"
+    },
+    {
+      "shot": "again",
+      "t0": 1.1,
+      "t1": 2.0,
+      "who": "pip",
+      "text": "again."
+    },
+    {
+      "shot": "button",
+      "t0": 1.3,
+      "t1": 2.2,
+      "who": "pip",
+      "text": "…hi."
+    }
+  ]
+}

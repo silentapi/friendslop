@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Big Crumb Stage</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@600;800&display=swap" rel="stylesheet">
+<script>window.__W = 1280; window.__H = 720;</script>
+<script type="importmap">
+  { "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }
+</script>
+<style>
+  :root { --ink: #2a1730; --paper: #fff7e8; }
+  html, body { margin: 0; background: #000; }
+  #frame { position: relative; width: 1280px; height: 720px; overflow: hidden; font-family: 'Fredoka', sans-serif; color: var(--ink); background: #000; }
+  #stage canvas { display: block; }
+  #pins, #hud { position: absolute; inset: 0; pointer-events: none; }
+
+  /* die-cut sticker: paper fill, ink text, thick white border, soft drop shadow */
+  .stk { position: absolute; font-weight: 700; line-height: .95; letter-spacing: .5px; white-space: nowrap; padding: .12em .32em .16em; background: var(--bg);
+    border-radius: .28em; box-shadow: 0 0 0 .09em #fff, 0 .12em 0 .09em rgba(42,23,48,.35), 0 .3em .6em rgba(42,23,48,.35); }
+  .stk-bl { left: 70px; bottom: 76px; transform-origin: 0 100%; }
+  .stk-tl { left: 70px; top: 64px; transform-origin: 0 0; }
+  .stk-br { right: 70px; bottom: 76px; transform-origin: 100% 100%; }
+  .stk-tr { right: 70px; top: 64px; transform-origin: 100% 0; }
+  .stk-c { left: 50%; top: 50%; transform-origin: 50% 50%; text-align: center; }
+  .stk .sub { font-size: .3em; font-weight: 600; letter-spacing: 3px; margin-top: .3em; opacity: .75; }
+  .stk em { font-style: normal; color: var(--accent, #ff5a4e); }
+
+  .gdot { position: absolute; width: 30px; height: 30px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2.5px var(--ink), 0 4px 10px rgba(42,23,48,.4);
+    display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.25); }
+  .gdot i { width: 100%; height: 100%; border-radius: 50%; background: var(--c); display: block; }
+  .gdot.on { border-color: #fff; }
+
+  .word { position: absolute; font-weight: 700; white-space: nowrap; -webkit-text-stroke: 8px var(--ink); paint-order: stroke fill; letter-spacing: 1px;
+    text-shadow: 0 6px 0 var(--ink); }
+  .ntag { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 20px; padding: 2px 12px 3px 6px;
+    border-radius: 999px; background: var(--paper); box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(42,23,48,.35); white-space: nowrap; }
+  .ntag i { width: 14px; height: 14px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--ink); }
+
+  .chat { position: absolute; right: 36px; bottom: 36px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .chat .row { display: flex; align-items: center; gap: 10px; padding: 6px 16px 7px 8px; background: var(--paper); border-radius: 999px; transform-origin: 100% 100%;
+    box-shadow: 0 0 0 3px #fff, 0 5px 12px rgba(42,23,48,.4); font-weight: 600; font-size: 23px; white-space: nowrap; }
+  .chat .row i { width: 24px; height: 24px; border-radius: 50%; background: var(--c); border: 3px solid var(--ink); box-sizing: border-box; }
+  .chat .row b { font-weight: 700; font-size: 21px; -webkit-text-stroke: 1.2px var(--ink); paint-order: stroke fill; }
+  .chat .row .muf { opacity: .6; font-style: italic; filter: blur(.6px); }
+
+  .dial { position: absolute; left: 30px; top: 26px; width: 92px; padding: 8px 10px 4px; background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 3px #fff, 0 5px 12px rgba(42,23,48,.35); transform: rotate(-3deg); }
+  .dial svg { display: block; width: 100%; }
+  .belly { position: absolute; left: 50%; top: 24px; margin-left: -150px; width: 300px; display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--paper);
+    border-radius: 999px; box-shadow: 0 0 0 3px #fff, 0 5px 12px rgba(42,23,48,.35); transform-origin: 50% 0; }
+  .belly .q { font-size: 24px; }
+  .belly .bar { flex: 1; height: 16px; border-radius: 9px; background: rgba(42,23,48,.12); overflow: hidden; box-shadow: inset 0 0 0 2.5px var(--ink); }
+  .belly .bar i { display: block; height: 100%; background: linear-gradient(90deg, #c9a7ff, #ff7eb6); border-radius: 9px; box-shadow: inset 0 0 0 2.5px var(--ink); }
+
+  .flash { position: absolute; inset: 0; }
+  .lbox { position: absolute; left: 0; right: 0; background: #140a12; }
+
+  .logo { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%) rotate(-4deg); white-space: nowrap; font-weight: 700; line-height: .9; color: #ffc768;
+    -webkit-text-stroke: 9px var(--ink); paint-order: stroke fill; text-shadow: 0 12px 0 var(--ink), 0 22px 40px rgba(20,10,18,.5); letter-spacing: 2px; }
+  .logo .ch { display: inline-block; }
+  .logo .sp { display: inline-block; width: .3em; }
+  .logo .bite { -webkit-mask: radial-gradient(circle at 96% 8%, transparent 0 .2em, #000 .21em); mask: radial-gradient(circle at 96% 8%, transparent 0 .2em, #000 .21em); }
+  .tagline { position: absolute; left: 50%; top: 64%; transform: translateX(-50%); font-weight: 600; font-size: 34px; color: #fff7e8; white-space: nowrap;
+    -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; }
+  .badges { position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); display: flex; gap: 14px; align-items: center; white-space: nowrap; }
+  .badges .b { font-weight: 700; font-size: 17px; letter-spacing: 2px; padding: 7px 14px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(42,23,48,.4); }
+  .badges .steam { font-size: 21px; padding: 10px 20px; background: #3fd08a; color: #fff; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
+
+  .label { position: absolute; left: 24px; bottom: 18px; font: 600 15px Inter; color: #fff; background: rgba(20,10,18,.6); padding: 5px 10px; border-radius: 8px; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="stage"></div>
+  <div id="pins"></div>
+  <div id="hud"></div>
+</div>
+<script type="module">
+  await document.fonts.load('700 40px Fredoka').catch(() => {});
+  await document.fonts.load('600 20px Fredoka').catch(() => {});
+  await document.fonts.load('800 20px Inter').catch(() => {});
+  const mode = new URLSearchParams(location.search).get('mode') || 'lookdev';
+  const m = await import('./engine/driver.js');
+  await m.boot(mode);
+</script>
+</body>
+</html>
