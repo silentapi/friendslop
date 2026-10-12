@@ -22,3 +22,13 @@ MOD=site node render.mjs   # writes screenshots/site-1..5.png
 ```
 
 To preview one live, open `index.html?mod=site&shot=N`. The scenes are in `site.js`. See `docs/JOB_SITE.md` for the design.
+
+### Polish layer (v2)
+- `fx.js`:
+  - procedural canvas textures: wood grain, tile, plaster, wallpaper, concrete, cinder block, grass, asphalt, siding, shingles
+  - a gradient sky dome and puffy clouds
+  - volumetric-style light shafts and dust motes
+  - props: tools, cones, scaffolding, power lines and more
+  - post-processing: GTAO ambient occlusion, bloom, and colour grade with vignette and grain
+- `hud.css`: the game HUD system (objective tracker, compass, player card, radio feed, hotbar, world-anchored prompts, sound pings)
+- Rendering takes about 15s per shot under software WebGL.

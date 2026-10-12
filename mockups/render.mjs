@@ -19,7 +19,7 @@ page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
 
 for (const s of shots) {
   await page.goto(`http://localhost:8123/index.html?mod=${mod}&shot=${s}`);
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.__ready === true, null, { timeout: 240000 });
   await page.waitForTimeout(300);
   await page.locator('#frame').screenshot({ path: `screenshots/${prefix}-${s}.png` });
   console.log(`rendered shot ${s}`);
