@@ -228,3 +228,103 @@ Prove the walkthrough is fun before building anything else.
 - Flaws are tagged objects.
 - Detection is a cone check plus a raycast for line of sight. No fancy AI.
 - The hardest part is networking held objects (rugs, panels), which is solvable with host-authoritative physics.
+
+---
+
+## 10. Co-opetition: everyone's on the crew, everyone wants to be paid most
+
+**Replaces the single crew score.** You win as an individual, but only if the company survives. Think *Mario Party* inside *Overcooked*: you need each other to finish the job, and you want the paycheck to say your name.
+
+### The golden rule
+> **The crew passes or fails together. The money is split by who did what, and who got blamed.**
+
+- If the walkthrough hits **😠 Lawyer**, *nobody* gets job pay. That keeps everyone honest enough to cooperate.
+- Below that line, everything is personal. Your sabotage has to be **just enough** to sink a friend without sinking the job. That tension is the whole game.
+
+### Your paycheck (personal wallet = your rank)
+
+| + / − | Source | How |
+|-------|--------|-----|
+| ➕ | **Timecard** | Every task you complete is logged under your name. Proper work pays more than hacks. |
+| ➕ | **Tips** | The client tips *individuals*: whoever they liked (Small Talk), and whoever did the thing they admired. You compete to be the **Client's Favorite**. |
+| ➕ | **Skim** | Secretly order Bargain Bin materials but bill them as Premium, and pocket the difference. This raises Fallout risk for *everyone*. |
+| ➕ | **Side Hustle** | A secret personal objective card each job (see below) |
+| ➖ | **Docked** | When the client finds a flaw, the pay is docked from **whoever's name is on it** |
+| ➖ | **Fallout** | A "3 Months Later" disaster bills its owner, and the owner pays for the Callback |
+
+Crew bonus: if the job passes 🙂, there's a flat bonus split evenly. It's a small reason to stay friends.
+
+### Signed work: every flaw has a name
+- Every task you do is **signed with your colour** (your initials on the drywall, your paint colour on the tiles).
+- When the client spots a flaw they ask **"Who did this?"** and the blame goes to the signature.
+- The crew can see everyone's flaws, so **you always know what to steer the client toward.**
+
+### Sabotage verbs (cheap, quick, deniable)
+- **Loosen:** undo a friend's proper work. It becomes a flaw *with their name on it*. Takes about 3 seconds.
+- **Swap:** replace their Premium materials with Bargain Bin.
+- **Forge:** re-sign one of your flaws with someone else's initials. Limited uses per job.
+- **Tour Guide:** during the walkthrough, Small Talk the client *toward* a rival's room. "Oh, you HAVE to see the bathroom Kevin did."
+- **Unhelp:** knock their painting off their hole, kick their rug, lock them in the closet while the client is in their room.
+
+**Sabotage leaves evidence.**
+- Loosened screws get your fingerprints.
+- Forged initials are in your handwriting font.
+- Your coloured paint leaves footprints.
+- Anyone who catches you can **Report** you, which docks *you* and hands the money to them.
+
+So sabotage is a skill: do it when nobody's looking, which you can check because everyone's position is visible in the house.
+
+### Blame time (the voice-chat moment)
+When the client finds a flaw with **forged or unclear** signatures, there's a 10-second **"WHOSE WORK IS THIS?"** freeze:
+- Every player points at someone.
+- Majority vote takes the blame. On a tie, the client picks whoever is closest, so get away from the flaw.
+- It's a mini Among Us vote that happens mid-walkthrough. This is where friendships end.
+
+### Side Hustles (secret per-player objectives, 1 per job)
+Simple, funny, and slightly anti-crew:
+- "Steal the client's garden gnome."
+- "Install your cousin's used hot tub somewhere in the house."
+- "Get the client to sit in a chair *you* built badly, without anyone noticing."
+- "Get Dave blamed for 2 flaws."
+- "Be the last one to touch the toilet before the client flushes it."
+- "Take a nap in the client's bed during the walkthrough."
+
+Side hustles pay out after the job, and they're revealed at the end of the week for maximum "YOU DID WHAT?"
+
+### The Foreman (rotating power role)
+- Each job, one player is **Foreman**:
+  - Picks the job card and assigns task priorities on the clipboard.
+  - Gets a **10% cut of everyone's pay.**
+  - Takes the blame for any **unsigned** flaws, like hacks nobody claimed or the raccoon.
+- **Last place becomes the next Foreman.** It's a built-in catch-up that also gives the loser some power, and a target on their back.
+
+### End of job: the payslip reveal
+- Each player gets a printed **payslip** that slides out of the van one by one, from lowest to highest, with drumroll and stamp sounds.
+- Polaroid **awards** are worth bonus cash, Mario Party bonus-star style, so rankings can flip at the last second:
+  - 🏆 **Employee of the Job:** most pay.
+  - 🤥 **Smoothest Liar:** most flaws hidden successfully.
+  - 🐀 **Snitch:** most Reports filed.
+  - 🧹 **Actually Did Work:** most proper tasks.
+  - 🎭 **Client's Favorite:** biggest tips.
+  - 💀 **Liability:** most fallout disasters. Negative award, permanent cosmetic shame.
+
+### End of week: the ranking that matters
+- After 5 jobs, wallets are ranked.
+- **#1 – Employee of the Week:** gold hard hat cosmetic, name on the van, picks next week's company name.
+- **Last place – "You're Fired":** a short cutscene of them carrying a cardboard box to the curb. They start next week as the **Intern**: driving the van, an ugly orange vest, and +1 Forge use as a pity weapon.
+- **If the company goes bankrupt** (reputation hits 0), *everyone* loses and the richest player is "arrested" in the ending cutscene. Being greedy enough to tank the company is its own punchline.
+
+### Why this balance works
+- **You need each other:** heavy tasks (drywall, appliances) are much faster with two people, and the Lawyer outcome wipes everyone. Pure backstabbing gets nobody paid.
+- **You want to beat each other:** individual pay, signed work, tips and awards.
+- **Sabotage is cheap but risky:** evidence plus Reports means the sneaky player has to *play well*, not just grief.
+- **Catch-up keeps it close:** Foreman rotates to last place, the Intern gets a pity Forge, and bonus awards hit at the end. Nobody's out of it by job 3.
+- **Every mechanic makes voice chat louder:** blame votes, Tour Guide betrayals, Reports and the Side Hustle reveal.
+
+### Vertical-slice additions
+On top of §9, the first build adds:
+- **Signed work and per-player pay.** The "Who did this?" docking is the core of the competitive side.
+- **One sabotage verb: Loosen.** Plus **Report** to counter it.
+- **Payslip reveal** with 3 awards.
+
+Hold Forge, Side Hustles and Foreman for the second build, once signed blame proves fun.
