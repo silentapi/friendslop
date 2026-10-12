@@ -14,3 +14,11 @@ To preview a shot live, open `http://localhost:8123/index.html?shot=N` (N = 1–
 - `lib.js`: the character builder (bean body, big head, hard hat, mustaches), grandma, props, outlines and scene setup
 - `shots.js`: the five staged scenes and their HUD overlays
 - `render.mjs`: the screenshot script
+
+## Job-site set (first-person, same moment from four players)
+
+```bash
+MOD=site node render.mjs   # writes screenshots/site-1..5.png
+```
+
+To preview one live, open `index.html?mod=site&shot=N`. The scenes are in `site.js`. See `docs/JOB_SITE.md` for the design.

@@ -3,6 +3,9 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
+// MOD=site node render.mjs 1 2 …  → screenshots/site-N.png
+const mod = process.env.MOD || 'shots';
+const prefix = mod === 'shots' ? 'shot' : mod;
 const shots = process.argv.slice(2).length ? process.argv.slice(2) : ['1', '2', '3', '4', '5'];
 mkdirSync('screenshots', { recursive: true });
 
@@ -15,10 +18,10 @@ page.on('console', (m) => console.log(`[console] ${m.text()}`));
 page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
 
 for (const s of shots) {
-  await page.goto(`http://localhost:8123/index.html?shot=${s}`);
+  await page.goto(`http://localhost:8123/index.html?mod=${mod}&shot=${s}`);
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
   await page.waitForTimeout(300);
-  await page.locator('#frame').screenshot({ path: `screenshots/shot-${s}.png` });
+  await page.locator('#frame').screenshot({ path: `screenshots/${prefix}-${s}.png` });
   console.log(`rendered shot ${s}`);
 }
 await browser.close();
