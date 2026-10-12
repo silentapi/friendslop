@@ -10,7 +10,7 @@ async function open() {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
   await page.goto('http://localhost:8124/big-crumb/stage.html?mode=trailer');
-  await page.waitForFunction(() => window.__booted === true, null, { timeout: 120000 });
+  await page.waitForFunction(() => window.__booted === true, null, { timeout: 300000 });
   return { browser, page };
 }
 const probe = await open();
@@ -36,8 +36,16 @@ await Promise.all(chunks.map(async ([s, e], wi) => {
   for (let f = s; f < e; f++) {
     const path = `${outDir}/f${String(f).padStart(5, '0')}.jpg`;
     if (existsSync(path)) continue;
-    await page.evaluate((ff) => window.STAGE.renderFrame(ff), f);
-    await page.locator('#frame').screenshot({ path, type: 'jpeg', quality: 93 });
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await page.evaluate((ff) => window.STAGE.renderFrame(ff), f);
+        await page.screenshot({ path, type: 'jpeg', quality: 93, clip: { x: 0, y: 0, width: 1280, height: 720 }, timeout: 180000 });
+        break;
+      } catch (e) {
+        console.log(`w${wi} frame ${f} retry ${attempt}: ${e.message.split('\n')[0]}`);
+        if (attempt >= 3) throw e;
+      }
+    }
     if ((f - s) % 48 === 0) console.log(`w${wi} ${f}/${e} ${((Date.now() - t0) / 1000).toFixed(0)}s`);
   }
   await browser.close();
