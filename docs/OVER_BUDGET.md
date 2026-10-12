@@ -328,3 +328,109 @@ On top of §9, the first build adds:
 - **Payslip reveal** with 3 awards.
 
 Hold Forge, Side Hustles and Foreman for the second build, once signed blame proves fun.
+
+---
+
+## 11. Look and feel: silly third-person bean workers
+
+![Work phase](../mockups/screenshots/shot-1.png)
+![Walkthrough](../mockups/screenshots/shot-2.png)
+![Blame vote](../mockups/screenshots/shot-3.png)
+![Payday](../mockups/screenshots/shot-4.png)
+![Fallout reel](../mockups/screenshots/shot-5.png)
+
+*These mockups are rendered with Three.js from `mockups/`. They're concept shots, not gameplay.*
+
+### Characters (the PEAK / Gang Beasts school)
+- **Body:**
+  - A bean-shaped body, a huge round head (about 40% of total height), stubby legs and noodle arms.
+  - No necks, no fingers, two dot eyes.
+  - Silhouettes have to read at a glance from across the house, in a tiny Twitch window.
+- **Player identity:**
+  - Your colour is your **coverall colour**. The same colour is your signature, your name tag, your paint footprints and your payslip header. One colour = one person everywhere.
+- **Customization, all cosmetic, bought with wallet cash so being rich *shows*:**
+  - **Mustaches:** walrus, handlebar, pencil, full beard, "none, but should".
+  - **Hard hats:** standard, gold (Employee of the Week), cracked, propeller, cowboy.
+  - **Extras:** tool belts, sunglasses, a fanny pack, a sad intern orange vest.
+- **Everyone wears the same hi-vis vest.** It makes crowds look like one crew, and it makes the one who's sabotaging harder to spot.
+- **Thick dark outlines** (inverted hull) and soft toy-like shading. No textures on characters, just flat colours.
+
+### Movement: "wobbly-lite"
+A full active ragdoll (Gang Beasts) is hard to network and hard to vibe-code. PEAK proves you only need *some* wobble:
+- **Normal movement:** a kinematic capsule controller, plus procedural wobble.
+  - The head bobs, arms swing loosely and the body leans into turns.
+  - It's all animation-side, so it's cheap and smooth over the network.
+- **Ragdoll on demand:** you only go full ragdoll when something funny happens:
+  - you get hit by a swinging plank, slip on wet paint or fall through a hole;
+  - you use Fake Injury;
+  - you get electrocuted, or get shoved by a "friend".
+
+  After 2–3 seconds you pop back up. This is where most clips come from.
+- **Two-handed grab:** LMB and RMB grab with the left and right hand.
+  - You can hold two small things, or one big thing with both hands.
+  - Two players can hold opposite ends of drywall, a fridge or a bathtub.
+  - A held object is a physics body attached by springy joints, so it swings and bonks into things.
+- **Shove:** a small push that knocks people off balance. It's mostly for comedy and light sabotage. You can't knock people out of the job.
+
+### Camera
+- **Third-person over-the-shoulder** with orbit, like PEAK. You always see your own bean.
+- **Dollhouse cutaway indoors:** walls between the camera and your character fade or drop to half-height, The Sims style. Rooms are readable, and you can see your friends doing crimes in the next room.
+- **Walkthrough cam:** while the client is near your flaw, the camera pushes in slightly and adds a subtle vignette. Tension without any new UI.
+- **Spectate on ragdoll:** while you're down, the camera pops out wide so you can watch the chaos you caused.
+
+### World palette
+- **Exteriors:** pastel suburbs (mint, peach, lilac siding, salmon roofs), cartoon trees, white picket fences, garden gnomes, the company van.
+- **Interiors:** checker tile, honey-coloured wood floors, butter-yellow cabinets.
+- **Flaws use loud, non-palette colours** so they pop: pitch-black holes, slime-green mold with eyes, red sticker labels.
+- **Lighting:** warm sun, soft shadows, slight ACES tone mapping, no realism.
+
+### HUD language
+Everything is physical office junk, and it all reads in one second:
+- **Clipboard:** the task list, with signed rows in player colours.
+- **Receipt:** the budget and your secret skim.
+- **Wallet strip:** live rankings. Your row is outlined in gold.
+- **Sticky note:** the client's route and quirks during the walkthrough.
+- **Big diegetic moments get comic text:** "WHOSE WORK IS THIS?", "FRIDAY · PAYDAY!".
+- **The Fallout reel switches to a VHS + local-news chyron look,** which makes it obvious it's a different "show."
+
+### Controls (keyboard/mouse; controller mirrors it)
+
+| Input | Action |
+|-------|--------|
+| WASD / Mouse | Move / orbit camera |
+| Space / Shift | Hop / jog (small stamina) |
+| LMB / RMB | Grab or use with left / right hand |
+| **E** (hold) | Do it **right** (the task minigame) |
+| **Q** | 🤫 **Hack it** (instant, adds a signed flaw) |
+| **F** (hold) | Sabotage (Loosen / Swap / Forge, depending on target) |
+| **G** | Emote wheel: point, shrug, thumbs-up, *whistle innocently*, "look busy" |
+| **R** | Report (when you saw a sabotage) |
+| **1–5** | Walkthrough verbs (Small Talk, Body Block, Hold It Up, Noise Cover, Fake Injury) |
+| V | Push-to-talk (or always-on proximity voice) |
+
+**Whistle innocently** is a real mechanic. It's free, it's an animation, and players will use it constantly as a social tell.
+
+---
+
+## 12. Build plan (vibe-code milestones)
+
+**Stack:**
+- **Three.js + Rapier (physics)** in the browser.
+- **Colyseus or PartyKit** for the host-authoritative room server.
+- **WebRTC (LiveKit or PeerJS)** for proximity voice. It can launch with Discord voice instead.
+- The mockups already use the same rendering approach, so the art style carries straight over.
+
+| # | Milestone | Done when… |
+|---|-----------|------------|
+| M0 | **Bean sandbox** | 4 players join via link, walk around a lawn, wobble, grab and shove each other, and ragdoll on a fall |
+| M1 | **One job, two tasks** | Drywall + paint, each with proper (E) and hack (Q). Flaws are signed with player colour. Timer + clipboard. |
+| M2 | **Grandma walkthrough** | Waypoint client with view cone, suspicion meter, sit/flush/open interactions, Small Talk + Body Block + Hold It Up |
+| M3 | **Payslips** | Per-player timecard, tips, docking by signature, the payslip reveal and the wallet ranking |
+| **🧪 Playtest 1** | | *Is the walkthrough funny? Do people blame each other out loud?* |
+| M4 | **Sabotage** | Loosen + Report, evidence (fingerprints/footprints), the "Whose work is this?" vote |
+| M5 | **Fallout reel** | VHS "3 months later" with 3 canned disaster animations, Callback jobs |
+| M6 | **Week loop** | 5 jobs, Foreman rotation, side hustles, the Friday ranking + "You're Fired" |
+| **🧪 Playtest 2** | | *Does anyone want to play "one more week"?* |
+| M7 | **Content** | More clients (Influencer, Tech Bro, Fighting Couple), more surprises (raccoon, Big Gary), cosmetics shop |
+
+**Cut list if time gets tight:** proximity voice (use Discord), Forge, Side Hustles, cosmetics. Keep signed flaws, the walkthrough and payslips. Those three *are* the game.

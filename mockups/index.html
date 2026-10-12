@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Over Budget Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Permanent+Marker&family=VT323&display=swap" rel="stylesheet">
+<script type="importmap">
+  { "imports": { "three": "./node_modules/three/build/three.module.js" } }
+</script>
+<style>
+  :root { --ink: #2a1d2e; --orange: #ff8a3d; --blue: #4f8dff; --green: #3ccf7a; --purple: #a65cff; --red: #ff4d5e; --paper: #fffaf0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #111; }
+  #frame { position: relative; width: 1600px; height: 900px; overflow: hidden; font-family: 'Lilita One', 'Inter', sans-serif; color: var(--ink); }
+  #stage canvas { display: block; }
+  #pins, #hud { position: absolute; inset: 0; pointer-events: none; }
+
+  /* ---- world-pinned labels ---- */
+  .tag { position: absolute; transform: translate(-50%, -100%); padding: 3px 14px 4px; border-radius: 999px; font-size: 22px; color: #fff;
+         border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); white-space: nowrap; letter-spacing: .5px; }
+  .tag small { font-size: 15px; opacity: .9; }
+  .tag.orange { background: var(--orange); } .tag.blue { background: var(--blue); } .tag.green { background: var(--green); } .tag.purple { background: var(--purple); }
+  .tag.npc { background: #fff; color: var(--ink); }
+  .bubble { position: absolute; transform: translate(-50%, -100%); background: #fff; border: 3px solid var(--ink); border-radius: 18px; padding: 8px 14px;
+            font-size: 22px; max-width: 300px; text-align: center; box-shadow: 0 5px 0 var(--ink); line-height: 1.1; }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -16px; margin-left: -10px; border: 10px solid transparent; border-top: 14px solid var(--ink); }
+  .bubble.shout { background: #fff36b; transform: translate(-50%, -100%) rotate(-3deg); }
+  .bubble.think { font-family: 'Permanent Marker'; font-size: 18px; background: #f3ecff; }
+  .flaw { position: absolute; transform: translate(-50%, -50%) rotate(-6deg); background: var(--red); color: #fff; border: 3px solid var(--ink);
+          border-radius: 10px; padding: 4px 10px; font-size: 17px; box-shadow: 0 4px 0 var(--ink); white-space: nowrap; }
+  .flaw b { background: rgba(0,0,0,.25); padding: 0 6px; border-radius: 6px; }
+  .note { position: absolute; transform: translate(-50%, -50%); font-family: 'Permanent Marker'; font-size: 22px; color: #fff; text-shadow: 0 3px 0 var(--ink), 0 0 6px var(--ink); white-space: nowrap; }
+  .chip { position: absolute; transform: translate(-50%, 0); background: var(--ink); color: #fff; padding: 4px 12px; border-radius: 10px; font-size: 20px; white-space: nowrap; }
+
+  /* ---- HUD ---- */
+  .panel { position: absolute; background: var(--paper); border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 6px 0 var(--ink); }
+  .clipboard { left: 24px; top: 24px; width: 330px; padding: 40px 18px 14px; transform: rotate(-1.5deg); background: #fff; }
+  .clipboard::before { content: ''; position: absolute; top: -14px; left: 50%; width: 120px; height: 34px; margin-left: -60px; background: #b9bec9; border: 4px solid var(--ink); border-radius: 8px; }
+  .clipboard h3 { margin: 0 0 8px; font-size: 22px; }
+  .clipboard .row { display: flex; align-items: center; gap: 8px; font-size: 18px; padding: 5px 0; border-bottom: 2px dashed #ddd; }
+  .clipboard .row .who { margin-left: auto; font-size: 14px; color: #fff; padding: 1px 8px; border-radius: 6px; }
+  .done { color: #3a9a5b; } .hack { color: var(--red); }
+  .bar { height: 10px; border-radius: 6px; background: #eee; border: 2px solid var(--ink); overflow: hidden; margin-top: 3px; }
+  .bar > i { display: block; height: 100%; background: var(--green); }
+  .timer { left: 50%; top: 22px; transform: translateX(-50%); padding: 8px 26px; font-size: 32px; background: #ffd23f; border-radius: 999px; }
+  .receipt { right: 24px; top: 20px; width: 260px; padding: 14px 16px 22px; font-family: 'VT323', monospace; font-size: 24px; border-radius: 4px; transform: rotate(1.5deg);
+             background: repeating-linear-gradient(#fff, #fff 27px, #f4f4f4 28px); clip-path: polygon(0 0,100% 0,100% 96%,95% 100%,90% 96%,85% 100%,80% 96%,75% 100%,70% 96%,65% 100%,60% 96%,55% 100%,50% 96%,45% 100%,40% 96%,35% 100%,30% 96%,25% 100%,20% 96%,15% 100%,10% 96%,5% 100%,0 96%); }
+  .receipt .line { display: flex; justify-content: space-between; }
+  .receipt .big { font-size: 30px; border-top: 2px dashed var(--ink); margin-top: 6px; padding-top: 4px; }
+  .ranks { right: 24px; width: 260px; padding: 10px 12px; }
+  .ranks h4 { margin: 0 0 6px; font-size: 18px; letter-spacing: 1px; }
+  .rank { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin: 4px 0; border-radius: 10px; color: #fff; font-size: 20px; border: 3px solid var(--ink); }
+  .rank .n { width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--ink); text-align: center; line-height: 24px; font-size: 18px; }
+  .rank .m { margin-left: auto; }
+  .rank.me { outline: 4px solid #ffd23f; }
+  .prompts { left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; gap: 14px; background: none; border: none; box-shadow: none; }
+  .prompt { background: var(--paper); border: 4px solid var(--ink); border-radius: 14px; box-shadow: 0 5px 0 var(--ink); padding: 8px 16px; font-size: 22px; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .key { display: inline-block; min-width: 36px; padding: 2px 8px; background: #fff; border: 3px solid var(--ink); border-bottom-width: 6px; border-radius: 8px; text-align: center; font-size: 20px; }
+  .prompt.hackp { background: #ffe1e4; }
+  .prompt.cd { opacity: .55; }
+  .voice { left: 24px; bottom: 26px; padding: 10px 14px; font-size: 18px; width: 300px; }
+  .voice div { display: flex; gap: 8px; align-items: center; margin: 3px 0; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--ink); }
+  .meter { left: 50%; top: 22px; transform: translateX(-50%); width: 560px; padding: 10px 18px 14px; text-align: center; }
+  .meter .label { font-size: 26px; display: flex; justify-content: space-between; align-items: center; }
+  .meter .track { position: relative; height: 30px; border: 4px solid var(--ink); border-radius: 999px; overflow: hidden;
+                  background: linear-gradient(90deg, #7ee08a 0 45%, #ffd23f 45% 80%, #ff4d5e 80%); }
+  .meter .fill { position: absolute; inset: 0; background: rgba(42,29,46,.65); }
+  .meter .tick { position: absolute; top: -6px; bottom: -6px; width: 4px; background: var(--ink); }
+  .route { left: 24px; top: 24px; width: 300px; padding: 12px 16px; font-size: 19px; transform: rotate(-1deg); background: #fff59d; border-radius: 4px; }
+  .route h4 { margin: 0 0 6px; font-family: 'Permanent Marker'; font-size: 20px; }
+  .banner { position: absolute; left: 50%; transform: translateX(-50%) rotate(-2deg); font-size: 96px; color: #ffd23f; white-space: nowrap;
+            -webkit-text-stroke: 4px var(--ink); text-shadow: 0 8px 0 var(--ink); letter-spacing: 2px; }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(20,8,30,.75) 100%); }
+  .vhs { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px); mix-blend-mode: multiply; }
+  .vhs-text { position: absolute; font-family: 'VT323', monospace; color: #fff; text-shadow: 3px 0 0 rgba(255,0,80,.7), -3px 0 0 rgba(0,200,255,.7); }
+  .chyron { position: absolute; left: 0; right: 0; bottom: 60px; height: 92px; display: flex; font-family: 'Inter'; font-weight: 900; }
+  .chyron .lbl { background: #e8202f; color: #fff; padding: 0 26px; display: flex; align-items: center; font-size: 34px; letter-spacing: 1px; }
+  .chyron .txt { flex: 1; background: rgba(255,255,255,.95); display: flex; flex-direction: column; justify-content: center; padding: 0 22px; font-size: 30px; color: #111; }
+  .chyron .txt small { font-size: 20px; font-weight: 600; color: #444; }
+  .slip { position: absolute; bottom: 24px; width: 290px; background: #fff; border: 4px solid var(--ink); border-radius: 6px; box-shadow: 0 6px 0 var(--ink); padding: 10px 14px; font-family: 'VT323'; font-size: 22px; }
+  .slip .hd { font-family: 'Lilita One'; font-size: 24px; display: flex; justify-content: space-between; align-items: center; color: #fff; margin: -10px -14px 6px; padding: 6px 14px; }
+  .slip .line { display: flex; justify-content: space-between; }
+  .slip .tot { border-top: 2px dashed var(--ink); margin-top: 4px; padding-top: 2px; font-size: 28px; }
+  .stamp { position: absolute; font-family: 'Lilita One'; font-size: 30px; border: 5px solid; padding: 0 12px; border-radius: 8px; transform: rotate(-14deg); opacity: .9; }
+  .award { position: absolute; width: 170px; background: #fff; padding: 10px 10px 12px; border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink); text-align: center; font-size: 17px; }
+  .award .pic { height: 70px; font-size: 48px; background: #f1e9ff; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+  .caption { position: absolute; right: 22px; bottom: 18px; font-family: 'Inter'; font-weight: 800; font-size: 14px; color: rgba(255,255,255,.85); text-shadow: 0 1px 3px #000; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <div id="stage"></div>
+  <div id="pins"></div>
+  <div id="hud"></div>
+</div>
+<script type="module">
+  const shot = new URLSearchParams(location.search).get('shot') || '1';
+  await document.fonts.load('40px "Lilita One"').catch(() => {});
+  await document.fonts.load('20px "Permanent Marker"').catch(() => {});
+  await document.fonts.load('20px VT323').catch(() => {});
+  const mod = await import('./shots.js');
+  mod.render(shot);
+</script>
+</body>
+</html>
