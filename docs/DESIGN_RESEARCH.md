@@ -184,3 +184,84 @@ For quickly testing whether it's fun, **a browser prototype (Three.js + Rapier +
 - [GamingOnLinux: Dumb Ways to Build](https://gamingonlinux.com/2026/08/dumb-ways-to-build-brings-some-funny-co-op-from-dumb-ways-to-die-on-september-10)
 - [Cyprus Mail: Salvation Denied](https://cyprus-mail.com/2026/03/25/cyprus-publisher-grows-gaming-portfolio-with-new-title)
 - [Game Developer: Clash of Builders](https://www.gamedeveloper.com/press-release/clash-of-builders-out-now-on-steam)
+
+---
+
+## Part 5: Round 2 — simpler, dumber, funnier
+
+Rules for this round: **a goal you can explain in one sentence, lots of funny ways to fail, and nothing technically scary** (no structural sim, no destruction, no fluids).
+
+### HOLD THIS
+> 🪟 4 guys. 1 giant pane of glass. get it from the truck to the 3rd floor. there's a ladder. there's a dog. there's a guy on a forklift who doesn't know you exist. it's $40,000 glass. **HOLD THIS** 🫠
+
+- **Goal:** carry the item from the truck to the X.
+- **Each level is a different cursed object:**
+  - 30 ft of PVC pipe through a hallway with a turn.
+  - A wet-paint door.
+  - An unsecured hot tub.
+  - A wedding cake for the foreman's daughter.
+  - A live wasp nest.
+  - The boss's sleeping cat.
+- **How you fail:**
+  - Everyone is holding a corner, so one person walking backwards into a pole ruins it.
+  - Someone sneezes, which is a button everyone has.
+  - A seagull lands on it.
+  - Someone lets go to scratch their nose.
+- **Tech:** one rigid body with 4 grab points and a crack meter. It's Moving Out/Carry Me logic, and the easiest of these to build.
+
+### LOOK BUSY
+> 😴 your crew has done nothing all day. the boss's truck just pulled in. you have 8 seconds to look like you've been working. one guy is asleep in the excavator. one guy is in the porta-potty. one guy is ON the porta-potty. **LOOK BUSY**
+
+- **Goal:** survive the shift without getting caught slacking.
+- **The loop:**
+  - Slack off to fill your "chill meter," which is your score. You can nap, play cards, eat 9 donuts or ride the cement mixer.
+  - When the boss NPC wanders around, grab a tool and do a "look busy" action: hammer the air, measure a stick, point at a blueprint upside down.
+  - The boss has a view cone and a suspicion meter.
+- **How you fail:**
+  - A friend pushes you over mid-nap.
+  - The porta-potty you're hiding in gets tipped.
+  - You "hammer" right next to the boss and hit him.
+  - Someone panics and starts working on the wrong building.
+- **Escalation:** later days add a drone and the boss's nephew (a snitch). On the final day, the client and the boss arrive at the same time.
+- **Tech:** NPC with a view cone, timers and emotes. Very easy, and it makes the best streamer clips of the bunch.
+
+### WET CEMENT
+> 🧱 the concrete truck is here and the hose is alive. fill the foundation before it sets. anyone who falls in stays in. forever. our foundation has 3 coworkers in it. **WET CEMENT** 🫡
+
+- **Goal:** fill the outlined foundation before the timer ends.
+- **How it plays:** the hose is a flopping physics noodle that takes 2 people to aim. Cement is just rising flat planes plus blobs, not real fluid.
+- **How you fail:**
+  - The hose gets loose and coats your friend.
+  - Players stuck in cement become permanent statues in that level.
+  - The truck rolls downhill because nobody set the brake.
+- **The best part:** every level keeps your "fossilized" friends as a monument. The scoreboard reads "Workers Lost: 3."
+
+### WRECKING CREW
+> 🏚️🏠 knock down the ugly house. NOT the nice house next to it. NOT the church. NOT the ice cream truck. one guy drives the crane, one guy swings the ball, two guys "direct traffic." **WRECKING CREW** 💥
+
+- **Goal:** demolish the house that's tagged red. Collateral damage comes out of your pay.
+- **How you fail:** the wrecking ball has momentum and nobody understands it.
+- **Tech:** houses are stacks of plain physics boxes, so there's no fracture system. Lowest effort for the biggest explosion clips.
+
+### ONE BRICK
+> 🧱 the building is done. it needs one more brick. the last brick goes on the roof. the roof is 40 floors up and the elevator is broken. you are 4 men and 1 brick. **ONE BRICK**
+
+- **Goal:** get the brick to the roof. That's it.
+- **How it plays:** a vertical obstacle course with scaffolding, swinging beams and a guy on lunch who won't move.
+- **Throwing:** you can toss the brick to a teammate, but you can also hit them in the head and knock them down 3 floors.
+- **Why it works:** it's Getting Over It plus PEAK, with a hard hat.
+
+### SAFETY THIRD (a layer for any of the above)
+> 📼 every time you mess up, the game remembers. at the end of the shift you all watch the company safety video. it's 100% your footage. "DON'T do what Kevin did." **SAFETY THIRD**
+
+- **How it works:** the game auto-records the 5 worst incidents. At the end of the round it plays them back as a cheesy 90s VHS safety video with narrator voice lines and a "DAYS SINCE LAST ACCIDENT: 0" sign.
+- **Awards:** "Employee of the Month" goes to whoever caused the most chaos.
+- **Why it matters:** this is the clip-generator feature. Bolt it onto whichever game you pick.
+
+### Round 2 recommendation
+
+**LOOK BUSY + SAFETY THIRD**, with HOLD THIS jobs as the "work" you're avoiding: the boss forces you to carry dumb stuff whenever he catches you.
+
+- Simple goal, many failure modes.
+- Every mechanic is easy to build: view cones, timers, grab points, emotes.
+- Lots of room for dumb content: new hiding spots, new cursed objects, new boss types.
