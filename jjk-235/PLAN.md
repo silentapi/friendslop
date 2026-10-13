@@ -57,3 +57,17 @@ The only generated imagery is overlay FX that sit on the manga's own linework: B
 - **Contact sheets** per shot, at 8 evenly spaced frames, so a reviewer sees the motion at a glance.
 - **Motion-energy check:** mean absolute frame difference per frame. It flags any stretch of 0.5s or more that's effectively static.
 - **Beat check:** a reviewer compares each shot's contact sheet with its source page and the beat table above. Fix one thing at a time and re-render.
+
+## Reference: notL86's "Gojo VS Sukuna Animation" (ch.234–235)
+
+https://youtu.be/fRVzCmJMTQ8, voice over by ShadeRonin. It's hand-animated frame by frame, but its *look* is the target:
+- 2.39:1 cinematic letterbox bars over a 16:9 frame.
+- Akutami's own ink stays dominant: black-and-white line art with solid blacks, no cel shading.
+- Colour is a single soft tint per scene (pale pink wash) instead of full colouring. Saturated colour is saved for the techniques (Blue, Red, Purple).
+- The camera is always moving: slow push-ins and low hero angles on held poses.
+
+What this means for our cutouts:
+- Keep the page ink untouched.
+- Tint the paper per scene with `multiply`.
+- Reserve saturated colour for the cursed-technique FX.
+- Letterbox everything.
