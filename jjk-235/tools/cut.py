@@ -23,6 +23,35 @@ man_path = 'assets/manifest.json'
 manifest = json.load(open(man_path)) if os.path.exists(man_path) else {}
 
 _sess = None
+_lama = None
+def lama(rgb, mask):
+    """LaMa inpainting (Carve/LaMa-ONNX). rgb uint8 HxWx3, mask 0/1 HxW. Pads to square, runs at 512, returns uint8."""
+    global _lama
+    import onnxruntime as ort
+    if _lama is None: _lama = ort.InferenceSession('/root/models/lama.onnx', providers=['CPUExecutionProvider'])
+    h, w = mask.shape; n = max(h, w)
+    pr = np.pad(rgb, ((0, n - h), (0, n - w), (0, 0)), mode='edge'); pm = np.pad(mask, ((0, n - h), (0, n - w)))
+    ri = cv2.resize(pr, (512, 512), interpolation=cv2.INTER_AREA).astype(np.float32) / 255
+    mi = (cv2.resize(pm.astype(np.float32), (512, 512), interpolation=cv2.INTER_AREA) > 0.01).astype(np.float32)
+    o = _lama.run(None, {'image': ri.transpose(2, 0, 1)[None], 'mask': mi[None, None]})[0][0].transpose(1, 2, 0)
+    o = cv2.resize(np.clip(o, 0, 255).astype(np.uint8), (n, n), interpolation=cv2.INTER_CUBIC)[:h, :w]
+    return o
+
+def fill(base, hole, feather):
+    """Inpaint `hole` in `base` with LaMa: per connected region at local resolution, feathered paste."""
+    out = base.copy(); H, W = hole.shape
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(hole.astype(np.uint8), 8)
+    for k in range(1, n):
+        x, y, w, h, area = stats[k]
+        if area < 20: continue
+        m = max(64, int(0.7 * max(w, h)))
+        x0, y0, x1, y1 = max(0, x - m), max(0, y - m), min(W, x + w + m), min(H, y + h + m)
+        reg = (lab[y0:y1, x0:x1] == k).astype(np.uint8)
+        res = lama(out[y0:y1, x0:x1], reg)
+        a = cv2.GaussianBlur(cv2.dilate(reg, np.ones((3, 3), np.uint8)).astype(np.float32), (0, 0), feather)[..., None]
+        a = np.maximum(a, reg[..., None])
+        out[y0:y1, x0:x1] = (out[y0:y1, x0:x1] * (1 - a) + res * a).astype(np.uint8)
+    return out
 def seg(rgb):
     global _sess
     from rembg import remove, new_session
@@ -38,27 +67,41 @@ def page(n):
     return pages[n]
 sc = lambda v: [int(round(q * S)) for q in v]
 
-def bubble_mask(img, r):
-    """Mask of the caption/bubble inside rect r: flood the dominant light colour, fill holes, add the ink border."""
+def bubble_mask(img, r, grow=0.5, clip=None):
+    """Mask of the caption/bubble around rect r: flood the bubble's paper colour from its centre (searching a
+    slightly larger area, since traced rects can be tight), fill holes, add the ink border."""
+    if grow:
+        gx, gy = int((r[2] - r[0]) * grow), int((r[3] - r[1]) * grow)
+        src = img if clip is None else np.where(clip[..., None] > 0, img, 0).astype(img.dtype)
+        m = bubble_mask(src, [r[0] - gx, r[1] - gy, r[2] + gx, r[3] + gy], grow=0)
+        if m is not None:
+            # reject a flood that leaked into a big light area (e.g. white sky): area must stay near the traced rect
+            if m.sum() < 2.2 * (r[2] - r[0]) * (r[3] - r[1]): return m
+        r = list(r)
     x0, y0, x1, y1 = r; H, W = img.shape[:2]
     x0, y0, x1, y1 = max(0, x0), max(0, y0), min(W, x1), min(H, y1)
     sub = img[y0:y1, x0:x1].astype(np.int16)
+    h, w = sub.shape[:2]
     lum = sub.mean(axis=2)
-    light = lum > 150
-    # paper colour = median of light pixels
-    col = np.median(sub[light], axis=0) if light.sum() > 50 else np.array([255, 255, 255])
-    close = (np.abs(sub - col).sum(axis=2) < 70).astype(np.uint8)
+    # bubble paper colour = median of light pixels in the central part of the rect (text is dark, paper is light)
+    cy0, cy1, cx0, cx1 = int(h * 0.3), int(h * 0.7), int(w * 0.3), int(w * 0.7)
+    cen = sub[cy0:cy1, cx0:cx1]; cl = lum[cy0:cy1, cx0:cx1] > 170
+    col = np.median(cen[cl], axis=0) if cl.sum() > 20 else np.array([255, 255, 255])
+    close = (np.abs(sub - col).sum(axis=2) < 45).astype(np.uint8)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(close, 8)
     if n <= 1: return None
-    k = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
-    m = (lab == k).astype(np.uint8)
+    # keep components that touch the central seed area
+    cy0, cy1, cx0, cx1 = int(h * 0.38), int(h * 0.62), int(w * 0.38), int(w * 0.62)
+    seeds = set(np.unique(lab[cy0:cy1, cx0:cx1][close[cy0:cy1, cx0:cx1] > 0]).tolist()) - {0}
+    if not seeds: return None
+    m = np.isin(lab, list(seeds)).astype(np.uint8)
     # fill holes (the lettering) by flood-filling the outside
     pad = np.pad(m, 1); inv = (1 - pad).copy(); ff = inv.copy()
     cv2.floodFill(ff, None, (0, 0), 0)
     filled = pad | ff
     m = filled[1:-1, 1:-1]
-    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-    m = cv2.dilate(m, np.ones((5, 5), np.uint8))  # include the ink outline
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5 * S, 5 * S), np.uint8))
+    m = cv2.dilate(m, np.ones((4 * S + 1, 4 * S + 1), np.uint8))  # include the ink outline
     full = np.zeros((H, W), np.uint8); full[y0:y1, x0:x1] = m
     return full
 
@@ -79,7 +122,7 @@ for pid, c in cuts.items():
     # lettering layers
     tmask = np.zeros((H, W), np.uint8)
     for i, r in enumerate(c.get('texts', [])):
-        m = bubble_mask(img, sc(r))
+        m = bubble_mask(img, sc(r), clip=cv2.erode(pm, np.ones((5 * S, 5 * S), np.uint8)))
         if m is None: continue
         ys, xs = np.nonzero(m)
         bx0, by0, bx1, by1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
@@ -117,14 +160,17 @@ for pid, c in cuts.items():
         save(img[by0:by1, bx0:bx1], a, f'o{i}.png')
         entry['orbs'].append(dict(cx=ox1, cy=oy1, r=orr1, x=bx0 / S, y=by0 / S, w=(bx1 - bx0) / S, h=(by1 - by0) / S, f=f'o{i}.png'))
 
-    # background plate: inpaint where characters / lettering were
-    hole = (hole & pmc).astype(np.uint8)
-    bgc = cv2.inpaint(cv2.cvtColor(crop, cv2.COLOR_RGB2BGR), hole * 255, 6 * S, cv2.INPAINT_TELEA)
-    bgc = cv2.cvtColor(bgc, cv2.COLOR_BGR2RGB)
-    # soften the inpainted area so smears read as out-of-focus background
-    blur = cv2.GaussianBlur(bgc, (0, 0), 4 * S)
-    hm = cv2.GaussianBlur(hole.astype(np.float32), (0, 0), 3 * S)[..., None]
-    bgc = (bgc * (1 - hm) + blur * hm).astype(np.uint8)
+    # background plate: LaMa-inpaint where characters / lettering were
+    bgc = crop.copy()
+    fh = (hole & pmc).astype(np.uint8) if c.get('fg') else np.zeros_like(pmc)
+    if c.get('fg'):
+        fgh = (fh & (1 - cv2.dilate(tmc, np.ones((11 * S, 11 * S), np.uint8)))).astype(np.uint8)
+        if fgh.sum() > 0:
+            res = lama(bgc, fgh)  # whole panel at once: soft, only glimpsed behind the character
+            a = cv2.GaussianBlur(fgh.astype(np.float32), (0, 0), 2 * S)[..., None]; a = np.maximum(a, fgh[..., None])
+            bgc = (bgc * (1 - a) + res * a).astype(np.uint8)
+    th = (cv2.dilate(tmc, np.ones((5 * S, 5 * S), np.uint8)) & pmc).astype(np.uint8)
+    if th.sum() > 0: bgc = fill(bgc, th, 1.5 * S)
     save(bgc, pmc, 'bg.png')
     manifest[pid] = entry
 
