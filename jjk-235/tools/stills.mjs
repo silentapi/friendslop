@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf' };
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf', '.png': 'image/png', '.json': 'application/json', '.jpg': 'image/jpeg' };
 const srv = createServer((q, r) => { try { const p = join(root, decodeURIComponent(q.url.split('?')[0])); const b = readFileSync(p); r.writeHead(200, { 'content-type': types[extname(p)] || 'application/octet-stream' }); r.end(b); } catch { r.writeHead(404); r.end(); } }).listen(0);
 const port = srv.address().port;
 const [outDir, ...specs] = process.argv.slice(2);

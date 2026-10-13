@@ -115,18 +115,29 @@ window.J = window.J || {};
     if (fx.fade > 0) { ctx.fillStyle = `rgba(${fx.fadeColor || '0,0,0'},${fx.fade})`; ctx.fillRect(0, 0, W, H); }
   };
 
-  J.renderFrame = (f) => {
-    const T = f / J.FPS;
-    let sh = J.shots[J.shots.length - 1];
-    for (const s of J.shots) if (T >= s.start && T < s.start + s.dur) { sh = s; break; }
-    const t = T - sh.start;
-    const ctx = J.ctx;
+  const drawShot = (ctx, sh, t, fx, f) => {
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.filter = 'none';
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, J.W, J.H);
-    const fx = { frame: f, chroma: 0, impact: 0, fade: 0 };
     ctx.save(); sh.draw(ctx, t, sh.dur, fx, f); ctx.restore();
+  };
+  J.renderFrame = (f) => {
+    const T = f / J.FPS;
+    let i = J.shots.length - 1;
+    for (let k = 0; k < J.shots.length; k++) { const s = J.shots[k]; if (T >= s.start && T < s.start + s.dur) { i = k; break; } }
+    const sh = J.shots[i]; const t = T - sh.start; const ctx = J.ctx;
+    const fx = { frame: f, chroma: 0, impact: 0, fade: 0 };
+    drawShot(ctx, sh, t, fx, f);
+    const tr = sh.trans;
+    if (tr && tr.k !== 'cut' && i > 0 && t < tr.d) {
+      if (!J.pbuf) { J.pbuf = document.createElement('canvas'); J.pbuf.width = J.W; J.pbuf.height = J.H; }
+      const pc = J.pbuf.getContext('2d'); const prev = J.shots[i - 1];
+      drawShot(pc, prev, Math.min(prev.dur + t, prev.dur + 2), { frame: f, chroma: 0, impact: 0, fade: 0 }, f);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); J.transition(ctx, J.pbuf, tr, t);
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     J.post(ctx, fx);
+    // letterbox
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, J.W, J.BAR || 0); ctx.fillRect(0, J.H - (J.BAR || 0), J.W, J.BAR || 0);
     if (fx.over) { ctx.save(); fx.over(ctx); ctx.restore(); }
     J.cur = { shot: sh.name, t, T };
   };

@@ -34,11 +34,13 @@
 <script src="engine.js"></script>
 <script src="draw.js"></script>
 <script src="fx.js"></script>
+<script src="manga.js"></script>
 <script src="shots.js"></script>
 <script>
 (async () => {
   if (new URLSearchParams(location.search).has('capture')) document.body.classList.add('capture');
   await Promise.all(['36px "Dela Gothic One"', '36px Bangers', '36px Oswald', '700 36px Oswald'].map((f) => document.fonts.load(f, 'ア呪A')));
+  await J.loadAssets();
   const cv = document.getElementById('frame'); J.init(cv);
   const scrub = document.getElementById('scrub'), meta = document.getElementById('meta'), btn = document.getElementById('play');
   scrub.max = J.frames - 1;
