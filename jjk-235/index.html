@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hollow Purple — Ch.235</title>
+<style>
+  @font-face { font-family: 'Dela Gothic One'; src: url('fonts/DelaGothicOne-Regular.ttf'); }
+  @font-face { font-family: 'Bangers'; src: url('fonts/Bangers-Regular.ttf'); }
+  @font-face { font-family: 'Oswald'; src: url('fonts/Oswald.ttf'); font-weight: 200 700; }
+  :root { --bg: #07060c; --fg: #e9e4f2; --dim: #8a83a0; --accent: #a23cff; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font-family: 'Oswald', sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 16px; }
+  #frame { width: 100%; height: auto; display: block; background: #000; aspect-ratio: 16/9; }
+  .bar { display: flex; gap: 12px; align-items: center; margin-top: 10px; }
+  button { background: #1b1730; color: var(--fg); border: 1px solid #3a3358; padding: 6px 14px; font: inherit; cursor: pointer; border-radius: 4px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .meta { color: var(--dim); font-size: 14px; min-width: 150px; text-align: right; font-variant-numeric: tabular-nums; }
+  body.capture .bar, body.capture .credit { display: none; }
+  body.capture .wrap { padding: 0; }
+  .credit { color: var(--dim); font-size: 13px; margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <canvas id="frame" width="1280" height="720"></canvas>
+  <div class="bar">
+    <button id="play">Play</button>
+    <input id="scrub" type="range" min="0" value="0" step="1">
+    <span class="meta" id="meta"></span>
+  </div>
+  <div class="credit">Motion-manga fan edit of <i>Jujutsu Kaisen</i> ch.235 (Gege Akutami / Shueisha), built from the real pages. Space toggles play, and the arrow keys step frame by frame.</div>
+</div>
+<script src="engine.js"></script>
+<script src="draw.js"></script>
+<script src="fx.js"></script>
+<script src="shots.js"></script>
+<script>
+(async () => {
+  if (new URLSearchParams(location.search).has('capture')) document.body.classList.add('capture');
+  await Promise.all(['36px "Dela Gothic One"', '36px Bangers', '36px Oswald', '700 36px Oswald'].map((f) => document.fonts.load(f, 'ア呪A')));
+  const cv = document.getElementById('frame'); J.init(cv);
+  const scrub = document.getElementById('scrub'), meta = document.getElementById('meta'), btn = document.getElementById('play');
+  scrub.max = J.frames - 1;
+  let f = 0, playing = false, t0 = 0, f0 = 0;
+  const show = () => { J.renderFrame(f); scrub.value = f; meta.textContent = `${J.cur.shot}  ${(f / J.FPS).toFixed(2)}s`; };
+  const tick = (now) => { if (!playing) return; const nf = f0 + Math.floor((now - t0) / 1000 * J.FPS); if (nf !== f) { f = nf % J.frames; show(); } requestAnimationFrame(tick); };
+  const toggle = () => { playing = !playing; btn.textContent = playing ? 'Pause' : 'Play'; if (playing) { t0 = performance.now(); f0 = f; requestAnimationFrame(tick); } };
+  btn.onclick = toggle;
+  scrub.oninput = () => { f = +scrub.value; if (playing) { t0 = performance.now(); f0 = f; } show(); };
+  addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); toggle(); } if (e.code === 'ArrowRight') { f = Math.min(J.frames - 1, f + 1); show(); } if (e.code === 'ArrowLeft') { f = Math.max(0, f - 1); show(); } });
+  const q = new URLSearchParams(location.search); if (q.has('t')) f = Math.round(+q.get('t') * J.FPS);
+  show();
+  window.__booted = true;
+})();
+</script>
+</body>
+</html>
