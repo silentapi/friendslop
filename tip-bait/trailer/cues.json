@@ -13,7 +13,7 @@
     { "name": "arrive", "dur": 3.6, "cues": { "chat": 0.3, "brake": 1.1, "stop": 1.7, "off": 2.3, "run": 2.9 } },
     { "name": "elevator", "dur": 3.0, "cues": { "press": 0.6, "sign": 1.0, "stare": 1.9, "line": 2.15 } },
     { "name": "stairs", "dur": 3.6, "cues": { "tired": 1.4, "text": 1.65, "top": 2.4, "twenty": 3.05 } },
-    { "name": "kyle", "dur": 3.4, "cues": { "open": 0.25, "sip": 1.2, "line": 1.75, "close": 3.2 } },
+    { "name": "kyle", "dur": 3.4, "cues": { "open": 0.05, "sip": 1.1, "line": 1.65, "close": 3.2 } },
     { "name": "tip", "dur": 3.2, "cues": { "notif": 0.2, "zero": 0.8, "caption": 1.5 } },
     { "name": "end", "dur": 3.0, "cues": { "logo": 0.1, "cta": 0.8, "tag": 1.3 } }
   ]

@@ -1,6 +1,6 @@
 // Shots 8–13: REAL vs IN-GAME Citi Tower → pull up at the CITITOWER 101 canopy → out of order / 20 floors →
 // Kyle → the tip → end card over Lake Eola.
-import { THREE, V, W, H, aim, seg, lerp, lerpV, easeIn, easeOut, easeInOut, easeBack, smooth, handheld, shake, spring, mat, box, cyl, setup, ASSETS } from '../engine/core.js';
+import { THREE, V, W, H, aim, seg, lerp, lerpV, easeIn, easeOut, easeInOut, easeBack, smooth, handheld, shake, spring, mat, mesh, box, cyl, pbr, setup, ASSETS } from '../engine/core.js';
 import * as HUD from '../engine/hud.js';
 import { rider, coldCup, ik2 } from '../engine/rider.js';
 import { mixCharacter } from '../engine/chars.js';
@@ -14,6 +14,8 @@ const KYLE_LOOK = { maps: { casualsuit06: 'cast/tex/kyle_fit.jpg', shoes05: 'cas
 async function citiSet({ parked = 4, ...opts } = {}) {
   const ctx = await exterior({ center: [-20, 25], radius: 650, shadowBox: 45, dressR: 0, ...opts });
   const T = await citiTower(ctx);
+  const lake = mesh(new THREE.PlaneGeometry(11, 140), pbr('red_brick_pavers', { world: 2.2, rough: 0.9, normal: 1.2, color: 0xd8c8c0 }), { cast: false });
+  lake.rotation.x = -Math.PI / 2; lake.position.set(-31, 0.012, 20); ctx.scene.add(lake);
   if (parked) await Wd.traffic(ctx, { names: ['Lake Avenue'], center: [-29, 30], radius: 120, n: 0, parked, seed: 4 });
   return { ctx, T };
 }
@@ -88,7 +90,7 @@ const S_ARRIVE = {
       },
       hud(lt) {
         return HUD.place(lt, 0.15, DUR('arrive'), 'Citi Tower', '101 Lake Ave · Church St')
-          + HUD.chat(lt, q.chat, DUR('arrive'), 'fl 20. hurry 🙄', { y: 1180 })
+          + HUD.chat(lt, q.chat, DUR('arrive'), 'fl 20. hurry 🙄', { y: 930 })
           + HUD.gameHud({ secs: eta(START.arrive + lt), tip: 50, a: 0.9 });
       },
     };
@@ -109,6 +111,7 @@ const S_ELEVATOR = {
     const R = await rider({ cup: false }); R.bike.visible = false; R.helm.visible = false; ctx.scene.add(R.root);
     const cup = coldCup(1); ctx.scene.add(cup);
     const stand = V(0.55, 0, -1.25);
+    const fill = new THREE.PointLight(0xffe6cc, 0, 5, 2); fill.position.set(0.55, 1.9, -2.3); ctx.scene.add(fill);
     return {
       ctx, fx: { ao: 0.5, bloom: 0.2 },
       update(lt) {
@@ -119,7 +122,8 @@ const S_ELEVATOR = {
         const press = smooth(seg(lt, q.press - 0.2, q.press)) * (1 - smooth(seg(lt, q.press + 0.15, q.press + 0.45)));
         if (press > 0) { const h = R.C.boneWorld('RightHand'); ik2(R.C.bone('RightArm'), R.C.bone('RightForeArm'), R.C.bone('RightHand'), h.lerp(V(1.25, 1.22, -2.74), press), R.root.localToWorld(V(-0.5, 0.6, -0.6))); }
         btn.material.emissiveIntensity = lt > q.press ? 2.5 : 0;
-        if (lt > q.stare) { const hd = R.C.bone('Head'); hd.rotateX(-0.12 * smooth(seg(lt, q.stare + 0.2, q.stare + 0.6))); hd.updateMatrixWorld(true); }
+        fill.intensity = lt > q.stare ? 4 : 0;
+        if (lt > q.stare) { const hd = R.C.bone('Head'); hd.rotateX(0.1); hd.updateMatrixWorld(true); }
         R.C.root.updateMatrixWorld(true);
         cup.position.copy(R.C.boneWorld('LeftHand')).add(V(0, -0.1, 0));
         if (lt < q.sign) {          // A: wide, behind him, the three cars
@@ -130,7 +134,7 @@ const S_ELEVATOR = {
           aim(ctx.camera, lerpV([0.15, 1.6, -1.25], [0.05, 1.57, -1.75], z).add(handheld(lt, 0.004)), V(0, 1.55, -2.78), 0.04); ctx.camera.fov = 42;
         } else {                    // C: from the doors, he turns to us. silence.
           const z = easeInOut(seg(lt, q.stare, DUR('elevator')));
-          aim(ctx.camera, lerpV([0.55, 1.5, -2.72], [0.55, 1.52, -2.62], z).add(handheld(lt, 0.003)), V(0.55, 1.45, -1.25), 0); ctx.camera.fov = 56 - z * 8;
+          aim(ctx.camera, lerpV([0.55, 1.62, -2.72], [0.55, 1.63, -2.62], z).add(handheld(lt, 0.003)), V(0.55, 1.5, -1.25), 0); ctx.camera.fov = 56 - z * 8;
         }
         ctx.camera.updateProjectionMatrix();
       },
@@ -177,12 +181,13 @@ const S_STAIRS = {
           }
           aim(ctx.camera, V(-1.3, y0 + 1.0, 2.75).add(handheld(lt, 0.01)), V(1.5, y0 + 1.15, 2.1), 0.02); ctx.camera.fov = 56;
         } else {                    // C: the last flight up to 20
-          const u = seg(lt, q.top, q.twenty), s = 37 + u * 0.999;
+          const u = seg(lt, q.top, q.twenty), s = 37 + Math.min(0.999, u * 1.15);
           const { p, dir } = Sets.stairPath(s);
+          const y0 = 19 * FH;
+          if (u * 1.15 >= 0.999) p.set(1.5, y0, 1.4 + Math.min(0.12, (u * 1.15 - 0.999) * 1.5));
           R.root.position.copy(p).add(V(0, 0.04, 0)); R.root.rotation.y = Math.atan2(dir.x, dir.z);
           R.walk(lt < q.twenty ? 'jog' : 'idle', lt * 1.5, { offset: V(0, 0, 0), yaw: 0 });
-          const y0 = 19 * FH;
-          aim(ctx.camera, V(-1.2, y0 + 1.7, 2.6).add(handheld(lt, 0.012)), V(1.6, y0 + 0.9, 0.6), 0.02); ctx.camera.fov = 60;
+          aim(ctx.camera, V(1.0, y0 + 1.65, 3.5).add(handheld(lt, 0.012)), V(1.45, y0 + 0.5, -0.4), 0.02); ctx.camera.fov = 62;
         }
         ctx.camera.updateProjectionMatrix();
         R.C.root.updateMatrixWorld(true);
@@ -243,14 +248,15 @@ const S_KYLE = {
         // over the courier's right shoulder (helmet + Gobbl bag in frame)
         const push = easeInOut(seg(lt, 0, q.line));
         const cp = lerpV([-0.75, 1.5, Sets.DOOR_Z + 1.25], [-0.4, 1.48, Sets.DOOR_Z + 0.7], push).add(handheld(lt, 0.012)).add(shake(lt, q.close, 0.04, 0.4));
-        aim(ctx.camera, cp, V(1.5, 1.78 + smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 0.1, Sets.DOOR_Z - 0.05), 0.01);
+        const pin = smooth(seg(lt, q.line - 0.1, q.line + 0.25));
+        aim(ctx.camera, cp, V(1.5, 1.78, Sets.DOOR_Z - 0.05).lerp(K.boneWorld('Head').add(V(0, -0.05, 0)), pin), 0.01);
         ctx.camera.fov = 48 - push * 6 - smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 12; ctx.camera.updateProjectionMatrix();
       },
       post(lt, P) { P.grade.uniforms.flash.value = lt > q.close ? Math.max(0, 1 - (lt - q.close) * 8) * 0.25 : 0; },
       hud(lt) {
         const kp = HUD.project(ctx.camera, K.boneWorld('Head').add(V(0, 0.35, 0)));
         const tag = lt > q.open + 0.2 && lt < q.close - 0.1 ? `<div class="loc" style="left:${kp.x - 110}px;top:${kp.y - 60}px;padding:8px 18px 8px 10px"><div class="pin" style="width:36px;height:36px;background:#f2c94c;font-size:20px">K</div><div><div class="t1" style="font-size:28px">Kyle S</div><div class="t2" style="font-size:15px">⭐ 4.1 · customer</div></div></div>` : '';
-        return tag + HUD.capbox(lt, q.line, DUR('kyle'), 'Kyle S: “kinda melted ngl” 🥤', { y: 1060, size: 70 })
+        return tag + HUD.capbox(lt, q.line, DUR('kyle'), 'Kyle S: “kinda melted ngl” 🥤', { y: 1330, size: 70 })
           + HUD.gameHud({ secs: eta(START.kyle + lt), tip: 50, a: 0.85 });
       },
     };

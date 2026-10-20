@@ -190,9 +190,12 @@ export async function mixCharacter(path, { tint = null, maps = null } = {}) {
         for (let i = 0; i < v.length; i += 4) { q.fromArray(v, i); q.premultiply(pqi); q.toArray(v, i); }
       }
       if (t.name.endsWith('Hips.position') && srcHipsY) {
-        const k = bindWorldY / srcHipsY, x0 = v[0], z0 = v[2], p = new THREE.Vector3();
+        // in-place: remove the clip's net horizontal travel (root motion) so loops never snap back; keep the sway
+        const k = bindWorldY / srcHipsY, x0 = v[0], z0 = v[2], n = v.length / 3, xl = v[v.length - 3], zl = v[v.length - 1], p = new THREE.Vector3();
+        const tm = t.times, T = (tm[n - 1] - tm[0]) || 1;
         for (let i = 0; i < v.length; i += 3) {
-          p.set((v[i] - x0) * k, v[i + 1] * k, (v[i + 2] - z0) * k).applyQuaternion(pqi).divide(ps);
+          const f = (tm[i / 3] - tm[0]) / T;
+          p.set((v[i] - x0 - (xl - x0) * f) * k, v[i + 1] * k, (v[i + 2] - z0 - (zl - z0) * f) * k).applyQuaternion(pqi).divide(ps);
           p.toArray(v, i);
         }
       }

@@ -29,8 +29,8 @@ const S_HOOK = {
       },
       post(lt, P) { const g = P.grade.uniforms; g.flash.value = lt > q.slam ? Math.max(0, 1 - (lt - q.slam) * 9) * 0.7 : 0; g.zoom.value = lt > q.slam ? (1 - seg(lt, q.slam, q.slam + 0.4)) * 0.08 : 0; },
       hud(lt) {
-        return HUD.caption(lt, 0.02, DUR('hook'), 'POV: Kyle promised you / a *$50* tip', { y: 290, size: 70, per: 0 })
-          + HUD.orderCard(lt, q.card, q.accept, { y: 470 });
+        return HUD.caption(lt, -0.2, DUR('hook'), 'POV: Kyle promised you / a *$50* tip', { y: 290, size: 70, per: 0 })
+          + HUD.orderCard(lt, q.card - 0.5, q.accept, { y: 470 });
       },
     };
   },
