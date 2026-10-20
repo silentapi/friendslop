@@ -239,3 +239,90 @@ export async function water(ctx, names = ['Lake Eola']) {
   return out;
 }
 export const mapData = loadMap;
+
+// ---------------------------------------------------------------- dressing: palms, twin-globe lamps, traffic, parked cars
+function pip(x, z, pts) { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, zi] = pts[i], [xj, zj] = pts[j]; if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c; } return c; }
+export async function insideBuilding(x, z, pad = 1.0) {
+  const map = await loadMap();
+  return map.buildings.some((b) => { const [cx, cz] = centroid(b.pts); if (Math.abs(cx - x) > 90 || Math.abs(cz - z) > 90) return false; return pip(x, z, b.pts) || pip(x + pad, z, b.pts) || pip(x - pad, z, b.pts) || pip(x, z + pad, b.pts) || pip(x, z - pad, b.pts); });
+}
+export function twinLamp(night = 0) {
+  const lp = new THREE.Group();
+  const blk = mat(0x121315, { metalness: 0.6, roughness: 0.4 });
+  const globe = mat(0xfff2dc, { emissive: 0xffe0b0, emissiveIntensity: 0.25 + night * 2.5, roughness: 0.3 });
+  cyl(0.18, 0.24, 0.8, blk, 12, 0, 0.4, 0, lp); cyl(0.07, 0.09, 4.2, blk, 10, 0, 2.6, 0, lp); box(1.3, 0.06, 0.06, blk, 0, 4.4, 0, lp);
+  for (const sx of [-0.6, 0.6]) { const gb = mesh(new THREE.SphereGeometry(0.25, 16, 12), globe); gb.scale.y = 1.3; gb.position.set(sx, 4.75, 0); lp.add(gb); }
+  return lp;
+}
+export async function dress(ctx, { center = [0, 0], radius = 200, palms = true, lamps = true, step = 24, names = null, skipNear = [] } = {}) {
+  const map = await loadMap();
+  const P = await import('./props.js');
+  const rnd = mulberry(Math.round(center[0] * 7 + center[1] * 13));
+  const out = [];
+  for (const r of map.roads) {
+    if (!DRIVABLE.has(r.hw) || r.hw === 'service' || r.hw.startsWith('motorway') || r.bridge) continue;
+    if (names && !names.some((n) => (r.name || '').includes(n))) continue;
+    const rs = resample(r.pts, step);
+    for (let i = 0; i < rs.length; i++) {
+      const [x, z] = rs[i];
+      if (Math.hypot(x - center[0], z - center[1]) > radius) continue;
+      if (skipNear.some(([sx, sz, sr]) => Math.hypot(x - sx, z - sz) < sr)) continue;
+      const a = rs[Math.max(0, i - 1)], b = rs[Math.min(rs.length - 1, i + 1)];
+      let dx = b[0] - a[0], dz = b[1] - a[1]; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+      for (const side of [-1, 1]) {
+        const off = r.w / 2 + 2.0;
+        const px = x - dz * off * side, pz = z + dx * off * side;
+        if (await insideBuilding(px, pz, 1.5)) continue;
+        if ((i + (side > 0 ? 1 : 0)) % 2 === 0 && palms) {
+          const p = await P.palm(8 + rnd() * 4, rnd() < 0.8 ? 'tall' : 'coconut');
+          p.position.set(px, 0, pz); p.rotation.y = rnd() * 6.28; ctx.scene.add(p); out.push(p);
+        } else if (lamps) {
+          const l = twinLamp(); l.position.set(px - dz * side * 0.5, 0, pz + dx * side * 0.5); l.rotation.y = Math.atan2(dx, dz); ctx.scene.add(l); out.push(l);
+        }
+      }
+    }
+  }
+  return out;
+}
+// Cars driving along real street polylines (right-hand traffic). Returns { cars, at(t) } updated via ctx.tick.
+export async function traffic(ctx, { names = [], center = [0, 0], radius = 300, n = 10, speed = 11, seed = 1, parked = 0 } = {}) {
+  const map = await loadMap();
+  const P = await import('./props.js');
+  const rnd = mulberry(seed);
+  const paths = map.roads.filter((r) => names.some((nm) => (r.name || '').includes(nm)) && DRIVABLE.has(r.hw) && r.pts.some((p) => Math.hypot(p[0] - center[0], p[1] - center[1]) < radius));
+  const cars = [];
+  for (let i = 0; i < n && paths.length; i++) {
+    const r = paths[i % paths.length];
+    const rs = resample(r.pts, 2);
+    const dir = r.oneway ? 1 : (i % 2 ? 1 : -1);
+    const lane = r.oneway ? (rnd() - 0.5) * r.w * 0.5 : dir * r.w * 0.22;
+    const c = await P.car(i + seed);
+    ctx.scene.add(c);
+    const len = (rs.length - 1) * 2;
+    cars.push({ c, rs, dir, lane, s0: rnd() * len, len, v: speed * (0.8 + rnd() * 0.4) * dir, stop: false });
+  }
+  const place = (k, s) => {
+    const { rs } = k; let u = ((s % k.len) + k.len) % k.len; const i = Math.min(rs.length - 2, Math.floor(u / 2)), f = u / 2 - i;
+    const a = rs[i], b = rs[i + 1]; let dx = b[0] - a[0], dz = b[1] - a[1]; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    const x = a[0] + (b[0] - a[0]) * f - dz * k.lane, z = a[1] + (b[1] - a[1]) * f + dx * k.lane;
+    k.c.position.set(x, 0, z); k.c.rotation.y = Math.atan2(dx * k.dir, dz * k.dir);
+  };
+  ctx.tick.push((t) => { for (const k of cars) place(k, k.s0 + (k.stop ? 0 : k.v * t)); });
+  // parked cars along the kerb
+  for (let i = 0; i < parked && paths.length; i++) {
+    const r = paths[0]; const rs = resample(r.pts, 6.2);
+    const j = Math.floor(rnd() * rs.length); const [x, z] = rs[j]; const b = rs[Math.min(rs.length - 1, j + 1)];
+    let dx = b[0] - x, dz = b[1] - z; const L = Math.hypot(dx, dz) || 1; dx /= L; dz /= L;
+    if (Math.hypot(x - center[0], z - center[1]) > radius) continue;
+    const c = await P.car(i * 3 + 1); c.position.set(x - dz * (r.w / 2 - 1.1), 0, z + dx * (r.w / 2 - 1.1)); c.rotation.y = Math.atan2(dx, dz); ctx.scene.add(c);
+  }
+  return cars;
+}
+// Everything for an exterior shot centred on `center`.
+export async function city(ctx, { center = [0, 0], radius = 600, dressR = 160, dressNames = null, night = 0, water: w = true, skipDress = [] } = {}) {
+  await ground(ctx, { center });
+  await buildings(ctx, { center, radius, night });
+  await streets(ctx, { center, radius: Math.min(radius, 900) });
+  if (w) await water(ctx);
+  if (dressR) await dress(ctx, { center, radius: dressR, names: dressNames, skipNear: skipDress });
+}

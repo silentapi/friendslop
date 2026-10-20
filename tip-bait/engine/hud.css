@@ -1,4 +1,87 @@
+/* TIP BAIT overlays. 1080x1920. TikTok safe box for text: x 120–900, y 250–1400. */
+:root { --g: #1fd65f; --g2: #13a849; --ink: #0d0f12; --red: #ff3b30; --amber: #ffcc00; }
 html, body { margin: 0; background: #000; }
-#frame { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #000; font-family: 'Inter Display', Inter, sans-serif; color: #fff; }
+#frame { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #000; font-family: Inter, 'Inter Display', sans-serif; color: #fff; }
 #stage canvas { display: block; }
 #hud { position: absolute; inset: 0; pointer-events: none; }
+
+/* TikTok-native caption: white, heavy black stroke, sentence case */
+.cap { position: absolute; left: 120px; width: 780px; text-align: center; font-family: 'Inter Display', Inter; font-weight: 800; line-height: 1.12; letter-spacing: -0.5px; }
+.cap span.l { display: inline; color: #fff; -webkit-text-stroke: 11px #000; paint-order: stroke fill; }
+.cap span.y { color: #ffd60a; }
+.cap span.r { color: #ff453a; }
+.cap span.g { color: #30d158; }
+.capbox { position: absolute; left: 50%; transform: translateX(-50%); max-width: 780px; padding: 14px 26px 16px; border-radius: 16px; background: #fff; color: #000; font: 800 46px 'Inter Display', Inter; text-align: center; line-height: 1.15; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+
+/* real-place tag */
+.loc { position: absolute; left: 120px; top: 270px; display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 14px; border-radius: 999px; background: rgba(12,14,18,.62); backdrop-filter: blur(8px); box-shadow: inset 0 0 0 2px rgba(255,255,255,.12); }
+.loc .pin { width: 44px; height: 44px; border-radius: 50%; background: var(--g); display: flex; align-items: center; justify-content: center; font: 900 26px Inter; color: var(--ink); }
+.loc .t1 { font: 800 34px 'Inter Display'; letter-spacing: -0.3px; white-space: nowrap; }
+.loc .t2 { font: 600 20px Inter; letter-spacing: 1.5px; color: rgba(255,255,255,.72); text-transform: uppercase; margin-top: 2px; white-space: nowrap; }
+
+/* in-game HUD */
+.ghud { position: absolute; inset: 0; }
+.gtop { position: absolute; top: 160px; left: 60px; right: 60px; display: flex; justify-content: space-between; align-items: center; }
+.pillg { display: flex; align-items: center; gap: 12px; padding: 12px 22px; border-radius: 22px; background: rgba(10,12,16,.72); box-shadow: inset 0 0 0 2px rgba(255,255,255,.1), 0 8px 24px rgba(0,0,0,.35); font: 800 40px 'Inter Display'; }
+.pillg .k { font: 700 18px Inter; letter-spacing: 2px; color: rgba(255,255,255,.6); }
+.pillg.red { background: rgba(190,20,20,.85); box-shadow: inset 0 0 0 2px #ff6b6b, 0 0 40px rgba(255,40,40,.5); }
+.tipv { color: var(--g); }
+.mini { position: absolute; left: 60px; bottom: 300px; width: 230px; height: 230px; border-radius: 50%; overflow: hidden; background: #1b2026; box-shadow: 0 0 0 5px rgba(255,255,255,.9), 0 10px 30px rgba(0,0,0,.45); }
+.mini svg { width: 100%; height: 100%; }
+.boost { position: absolute; right: 200px; bottom: 560px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #46f08a, #12a84a); box-shadow: 0 0 0 6px rgba(255,255,255,.9), 0 12px 30px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font: 900 34px 'Inter Display'; color: #052; }
+.swipe { position: absolute; left: 50%; bottom: 420px; transform: translateX(-50%); display: flex; gap: 40px; align-items: center; opacity: .85; }
+.swipe .a { font: 900 80px Inter; color: #fff; text-shadow: 0 4px 12px rgba(0,0,0,.6); }
+.thumb { position: absolute; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.35); box-shadow: 0 0 0 4px rgba(255,255,255,.8); }
+.pop { position: absolute; font: 900 54px 'Inter Display'; color: #fff; -webkit-text-stroke: 9px #000; paint-order: stroke fill; white-space: nowrap; }
+.pop small { display: block; font: 800 26px Inter; color: var(--g); -webkit-text-stroke: 5px #000; text-align: center; }
+
+/* Gobbl app */
+.order { position: absolute; left: 140px; width: 800px; border-radius: 36px; background: #fff; color: var(--ink); box-shadow: 0 30px 70px rgba(0,0,0,.55); overflow: hidden; font-family: Inter; }
+.order .hd { display: flex; align-items: center; justify-content: space-between; padding: 26px 34px 18px; background: var(--ink); color: #fff; }
+.order .brand { font: 900 40px 'Inter Display'; color: var(--g); letter-spacing: -1px; }
+.order .new { font: 800 20px Inter; letter-spacing: 3px; background: var(--g); color: var(--ink); padding: 8px 14px; border-radius: 10px; }
+.order .bd { padding: 26px 34px 30px; }
+.order .who { display: flex; align-items: center; gap: 18px; }
+.order .av { width: 76px; height: 76px; border-radius: 50%; background: #f2c94c; display: flex; align-items: center; justify-content: center; font: 900 38px 'Inter Display'; color: #4a3400; }
+.order .nm { font: 800 38px 'Inter Display'; } .order .nm small { display: block; font: 600 24px Inter; color: #6b7280; }
+.order .tip { margin-top: 22px; display: flex; align-items: baseline; gap: 14px; }
+.order .tip b { font: 900 96px 'Inter Display'; letter-spacing: -3px; color: var(--g2); line-height: 1; }
+.order .tip span { font: 800 28px Inter; color: #6b7280; }
+.order .note { margin-top: 18px; padding: 16px 20px; border-radius: 18px; background: #f2f3f5; font: 600 30px Inter; }
+.order .btn { margin-top: 22px; height: 96px; border-radius: 22px; background: var(--ink); color: #fff; display: flex; align-items: center; justify-content: center; font: 900 36px 'Inter Display'; position: relative; overflow: hidden; }
+.order .btn .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--g); }
+.order .btn span { position: relative; }
+
+.chat { position: absolute; left: 140px; display: flex; gap: 14px; align-items: flex-end; transform-origin: 0 100%; }
+.chat .av { width: 64px; height: 64px; border-radius: 50%; background: #f2c94c; display: flex; align-items: center; justify-content: center; font: 900 32px 'Inter Display'; color: #4a3400; flex: none; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
+.chat .bub { max-width: 640px; padding: 18px 26px 20px; border-radius: 30px 30px 30px 8px; background: #e9e9eb; color: #000; font: 600 38px Inter; box-shadow: 0 10px 26px rgba(0,0,0,.35); }
+.chat .bub small { display: block; font: 700 20px Inter; color: #6b7280; margin-bottom: 4px; letter-spacing: .5px; }
+
+.notif { position: absolute; left: 90px; width: 900px; display: flex; gap: 20px; padding: 24px 28px; border-radius: 34px; background: rgba(245,245,248,.96); color: #000; box-shadow: 0 24px 60px rgba(0,0,0,.5); font-family: Inter; }
+.notif .ic { width: 84px; height: 84px; border-radius: 20px; background: var(--ink); flex: none; display: flex; align-items: center; justify-content: center; font: 900 46px 'Inter Display'; color: var(--g); }
+.notif .h { display: flex; justify-content: space-between; font: 600 24px Inter; color: #6b7280; } .notif .h b { color: #000; }
+.notif .t { font: 800 36px Inter; margin-top: 4px; } .notif .b { font: 500 30px Inter; color: #333; margin-top: 4px; }
+
+.tipchange { position: absolute; left: 0; right: 0; text-align: center; }
+.tipchange .old { position: relative; display: inline-block; font: 900 110px 'Inter Display'; color: #fff; -webkit-text-stroke: 10px #000; paint-order: stroke fill; }
+.tipchange .old i { position: absolute; left: -10px; top: 50%; height: 16px; background: var(--red); border-radius: 8px; box-shadow: 0 0 22px rgba(255,59,48,.8); }
+.tipchange .new { font: 900 210px 'Inter Display'; letter-spacing: -8px; color: var(--red); -webkit-text-stroke: 12px #000; paint-order: stroke fill; line-height: 1; }
+
+/* real vs game */
+.split { position: absolute; inset: 0; }
+.split .ph { position: absolute; left: 0; right: 0; top: 0; height: 960px; background-size: cover; background-position: center 30%; }
+.split .lab { position: absolute; left: 50px; padding: 10px 22px; border-radius: 14px; font: 900 34px 'Inter Display'; letter-spacing: 1px; }
+.split .lab.r { background: #fff; color: #000; } .split .lab.gm { background: var(--g); color: var(--ink); }
+.split .bar { position: absolute; left: 0; right: 0; height: 10px; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,.6); }
+
+/* end card */
+.end { position: absolute; left: 0; right: 0; text-align: center; }
+.end .logo { font: 900 190px 'Inter Display'; letter-spacing: -9px; line-height: .86; color: #fff; text-shadow: 0 10px 40px rgba(0,0,0,.5); }
+.end .logo b { color: var(--g); }
+.end .tag { margin-top: 18px; font: 700 34px Inter; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+.end .stores { margin-top: 34px; display: inline-flex; gap: 18px; }
+.end .store { padding: 18px 30px; border-radius: 18px; background: #000; box-shadow: inset 0 0 0 3px #fff; font: 800 30px Inter; color: #fff; }
+.end .store small { display: block; font: 600 18px Inter; color: #bbb; letter-spacing: 1px; }
+.floorn { position: absolute; right: 150px; font: 900 220px 'Inter Display'; letter-spacing: -8px; color: #fff; -webkit-text-stroke: 10px #000; paint-order: stroke fill; line-height: .9; text-align: right; }
+.floorn small { display: block; font: 800 34px Inter; letter-spacing: 6px; -webkit-text-stroke: 0; color: var(--g); }
+.fade { position: absolute; inset: 0; background: #000; }

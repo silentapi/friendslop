@@ -3,6 +3,7 @@ import { THREE, V, setup, aim, pbr, mesh } from '../engine/core.js';
 import { character, clips, helmet, deliveryBag, mixCharacter } from '../engine/chars.js';
 import * as Wd from '../engine/world.js';
 import { citiTower } from '../engine/citi.js';
+import { rider } from '../engine/rider.js';
 
 const still = (name, build) => ({ name, dur: 1, build });
 export const SHOTS = [
@@ -115,4 +116,13 @@ SHOTS.push(still('citiDbg', async () => {
   T.traverse((o) => { if (o.isInstancedMesh) o.visible = false; });
   const c = T.userData.corner;
   return { ctx, update() { aim(ctx.camera, c.clone().add(V(-24, 30, 26)), c.clone().add(V(6, 40, -8))); } };
+}));
+
+for (const [nm, cp] of [['riderSide', [3.2, 1.2, 0.2]], ['rider34', [2.0, 1.5, 2.6]]]) SHOTS.push(still(nm, async () => {
+  const ctx = await setup({ sky: 'golden', sunAz: 218, sunEl: 20, shadowBox: 5, fov: 35 });
+  const ground = mesh(new THREE.PlaneGeometry(60, 60), pbr('red_brick_pavers', { world: 2.2, color: 0xd8c8c0 }), { cast: false });
+  ground.rotation.x = -Math.PI / 2; ctx.scene.add(ground);
+  const R = await rider(); ctx.scene.add(R.root);
+  ctx.focusSun(V(0, 0.5, 0), 60);
+  return { ctx, update(t) { R.ride(3 + t * 6, { lean: 0.35 }); aim(ctx.camera, V(...cp), V(0, 0.95, 0.1)); } };
 }));

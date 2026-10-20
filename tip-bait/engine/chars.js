@@ -1,6 +1,6 @@
 // Characters: Quaternius CC0 human bodies (UE-style 65-joint rig) + the Universal Animation Library clips.
 // A character = { root, mixer, bones, play(name, t, {weight, speed, offset}) } posed deterministically per frame.
-import { THREE, V, ASSETS, once, mat, mesh, box, cyl } from './core.js';
+import { THREE, V, ASSETS, once, mat, mesh, box, cyl, tex } from './core.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
@@ -135,7 +135,7 @@ export async function mixClip(name) {
   if (!MIXCLIPS.has(name)) MIXCLIPS.set(name, fetch(ASSETS + `mixamo/clips/${name}.json`).then((r) => r.json()).then((j) => THREE.AnimationClip.parse(j)));
   return MIXCLIPS.get(name);
 }
-export async function mixCharacter(path, { tint = null } = {}) {
+export async function mixCharacter(path, { tint = null, maps = null } = {}) {
   const g = await load(path);
   const root = SkeletonUtils.clone(g.scene);
   const bones = {};
@@ -151,6 +151,7 @@ export async function mixCharacter(path, { tint = null } = {}) {
       if (/eye|low-poly|high-poly/.test(n) && !/brow|lash/.test(n)) { m.roughness = 0.15; }
       if (/suit|shoes|clothes/.test(n)) { m.roughness = Math.max(m.roughness, 0.85); m.color.multiplyScalar(0.92); }
       if (tint) for (const [k, c] of Object.entries(tint)) if (n.includes(k)) m.color = new THREE.Color(c);
+      if (maps) for (const [k, url] of Object.entries(maps)) if (n.includes(k)) { const t = tex(url); t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; m.map = t; m.needsUpdate = true; }
       o.userData.matName = n;
     }
   });
