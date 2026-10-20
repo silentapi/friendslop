@@ -152,6 +152,7 @@ async function hallSet() {
   const R = await rider({ cup: false }); R.bike.visible = false; ctx.scene.add(R.root);
   R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.y = Math.PI / 2;
   const K = await mixCharacter('cast/kyle.glb', KYLE_LOOK); await K.load('idle', 'shrug'); ctx.scene.add(K.root);
+  for (const f of ['LeftFoot', 'RightFoot']) K.bone(f).scale.setScalar(1.18); // big white Jordans
   const cup = coldCup(1); ctx.scene.add(cup);
   return { ctx, hall, d, R, K, cup };
 }
