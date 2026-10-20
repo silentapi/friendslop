@@ -84,3 +84,43 @@ export function minimap(route, prog, heading = 0) {
     <circle cx="50" cy="50" r="7" fill="#fff" stroke="#1fd65f" stroke-width="3"/></svg>`;
 }
 export const fade = (k) => (k > 0 ? `<div class="fade" style="opacity:${k}"></div>` : '');
+// boost speed lines (radial streaks)
+export function speedLines(lt, a) {
+  if (a <= 0) return '';
+  return `<div class="speed" style="opacity:${a};transform:rotate(${(lt * 97) % 6}deg) scale(${1 + 0.04 * Math.sin(lt * 40)})"></div>`;
+}
+// crash → watch-an-ad-to-continue flow (freeze frame behind it)
+export function crashScreen(lt, q) {
+  if (lt < q.freeze) return '';
+  const pop = easeBack(seg(lt, q.freeze, q.freeze + 0.25));
+  if (lt < q.ad) {
+    const btn = easeBack(seg(lt, q.adbtn, q.adbtn + 0.25)), press = lt > q.tap && lt < q.tap + 0.15 ? 0.9 : 1;
+    const pulse = 1 + 0.04 * Math.sin((lt - q.adbtn) * 14) * (lt < q.tap ? 1 : 0);
+    const rip = seg(lt, q.tap, q.tap + 0.3);
+    return `<div class="crash">
+      <div class="wo" style="transform:scale(${0.4 + 0.6 * pop}) rotate(-4deg);opacity:${Math.min(1, pop * 2)}">WIPED OUT 💥</div>
+      <div class="wsub" style="opacity:${seg(lt, q.freeze + 0.1, q.freeze + 0.3)}">your <b>$50</b> tip is in danger 😬</div>
+      <div class="adbtn" style="transform:scale(${btn * press * pulse});opacity:${Math.min(1, btn * 2)}">📺 WATCH AD TO CONTINUE<small>keep your spot · keep the tip</small>
+        ${rip > 0 && rip < 1 ? `<span class="rip" style="transform:translate(-50%,-50%) scale(${0.3 + rip * 2.2});opacity:${1 - rip}"></span>` : ''}</div>
+      <div class="giveup" style="opacity:${btn * 0.8}">start over (lol no)</div>
+    </div>`;
+  }
+  if (lt < q.cont) {
+    const k = seg(lt, q.ad, q.cont), n = Math.max(1, 3 - Math.floor(k * 3));
+    const ink = easeOut(seg(lt, q.ad, q.ad + 0.2));
+    return `<div class="ad" style="opacity:${ink}">
+      <div class="adtop"><span>Ad</span><span class="rw">reward in ${n}s</span></div>
+      <div class="adbody" style="transform:translateY(${(1 - ink) * 80}px)">
+        <div class="shield">🛡️</div>
+        <div class="adlogo">gobbl<b>+</b></div>
+        <div class="adh">TIP INSURANCE™</div>
+        <div class="adq">for when your Kyle happens.</div>
+        <div class="adp">$9.99<small>/week</small></div>
+        <div class="adcta">SUBSCRIBE</div>
+        <div class="adfine">*does not cover Kyle. not available in Florida.</div>
+      </div>
+    </div>`;
+  }
+  const c = easeBack(seg(lt, q.cont, q.cont + 0.2));
+  return `<div class="crash"><div class="cont" style="transform:scale(${c})">▶ CONTINUING FROM HERE</div></div>`;
+}

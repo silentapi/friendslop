@@ -1,4 +1,4 @@
-// Shots 1–7: the bait → closed Starbucks → pickup on S Orange Ave → LYNX dodge → tourists → storm → SunRail.
+// Shots 1–7: the bait → closed Starbucks → boost pad → LYNX dodge → crash + watch-an-ad continue → storm → ramp over the SunRail.
 import { THREE, V, aim, seg, lerp, lerpV, easeIn, easeOut, easeInOut, smooth, handheld, shake, spring, clamp, mat, mesh, box, emissive, canvasTex, mulberry } from '../engine/core.js';
 import * as HUD from '../engine/hud.js';
 import { rider, coldCup, ik2 } from '../engine/rider.js';
@@ -71,50 +71,57 @@ const S_CLOSED = {
   },
 };
 
-// ---------------------------------------------------------------- 3. PICKUP: 325 S Orange Ave, the barista slides it, he grabs and spins
-const SB2 = { x: -604, z: 226 };
-const S_PICKUP = {
-  name: 'pickup', dur: DUR('pickup'),
+
+// ---------------------------------------------------------------- 3. BOOST: order picked up, hit the boost pad on S Orange Ave
+function boostPad() {
+  const t = canvasTex('boostpad', 256, 512, (c, w, h) => {
+    c.fillStyle = '#0a7a35'; c.fillRect(0, 0, w, h);
+    c.strokeStyle = '#7dffb0'; c.lineWidth = 34; c.lineJoin = 'miter';
+    for (let i = -1; i < 4; i++) { const y = i * 128 + 40; c.beginPath(); c.moveTo(24, y + 80); c.lineTo(w / 2, y); c.lineTo(w - 24, y + 80); c.stroke(); }
+    c.strokeStyle = '#e8fff0'; c.lineWidth = 10; c.strokeRect(5, 5, w - 10, h - 10);
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  const m = new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 2.2, roughness: 0.4 });
+  const pad = mesh(new THREE.PlaneGeometry(2.4, 4.8), m, { cast: false }); pad.rotation.x = -Math.PI / 2; pad.userData.noAO = true;
+  pad.userData.scroll = (lt) => { t.offset.y = (lt * 1.6) % 1; };
+  return pad;
+}
+function speedOf(lt, v0, v1, kick, ramp = 0.25) { return v0 + (v1 - v0) * smooth(seg(lt, kick, kick + ramp)); }
+function distOf(lt, v0, v1, kick) { let d = 0; const n = 120, dt = lt / n; for (let i = 0; i < n; i++) d += speedOf((i + 0.5) * dt, v0, v1, kick) * dt; return d; }
+
+const S_BOOST = {
+  name: 'boost', dur: DUR('boost'),
   async build() {
-    const q = Q('pickup');
-    const ctx = await exterior({ center: [SB2.x, SB2.z], radius: 400, shadowBox: 12, dressR: 80, dressNames: ['Orange'], water: false });
-    // store box around the counter (walls, ceiling), front glass looking out on Orange Ave behind the camera
-    const room = new THREE.Group(); room.position.set(SB2.x, 0, SB2.z); room.rotation.y = -Math.PI / 2; ctx.scene.add(room);
-    const counter = Sets.pickupCounter(ctx); room.add(counter);
-    box(10, 0.05, 8, mat(0x6a4a34, { roughness: 0.45 }), 0, 0.01, 1.5, room, { cast: false });
-    box(10, 0.2, 8, mat(0x2a221c), 0, 4.1, 1.5, room);
-    for (const sx of [-1, 1]) box(0.2, 4.2, 8, mat(0xd6d1c8, { roughness: 0.8 }), sx * 5, 2.1, 1.5, room);
-    const R = await rider({ cup: false }); room.add(R.root); R.bike.visible = false;
-    const B = await mixCharacter('cast/barista.glb', { maps: { casualsuit01: 'cast/tex/barista_shirt.jpg' } }); await B.load('av-idle-male', 'idle');
-    room.add(B.root); B.root.position.set(0.9, 0, -0.85);
-    const apron = box(0.42, 0.62, 0.04, mat(0x0e5a3a, { roughness: 0.8 })); B.attach('Spine', apron, [0, 0.05, 0.13]);
-    const cup = coldCup(1); room.add(cup);
-    const shelf = V(0.9, 1.12, -0.35), slideTo = V(0.75, 1.12, 0.12);
+    const q = Q('boost');
+    const ctx = await exterior({ center: [ORANGE_X, 230], radius: 600, shadowBox: 30, dressR: 150, dressNames: ['Orange'] });
+    await Wd.traffic(ctx, { names: ['Orange Avenue'], center: [ORANGE_X, 200], radius: 160, n: 4, speed: 8, seed: 21 });
+    const R = await rider(); ctx.scene.add(R.root);
+    const x = ORANGE_X + 2.6, z0 = 268, v0 = 8.5, v1 = 21;
+    const pad = boostPad(); pad.position.set(x, 0.03, z0 - v0 * (q.kick - 0.05) - 1.2); ctx.scene.add(pad);
+    const glow = new THREE.PointLight(0x40ff90, 0, 9, 2); glow.position.set(x, 1.2, pad.position.z); ctx.scene.add(glow);
     return {
-      ctx, fx: { ao: 0.5 },
+      ctx, shutter: 0.75,
       update(lt) {
-        // barista: idle + right hand pushes the cup across
-        B.pose([['av-idle-male', 3 + lt]]);
-        const sl = easeInOut(seg(lt, q.slide, q.grab - 0.15));
-        const cupP = shelf.clone().lerp(slideTo, sl);
-        if (lt < q.grab + 0.05) { const w = room.localToWorld(cupP.clone().add(V(0, 0.1, -0.05))); ik2(B.bone('RightArm'), B.bone('RightForeArm'), B.bone('RightHand'), w, room.localToWorld(V(1.6, 0.6, -1.4))); }
-        // courier: walks in, reaches, grabs, spins away
-        const spin = easeIn(seg(lt, q.spin, DUR('pickup')));
-        R.walk(lt > q.spin ? 'jog' : 'idle', lt * (lt > q.spin ? 1.2 : 1), { offset: V(0.55 + spin * 2.6, 0, 0.75 + spin * 0.4), yaw: Math.PI - smooth(seg(lt, q.spin, q.spin + 0.25)) * Math.PI / 2 });
-        const reach = smooth(seg(lt, q.grab - 0.35, q.grab));
-        if (lt < q.spin) { const hand = room.localToWorld(slideTo.clone().add(V(0.02, 0.12, 0.02))); const rest = R.C.boneWorld('RightHand'); ik2(R.C.bone('RightArm'), R.C.bone('RightForeArm'), R.C.bone('RightHand'), rest.lerp(hand, reach), room.localToWorld(V(1.4, 0.8, 1.6))); }
-        if (lt > q.grab) { const h = R.C.boneWorld('RightHand'); cup.position.copy(room.worldToLocal(h)).add(V(0, -0.1, 0)); cup.rotation.set(0, 0, 0); }
-        else cup.position.copy(cupP);
-        // camera: low over the counter, customer side; whip pan on the spin
-        const cpL = lerpV([-1.9, 1.6, 2.1], [-1.6, 1.55, 1.8], easeInOut(seg(lt, 0, q.spin))).add(handheld(lt, 0.02));
-        const tgL = lerpV([0.7, 1.25, 0.0], [1.7, 1.3, 0.7], easeInOut(seg(lt, q.spin, DUR('pickup'))));
-        aim(ctx.camera, room.localToWorld(cpL), room.localToWorld(tgL), -0.03 - spin * 0.25);
-        ctx.camera.fov = 50; ctx.camera.updateProjectionMatrix();
+        const d = distOf(lt, v0, v1, q.kick), z = z0 - d;
+        const kick = smooth(seg(lt, q.kick, q.kick + 0.25));
+        R.root.position.set(x, 0, z); R.root.rotation.y = Math.PI;
+        R.ride(d, { lean: 0.42 + kick * 0.14, stand: kick * 0.25 });
+        pad.userData.scroll(lt);
+        glow.intensity = 6 + Math.sin(lt * 18) * 2 + Math.max(0, 1 - Math.abs(lt - q.kick) * 4) * 30;
+        ctx.focusSun(R.root.position, 300);
+        // chase camera: lags behind on the kick, FOV punches out
+        const lag = 5.0 + spring(lt, q.kick, { amp: 1.4, freq: 0.9, damp: 0.5 }) + kick * 0.4;
+        const cp = V(x + 0.5, 2.5 - kick * 0.5, z + lag).add(handheld(lt * 1.4, 0.05)).add(shake(lt, q.kick, 0.14, 0.5));
+        aim(ctx.camera, cp, V(x - 0.1, 1.0, z - 5), 0);
+        ctx.camera.fov = 58 + kick * 22 - Math.max(0, spring(lt, q.kick, { amp: 6, freq: 1.2, damp: 0.4 })); ctx.camera.updateProjectionMatrix();
       },
-      post(lt, P) { P.grade.uniforms.zoom.value = seg(lt, q.spin + 0.15, DUR('pickup')) * 0.08; },
+      post(lt, P) { const g = P.grade.uniforms; const k = seg(lt, q.kick, q.kick + 0.2) * (1 - seg(lt, q.kick + 0.5, DUR('boost')) * 0.6); g.zoom.value = k * 0.07; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.kick) * 8) * 0.35; g.sat.value = 1.08 + k * 0.12; },
       hud(lt) {
-        return HUD.place(lt, 0.05, q.spin, 'Starbucks', '325 S Orange Ave')
-          + HUD.chat(lt, q.chat, DUR('pickup'), 'where r u', { y: 1150 });
+        const k = seg(lt, q.kick, q.kick + 0.15);
+        return (k > 0 ? HUD.speedLines(lt, k * (1 - 0.4 * seg(lt, q.kick + 0.8, DUR('boost')))) : '')
+          + HUD.gameHud({ secs: eta(START.boost + lt), tip: 50, btn: true, boost: Math.max(0, 1 - Math.abs(lt - q.kick) * 5), map: HUD.minimap([[-0.1, 0.9], [-0.1, 0.1], [0.4, -0.3], [0.8, -0.9]], lt / DUR('boost')), pop: HUD.pop(lt, q.kick, 540, 700, 'BOOST!', '2× speed') })
+          + HUD.notif(lt, 0.0, q.pad, 'Order picked up ✅', 'Starbucks · 325 S Orange Ave', { y: 280 })
+          + HUD.chat(lt, q.pad + 0.1, DUR('boost'), 'where r u', { y: 1150 });
       },
     };
   },
@@ -159,39 +166,72 @@ const S_DODGE = {
   },
 };
 
-// ---------------------------------------------------------------- 5. TOURISTS: Orange & Church crosswalk, mouse ears, slowly
-const S_TOURISTS = {
-  name: 'tourists', dur: DUR('tourists'),
+
+// ---------------------------------------------------------------- 5. CRASH: Orange & Church, tourists, over the bars → WIPED OUT → watch an ad to continue
+const S_CRASH = {
+  name: 'crash', dur: DUR('crash'),
   async build() {
-    const q = Q('tourists');
+    const q = Q('crash');
     const ctx = await exterior({ center: [ORANGE_X, 70], radius: 600, shadowBox: 18, dressR: 120, dressNames: ['Orange', 'Church'], skipDress: [[ORANGE_X, 63, 7]] });
     const R = await rider(); ctx.scene.add(R.root);
+    await R.C.load('falling');
     const crowd = [];
     const kinds = ['tourist_m', 'tourist_f', 'local_m', 'tourist_f', 'tourist_m', 'local_f', 'tourist_m'];
     for (let i = 0; i < kinds.length; i++) {
       const c = await mixCharacter(`cast/${kinds[i]}.glb`, { maps: { casualsuit04: 'cast/tex/tourist_m_shirt.jpg', casualsuit02: 'cast/tex/tourist_f_shirt.jpg', casualsuit01: 'cast/tex/local_f_shirt.jpg' } });
-      await c.load('walk');
+      await c.load('walk', 'point', 'reaction');
       if (kinds[i].startsWith('tourist')) c.attach('Head', Sets.mouseEars(), [0, 0.1, 0], [0, 0, 0], 1.5);
       ctx.scene.add(c.root);
-      crowd.push({ c, x0: ORANGE_X + 0.9 + i * 0.6 - (i % 2) * 0.3, z: 68.6 + (i % 3) * 0.7, sp: 0.55 + (i % 3) * 0.08, ph: i * 0.37 });
+      crowd.push({ c, x0: ORANGE_X + 2.2 + i * 0.55 - (i % 2) * 0.3, z: 68.8 + (i % 3) * 0.6, sp: 0.55 + (i % 3) * 0.08, ph: i * 0.37, react: i % 3 === 0 ? 'point' : 'reaction' });
     }
+    const X = ORANGE_X + 1.2, zHit = 72.2;
+    const land = V(X + 0.3, 0, zHit - 5.2);
     return {
-      ctx,
+      ctx, shutter: 0.6,
       update(lt) {
-        const k = easeOut(seg(lt, 0, q.brake + 0.25));
-        const z = 82 - k * 6.5;
-        R.root.position.set(ORANGE_X + 1.2, 0, z); R.root.rotation.y = Math.PI;
-        R.ride(k * 6.5, { lean: 0.35 - seg(lt, q.brake, q.brake + 0.3) * 0.1, footDown: smooth(seg(lt, q.brake + 0.1, q.brake + 0.4)) });
-        for (const p of crowd) { p.c.root.position.set(p.x0 - p.sp * (lt + 1), 0, p.z); p.c.root.rotation.y = -Math.PI / 2; p.c.pose([['walk', p.ph + lt * 0.75]]); }
+        const w = Math.min(lt, q.freeze); // the world freezes on the wipe-out
+        // ride in hot, brake too late
+        const zRide = (t) => zHit + Math.max(0, q.hit - t) * 8.5 - Math.max(0, Math.min(q.hit, t) - q.brake) ** 2 * 2.2;
+        if (w < q.hit) {
+          R.root.position.set(X, 0, zRide(w)); R.root.rotation.y = Math.PI; R.bike.rotation.set(0, 0, 0);
+          R.ride((zHit + 10 - zRide(w)), { lean: 0.38 + seg(w, q.brake, q.hit) * 0.25, look: 0.1 });
+        } else {
+          R.root.position.set(X, 0, zHit - smooth(seg(w, q.hit, q.hit + 0.5)) * 0.9); R.root.rotation.y = Math.PI;
+          R.bike.rotation.set(-0.35 * Math.sin(Math.PI * seg(w, q.hit, q.hit + 0.35)), 0, smooth(seg(w, q.hit + 0.1, q.hit + 0.55)) * 1.4);
+          // over the bars: ballistic arc + 1¼ forward flips, face-down on the crosswalk
+          const u = seg(w, q.hit, q.land), uu = easeOut(u);
+          const fwd = uu * 4.6 + smooth(seg(w, q.land, q.freeze)) * 0.5;
+          const y = (0.85 + 2.2 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
+          R.walk('falling', 0.3 + (w - q.hit) * 1.4, { offset: V(0, y, 0.2 + fwd), yaw: 0, loop: true });
+          R.C.root.rotation.x = uu * (Math.PI * 2.5);
+          R.C.root.updateMatrixWorld(true);
+        }
+        // tourists: walking … then everyone stops and stares
+        for (const p of crowd) {
+          const tw = Math.min(w, q.hit + 0.1);
+          p.c.root.position.set(p.x0 - p.sp * (tw + 1), 0, p.z);
+          const r = smooth(seg(w, q.hit + 0.1, q.hit + 0.45));
+          let dy = Math.atan2(land.x - p.c.root.position.x, land.z - p.c.root.position.z) + Math.PI / 2; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+          p.c.root.rotation.y = -Math.PI / 2 + dy * r;
+          p.c.pose(w < q.hit + 0.1 ? [['walk', p.ph + tw * 0.75]] : [[p.react, 0.2 + (w - q.hit - 0.1), 1, false]]);
+        }
         ctx.focusSun(V(ORANGE_X, 0, 70), 300);
-        const cp = V(ORANGE_X + 0.3, 0.75, 61.5).add(handheld(lt, 0.03));
-        aim(ctx.camera, cp, V(ORANGE_X + 1.4, 1.35, 76), 0.01);
-        ctx.camera.fov = 46; ctx.camera.updateProjectionMatrix();
+        // low camera at the crosswalk; tilts up with the flight, settles on the wipe-out
+        const fl = Math.sin(Math.PI * seg(w, q.hit, q.land));
+        const cp = V(ORANGE_X + 0.4, 0.8, 60.8).add(handheld(w, 0.03)).add(shake(w, q.hit, 0.1, 0.4)).add(shake(w, q.land, 0.14, 0.4));
+        aim(ctx.camera, cp, V(ORANGE_X + 1.3, 1.3 + fl * 1.3 - seg(w, q.land, q.freeze) * 0.45, 72 - seg(w, q.hit, q.land) * 4.5), 0.01);
+        ctx.camera.fov = 48 - seg(lt, q.freeze, q.ad) * 6; ctx.camera.updateProjectionMatrix();
+      },
+      post(lt, P) {
+        const g = P.grade.uniforms, f = seg(lt, q.freeze, q.freeze + 0.12);
+        g.sat.value = 1.05 - f * 0.9; g.contrast.value = 1 + f * 0.15; g.vig.value = 0.3 + f * 0.35;
+        g.flash.value = Math.max(0, 1 - Math.abs(lt - q.hit) * 10) * 0.4 + Math.max(0, 1 - Math.abs(lt - q.freeze) * 12) * 0.5 + Math.max(0, 1 - Math.abs(lt - q.cont) * 8) * 0.6;
+        g.zoom.value = Math.max(0, 1 - Math.abs(lt - q.hit) * 5) * 0.1;
       },
       hud(lt) {
-        return HUD.caption(lt, 0.1, DUR('tourists'), "it's Orlando. / there are *always* tourists 🐭", { y: 300, size: 62, per: 0 })
-          + HUD.chat(lt, q.chat, DUR('tourists'), '??', { y: 1180 })
-          + HUD.place(lt, 0.0, 1.0, 'Orange Ave & Church St', 'Downtown Orlando', { top: 1000 });
+        return (lt < q.freeze ? HUD.caption(lt, 0.0, q.hit + 0.2, "it's Orlando. / there are *always* tourists 🐭", { y: 300, size: 62, per: 0 })
+          + HUD.gameHud({ secs: eta(START.crash + lt), tip: 50, btn: true, boost: Math.max(0, 1 - Math.abs(lt - q.brake) * 6) }) : '')
+          + HUD.crashScreen(lt, q);
       },
     };
   },
@@ -240,55 +280,80 @@ const S_STORM = {
   },
 };
 
-// ---------------------------------------------------------------- 7. SUNRAIL: Church Street Station, gates down, hop the tracks
-const S_SUNRAIL = {
-  name: 'sunrail', dur: DUR('sunrail'),
+// ---------------------------------------------------------------- 7. RAMP: Church Street Station, gates down, SunRail coming → hit the ramp, jump the tracks (slow-mo)
+function ramp() {
+  const g = new THREE.Group();
+  const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(3.2, 0); sh.lineTo(3.2, 1.1); sh.lineTo(0, 0);
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 2.0, bevelEnabled: false }); geo.translate(-3.2, 0, -1.0);
+  const orange = new THREE.MeshStandardMaterial({ color: 0xff6a00, roughness: 0.5, emissive: 0xff4a00, emissiveIntensity: 0.25 });
+  g.add(mesh(geo, orange));
+  // chevrons on the slope
+  const a = Math.atan2(1.1, 3.2), L = Math.hypot(3.2, 1.1);
+  for (let i = 0; i < 4; i++) { const s = (i + 0.5) / 4; const b = box(0.18, 0.02, 1.9, emissive(0xfff07a, 1.6), -3.2 + 3.2 * s, 1.1 * s + 0.02, 0, g); b.rotation.z = a; }
+  void L;
+  return g; // lip at x = 0 (top 1.1 m), ramp runs back along −x
+}
+const S_RAMP = {
+  name: 'ramp', dur: DUR('ramp'),
   async build() {
-    const q = Q('sunrail');
+    const q = Q('ramp');
     const map = await Wd.loadMap();
-    // rail line near the station: nearest rail vertex to the depot, local direction
     let best = null;
     for (const r of map.rail) for (let i = 0; i < r.pts.length - 1; i++) { const [x, z] = r.pts[i]; const d = Math.hypot(x + 790, z - 63); if (!best || d < best.d) best = { d, a: r.pts[i], b: r.pts[i + 1] }; }
     const dir = V(best.b[0] - best.a[0], 0, best.b[1] - best.a[1]).normalize();
-    // crossing point on Church St (z≈63): intersect the rail line with z = 63
     const tc = (63 - best.a[1]) / (dir.z || 1e-6);
     const X = V(best.a[0] + dir.x * tc, 0, 63);
-    const ctx = await exterior({ center: [X.x, X.z], radius: 520, shadowBox: 30, dressR: 90, dressNames: ['Church'], skipDress: [[X.x, X.z, 14]] });
+    const ctx = await exterior({ center: [X.x, X.z], radius: 520, shadowBox: 30, dressR: 90, dressNames: ['Church'], skipDress: [[X.x, X.z, 16]] });
     const yaw = Math.atan2(dir.x, dir.z);
     const tr = Sets.tracks(500); tr.position.copy(X); tr.rotation.y = yaw; ctx.scene.add(tr);
     const dep = Sets.depot(ctx); dep.position.set(-784, 0, 121); ctx.scene.add(dep);
-    const gates = [Sets.crossingGate(), Sets.crossingGate()];
-    gates[0].position.set(X.x + 5, 0, X.z - 6); gates[0].rotation.y = Math.PI; gates[1].position.set(X.x - 5, 0, X.z + 6);
+    const gates = [Sets.crossingGate()]; // north side only: keeps the camera side clear
+    gates[0].position.set(X.x + 5, 0, X.z - 6); gates[0].rotation.y = Math.PI;
     for (const gt of gates) ctx.scene.add(gt);
     const train = Sets.sunrail(3); ctx.scene.add(train);
-    const R = await rider(); ctx.scene.add(R.root);
+    const lip = X.x - 7.0, zr = X.z + 1.8;
+    const rp = ramp(); rp.position.set(lip, 0, zr); ctx.scene.add(rp);
+    const carrier = new THREE.Group(); ctx.scene.add(carrier);
+    const R = await rider(); carrier.add(R.root);
+    // slow motion through the air: world time w(lt)
+    const a = q.launch + 0.08, b = q.land - 0.08, K = 0.55;
+    const W = (t) => (t < a ? t : t < b ? a + (t - a) * K : a + (b - a) * K + (t - b));
+    const wL = W(q.launch), F = W(q.land) - wL, v = 13;
+    const vy = (4.9 * F * F - 1.1) / F;
+    const wTrain = wL + 0.95; // cab crosses the road just behind him
     return {
-      ctx, shutter: 0.7,
+      ctx, shutter: 0.6,
       update(lt) {
-        // courier eastbound along Church St crossing the rails at q.pass
-        const x = X.x + (lt - q.pass) * 10;
-        const hop = Math.max(0, Math.sin(seg(lt, q.pass - 0.18, q.pass + 0.16) * Math.PI)) * 0.28;
-        R.root.position.set(x, hop, X.z + 1.8); R.root.rotation.y = Math.PI / 2;
-        R.ride(lt * 10, { lean: 0.55, stand: 0.6 });
-        // train heading south (+dir) reaches the crossing at q.train
-        const s = (lt - q.train) * 26;
-        // southbound toward the camera: cab (local +z) reaches the crossing at q.train
-        train.position.copy(X).addScaledVector(dir, 12.7 - s).add(V(0, 0.35, 0)); train.rotation.y = yaw + Math.PI;
-        for (const gt of gates) gt.userData.set(lt, smooth(seg(lt, 0, 0.6)));
-        const cp = V(X.x + 13, 3.2, X.z + 13).add(handheld(lt, 0.05)).add(shake(lt, q.train - 0.05, 0.15, 1.0));
-        aim(ctx.camera, cp, V(X.x - 1, 1.6, X.z - 1), 0.02);
-        ctx.camera.fov = 56; ctx.camera.updateProjectionMatrix();
+        const w = W(lt);
+        let px, py, pitch = 0;
+        if (w < wL) { px = lip - v * (wL - w); py = clamp((px - (lip - 3.2)) / 3.2, 0, 1) * 1.1; pitch = px > lip - 3.2 ? Math.atan2(1.1, 3.2) : 0; }
+        else if (w < wL + F) { const tau = w - wL; px = lip + v * tau; py = 1.1 + vy * tau - 4.9 * tau * tau; pitch = Math.atan2(vy - 9.8 * tau, v) * 0.7; }
+        else { const tau = w - wL - F; px = lip + v * F + v * 0.85 * tau; py = 0; pitch = 0; }
+        carrier.position.set(px, Math.max(0, py), zr); carrier.rotation.set(0, Math.PI / 2, 0); carrier.rotateX(-pitch);
+        const air = w > wL && w < wL + F;
+        R.ride(px - lip + 40, { lean: air ? 0.2 : 0.5, stand: air ? 0.75 : 0.3 + 0.4 * seg(w, wL - 0.3, wL), look: air ? 0.2 : 0, bank: air ? -0.12 * Math.sin((w - wL) / F * Math.PI) : 0 });
+        // southbound train (cab local +z) crosses the road at wTrain
+        train.position.copy(X).addScaledVector(dir, 12.7 - (w - wTrain) * 24).add(V(0, 0.35, 0)); train.rotation.y = yaw + Math.PI;
+        for (const gt of gates) gt.userData.set(lt, 1);
         ctx.focusSun(X, 300);
+        // low side camera south of the crossing: he crosses left → right, the train comes at us
+        const sm = seg(lt, a, b);
+        const follow = Math.max(0, px - X.x - 2) * 0.45;
+        const cp = V(X.x + 4.5 + follow - sm * 1.0, 1.35 + sm * 0.2, X.z + 12 - sm * 1.5).add(handheld(lt, 0.04)).add(shake(lt, q.land, 0.12, 0.4)).add(shake(w, wTrain + 0.3, 0.08, 0.8));
+        const back = smooth(seg(lt, q.land, q.land + 0.45)) * 0.55;
+        aim(ctx.camera, cp, V((px + 1) * (1 - back) + (X.x + 2) * back, 1.4 + py * 0.6, zr - back * 1.5), 0.02);
+        ctx.camera.fov = 62 - sm * 8 * (1 - seg(lt, b, b + 0.3)); ctx.camera.updateProjectionMatrix();
       },
-      post(lt, P) { P.grade.uniforms.zoom.value = seg(lt, q.train - 0.1, q.train + 0.15) * (1 - seg(lt, q.train + 0.5, DUR('sunrail'))) * 0.05; },
+      post(lt, P) { const g = P.grade.uniforms, s = seg(lt, a, a + 0.1) * (1 - seg(lt, b, b + 0.1)); g.sat.value = 1.05 + s * 0.15; g.contrast.value = 1 + s * 0.1; g.vig.value = 0.3 + s * 0.25; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.land) * 9) * 0.35; },
       hud(lt) {
-        return HUD.place(lt, 0.0, DUR('sunrail'), 'Church Street Station', 'SunRail · since 1889')
-          + HUD.caption(lt, 0.15, DUR('sunrail'), 'SunRail said: / *not today* 🚆', { y: 420, size: 66, per: 0 })
-          + HUD.chat(lt, q.chat, DUR('sunrail'), 'my ice is melting 😤', { y: 1150 })
-          + HUD.gameHud({ secs: eta(START.sunrail + lt), tip: 50, a: 0.85 });
+        const s = seg(lt, a, a + 0.1) * (1 - seg(lt, b, b + 0.1));
+        return HUD.caption(lt, 0.0, q.launch + 0.1, 'SunRail? / *jump it.* 🚆', { y: 330, size: 70, per: 0 })
+          + (s > 0 ? `<div class="slowmo" style="opacity:${s}">SLOW-MO</div>` : '')
+          + HUD.gameHud({ secs: eta(START.ramp + lt), tip: 50, btn: true, pop: HUD.pop(lt, q.launch + 0.35, 540, 800, 'AIR TIME!', '+$0.00') })
+          + HUD.chat(lt, q.land + 0.15, DUR('ramp'), 'my ice is melting 😤', { y: 1150 });
       },
     };
   },
 };
 
-export const SHOTS_A = [S_HOOK, S_CLOSED, S_PICKUP, S_DODGE, S_TOURISTS, S_STORM, S_SUNRAIL];
+export const SHOTS_A = [S_HOOK, S_CLOSED, S_BOOST, S_DODGE, S_CRASH, S_STORM, S_RAMP];

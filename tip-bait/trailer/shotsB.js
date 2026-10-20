@@ -81,9 +81,9 @@ const S_ARRIVE = {
         }
         const pan = easeInOut(seg(lt, 0.2, q.stop + 0.2));
         const cp = CORNER.clone().add(lerpV([-17.5, 1.3, 12], [-17.8, 1.7, -8.7], pan)).add(handheld(lt, 0.03)).add(shake(lt, q.stop, 0.04, 0.3));
-        const tg = lerpV([p.x, 1.4, p.z], [sign.x, 3.4, sign.z - 0.6], pan);
+        const tg = lerpV([p.x, 1.4, p.z], [sign.x, 3.0, sign.z - 1.6], pan);
         aim(ctx.camera, cp, tg, 0.01);
-        ctx.camera.fov = 52 + pan * 8; ctx.camera.updateProjectionMatrix();
+        ctx.camera.fov = 52 + pan * 18; ctx.camera.updateProjectionMatrix();
         ctx.focusSun(CORNER, 300);
       },
       hud(lt) {
@@ -167,23 +167,18 @@ const S_KYLE = {
         const open = easeOut(seg(lt, q.open, q.open + 0.35)) * (1 - easeIn(seg(lt, q.close - 0.15, q.close)));
         d.leaf.rotation.y = open * 1.5;
         hall.userData.aptLight.intensity = open * 12;
-        // Kyle steps into the doorway, takes it, sips, delivers the line
+        // Kyle already has it (snatched on the cut): holds it at his chest, sips, shrugs the line
         K.root.position.set(2.4 - open * 0.85, 0, Sets.DOOR_Z + 0.1); K.root.rotation.y = -Math.PI / 2;
         K.pose(lt < q.line ? [['idle', 1 + lt]] : [['shrug', 0.25 + (lt - q.line) * 1.1, 1, false]]);
         R.walk('idle', 2 + lt, { offset: V(0, 0, 0), yaw: 0 });
-        const courierHand = R.C.boneWorld('RightHand');
-        // courier holds the cup out
-        const give = smooth(seg(lt, q.open, q.take));
-        const out = R.root.localToWorld(V(-0.15, 1.15, 0.55));
-        ik2(R.C.bone('RightArm'), R.C.bone('RightForeArm'), R.C.bone('RightHand'), courierHand.clone().lerp(out, give * (1 - seg(lt, q.take + 0.1, q.take + 0.5))), R.root.localToWorld(V(-0.6, 0.8, -0.4)));
-        const reach = smooth(seg(lt, q.take - 0.3, q.take)) * (1 - smooth(seg(lt, q.take + 0.1, q.take + 0.35)));
-        const sip = smooth(seg(lt, q.sip - 0.25, q.sip)) * (1 - smooth(seg(lt, q.sip + 0.4, q.sip + 0.65)));
-        const kRest = K.boneWorld('RightHand');
-        const mouth = K.boneWorld('Head').add(V(-0.12, -0.07, 0));
-        const kTarget = kRest.clone().lerp(out.clone().add(V(0.08, 0.05, 0)), reach).lerp(mouth, sip);
-        ik2(K.bone('RightArm'), K.bone('RightForeArm'), K.bone('RightHand'), kTarget, K.boneWorld('RightArm').add(V(0.3, -0.6, -0.4)));
-        if (sip > 0) { const hd = K.bone('Head'); hd.rotateX(-0.25 * sip); hd.updateMatrixWorld(true); }
-        cup.position.copy(lt < q.take ? R.C.boneWorld('RightHand') : K.boneWorld('RightHand')).add(V(0, -0.1, 0));
+        if (lt < q.line) {
+          const sip = smooth(seg(lt, q.sip - 0.2, q.sip)) * (1 - smooth(seg(lt, q.sip + 0.3, q.line - 0.05)));
+          const chest = K.root.localToWorld(V(-0.12, 1.32, 0.32));
+          const mouth = K.boneWorld('Head').add(V(-0.14, -0.1, 0));
+          ik2(K.bone('RightArm'), K.bone('RightForeArm'), K.bone('RightHand'), chest.lerp(mouth, sip), K.boneWorld('RightArm').add(V(0.3, -0.6, -0.4)));
+          if (sip > 0) { const hd = K.bone('Head'); hd.rotateX(-0.22 * sip); hd.updateMatrixWorld(true); }
+        }
+        cup.position.copy(K.boneWorld('RightHand')).add(V(0, -0.11, 0));
         cup.visible = lt < q.close - 0.1;
         // over the courier's right shoulder (helmet + Gobbl bag in frame)
         const push = easeInOut(seg(lt, 0, q.line));

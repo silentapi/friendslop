@@ -80,8 +80,12 @@ DROP = at('hook', 'slam')
 SCRATCH = at('stairs', 'sign')
 KYLE = START['kyle']; ZERO = at('tip', 'zero'); END = START['end']
 
+CRASH_STOP = (at('crash', 'freeze'), at('crash', 'cont'))
+SLOWMO = (at('ramp', 'launch') + 0.08, at('ramp', 'land') - 0.08)
 def section(t):
     if t < DROP: return 'intro'
+    if CRASH_STOP[0] <= t < CRASH_STOP[1]: return 'stop'
+    if SLOWMO[0] <= t < SLOWMO[1]: return 'half'
     if START['real'] <= t < START['real'] + 0.8: return 'half'
     if SCRATCH <= t < SCRATCH + 0.42: return 'stop'
     if KYLE <= t < ZERO: return 'tense'
@@ -208,28 +212,55 @@ add(sfx, at('hook', 'slam') - 0.2, whoosh(0.25), 0.8)
 add(sfx, START['closed'] - 0.15, whoosh(), 0.7)
 add(sfx, at('closed', 'brake'), skid(), 0.9, pan=-0.2)
 add(sfx, at('closed', 'reroute'), ding(1046.5, 1318.5), 0.7)
-# pickup
-add(sfx, START['pickup'] - 0.15, whoosh(), 0.7)
-add(sfx, at('pickup', 'chat'), pop(), 0.8)
-add(sfx, at('pickup', 'spin'), whoosh(0.5), 0.9)
+# boost: pad chime, riser, kick
+add(sfx, START['boost'] - 0.15, whoosh(), 0.7)
+add(sfx, START['boost'] + 0.05, ding(1318.5, 1568), 0.6)
+add(sfx, at('boost', 'pad') + 0.1, pop(), 0.8)
+r = noise(0.5); r = fft_filter(r, lo=2000) * np.linspace(0, 1, len(r)) ** 2
+add(sfx, at('boost', 'kick') - 0.5, r, 0.5)
+add(sfx, at('boost', 'kick'), boom(1.0), 0.9)
+add(sfx, at('boost', 'kick'), whoosh(1.2), 1.1)
 # dodge
 add(sfx, at('dodge', 'chat'), pop(), 0.8)
 add(sfx, at('dodge', 'bus') + 0.2, horn(0.8), 1.0, pan=0.4)
 add(sfx, at('dodge', 'miss') - 0.1, whoosh(0.4), 1.0, pan=0.4)
-# tourists
-add(sfx, START['tourists'] - 0.12, whoosh(), 0.6)
-add(sfx, at('tourists', 'brake'), skid(0.3), 0.6)
-add(sfx, at('tourists', 'bell'), bell(), 1.0)
-add(sfx, at('tourists', 'chat'), pop(), 0.8)
+# crash: skid, crunch, flips, thud, freeze, ad, continue
+def crunch():
+    d = 0.5; x = tt(d)
+    n = fft_filter(noise(d), lo=300, hi=7000) * np.exp(-x * 14)
+    clank = sum(np.sin(2 * np.pi * f * x) * np.exp(-x * k) for f, k in ((1870, 9), (2630, 12), (3410, 15))) * 0.25
+    return n * 0.8 + clank + boom(d) * 0.7
+def jingle():
+    out = np.zeros(int(1.1 * SR))
+    for k, n in enumerate([72, 76, 79, 84, 79, 84]):
+        x = tt(0.22); s_ = (np.sin(2 * np.pi * note(n) * x) + 0.4 * np.sin(4 * np.pi * note(n) * x)) * np.exp(-x * 10)
+        a_ = int(k * 0.16 * SR); out[a_:a_ + len(s_)] += s_[:len(out) - a_]
+    return out * 0.35
+add(sfx, START['crash'] - 0.1, whoosh(), 0.6)
+add(sfx, at('crash', 'brake'), skid(0.35), 1.0)
+add(sfx, at('crash', 'hit'), crunch(), 1.1)
+add(sfx, at('crash', 'hit') + 0.05, whoosh(0.5), 0.8)
+add(sfx, at('crash', 'land'), boom(0.5), 0.9)
+add(sfx, at('crash', 'freeze') - 0.02, scratch(), 1.0)
+add(sfx, at('crash', 'freeze') + 0.05, boom(0.9) * 0.7, 0.8)
+add(sfx, at('crash', 'adbtn'), pop(), 0.9)
+add(sfx, at('crash', 'tap'), pop(), 1.0)
+add(sfx, at('crash', 'ad'), jingle(), 1.0)
+add(sfx, at('crash', 'cont'), ding(1046.5, 1568), 1.0)
+add(sfx, at('crash', 'cont'), whoosh(0.4), 0.8)
 # storm
 add(sfx, at('storm', 'flash'), thunder(), 1.0)
-d = START['sunrail'] - START['storm']; x = tt(d)
+d = START['ramp'] - START['storm']; x = tt(d)
 add(sfx, START['storm'], fft_filter(noise(d), lo=1200, hi=9000) * np.minimum(1, x / 0.15) * np.clip((d - x) / 0.2, 0, 1) * 0.16)
-# sunrail
-add(sfx, START['sunrail'], crossing_bells(DUR := 2.0), 1.0, pan=-0.3)
-add(sfx, at('sunrail', 'chat'), pop(), 0.8)
-add(sfx, at('sunrail', 'train') - 0.35, horn(1.1, (311, 392, 466)), 1.0, pan=-0.2)
-add(sfx, at('sunrail', 'train'), whoosh(0.8), 1.0)
+# ramp over the SunRail: bells, launch, slow-mo, landing, train blasts through behind
+add(sfx, START['ramp'], crossing_bells(2.6), 1.0, pan=-0.3)
+add(sfx, at('ramp', 'launch') - 0.05, whoosh(0.4), 1.0)
+d = SLOWMO[1] - SLOWMO[0]; x = tt(d)
+add(sfx, SLOWMO[0], fft_filter(noise(d), hi=400) * np.sin(np.pi * x / d) * 0.9, 0.9)
+add(sfx, at('ramp', 'land'), boom(0.6), 0.9)
+add(sfx, START['ramp'] + 1.3, horn(1.2, (311, 392, 466)), 1.1, pan=-0.3)
+add(sfx, START['ramp'] + 1.9, whoosh(0.9), 1.1, pan=-0.3)
+add(sfx, at('ramp', 'land') + 0.15, pop(), 0.8)
 # real: impact on the split + wipe
 add(sfx, START['real'], boom(1.0), 0.7)
 add(sfx, at('real', 'wipe'), whoosh(0.6), 0.6)
@@ -258,7 +289,7 @@ add(sfx, START['end'] + CUES['shots'][-1]['dur'] - 1.4, ding(), 1.0)
 
 # ------------------------------------------------------------------ mix: sidechain music under the big SFX moments
 duck = np.ones(N)
-for t0, depth, d in [(at('tip', 'zero'), 0.0, 1.9), (at('kyle', 'sip') - 0.15, 0.6, 0.5), (at('storm', 'flash'), 0.5, 0.8)]:
+for t0, depth, d in [(at('tip', 'zero'), 0.0, 1.9), (at('kyle', 'sip') - 0.15, 0.6, 0.5), (at('storm', 'flash'), 0.5, 0.8), (at('crash', 'hit'), 0.5, 0.6)]:
     a = int(t0 * SR); b = min(N, a + int(d * SR)); duck[a:b] = np.minimum(duck[a:b], depth)
 duck = np.convolve(duck, np.ones(1500) / 1500, 'same')
 mix = music * duck[:, None] * 0.8 + sfx

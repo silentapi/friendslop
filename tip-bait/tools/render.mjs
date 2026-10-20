@@ -4,7 +4,7 @@ import { mkdirSync, existsSync } from 'node:fs';
 
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(k); if (i < 0) return d; const v = argv[i + 1]; argv.splice(i, 2); return v; };
-const sub = opt('--sub', '3'), scale = opt('--scale', '0.8');
+const sub = opt('--sub', '3'), scale = opt('--scale', '0.8'), step = Number(opt('--step', '1'));
 const [outDir, workersArg = '3', fromArg, toArg] = argv;
 mkdirSync(outDir, { recursive: true });
 const ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];
@@ -37,7 +37,7 @@ console.log('chunks', JSON.stringify(chunks));
 const t0 = Date.now();
 await Promise.all(chunks.map(async ([s, e], wi) => {
   const { browser, page } = await open();
-  for (let f = s; f < e; f++) {
+  for (let f = s + ((step - (s % step)) % step); f < e; f += step) {
     const path = `${outDir}/f${String(f).padStart(5, '0')}.jpg`;
     if (existsSync(path)) continue;
     for (let attempt = 0; ; attempt++) {
