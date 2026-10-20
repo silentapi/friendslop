@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tip Bait Stage</title>
+<script type="importmap">
+  { "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }
+</script>
+<link rel="stylesheet" href="engine/hud.css">
+</head>
+<body>
+<div id="frame">
+  <div id="stage"></div>
+  <div id="hud"></div>
+</div>
+<script type="module">
+  for (const f of ['900 40px "Inter Display"', '800 40px "Inter Display"', '700 20px Inter', '600 20px Inter', '500 20px Inter']) await document.fonts.load(f).catch(() => {});
+  const q = new URLSearchParams(location.search);
+  if (q.get('scale')) window.__GL_SCALE = Number(q.get('scale'));
+  const m = await import('./engine/driver.js');
+  await m.boot(q.get('mode') || 'lab', { sub: Number(q.get('sub') || 1) });
+</script>
+</body>
+</html>

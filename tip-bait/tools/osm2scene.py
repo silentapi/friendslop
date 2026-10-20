@@ -49,7 +49,7 @@ def height(t):
 
 ROAD_W = {'motorway': 22, 'trunk': 18, 'primary': 16, 'secondary': 14, 'tertiary': 12, 'residential': 10, 'unclassified': 9, 'service': 6, 'living_street': 8,
           'motorway_link': 8, 'primary_link': 8, 'secondary_link': 8, 'tertiary_link': 7, 'footway': 3, 'pedestrian': 6, 'cycleway': 2.5, 'path': 2}
-out = {'origin': [LAT0, LON0], 'buildings': [], 'roads': [], 'water': [], 'parks': [], 'rail': [], 'pois': []}
+out = {'origin': [LAT0, LON0], 'buildings': [], 'roads': [], 'water': [], 'parks': [], 'rail': [], 'pois': [], 'trees': [], 'lamps': [], 'signals': []}
 used_outer = set()
 for t, mem in rels:
     if t.get('type') == 'multipolygon' and ('building' in t or t.get('natural') == 'water' or t.get('leisure') == 'park'):
@@ -70,7 +70,8 @@ for wid, (t, refs) in ways.items():
         continue
     if 'building' in t or 'building:part' in t:
         if len(p) > 2:
-            out['buildings'].append({'id': wid, 'name': t.get('name'), 'h': height(t), 'min': float(t.get('min_height', 0) or 0), 'kind': t.get('building') or 'part', 'part': 'building:part' in t, 'pts': p})
+            out['buildings'].append({'id': wid, 'name': t.get('name'), 'h': height(t), 'min': float(t.get('min_height', 0) or 0), 'kind': t.get('building') or 'part', 'part': 'building:part' in t,
+                                     'colour': t.get('building:colour'), 'mat': t.get('building:material'), 'roof': t.get('roof:shape'), 'addr': (t.get('addr:housenumber', '') + ' ' + t.get('addr:street', '')).strip() or None, 'pts': p})
     elif 'highway' in t and t['highway'] in ROAD_W:
         lanes = t.get('lanes')
         w = ROAD_W[t['highway']]
@@ -84,6 +85,12 @@ for wid, (t, refs) in ways.items():
     elif t.get('railway') in ('rail', 'light_rail'):
         out['rail'].append({'name': t.get('name'), 'pts': p})
 for nid, (lat, lon, t) in nodes.items():
+    if t.get('natural') == 'tree':
+        out['trees'].append({'p': xy(lat, lon), 'genus': t.get('genus') or t.get('species') or t.get('leaf_type')})
+    if t.get('highway') == 'street_lamp':
+        out['lamps'].append(xy(lat, lon))
+    if t.get('highway') == 'traffic_signals':
+        out['signals'].append(xy(lat, lon))
     if t.get('name') and (t.get('amenity') or t.get('shop') or t.get('tourism') or t.get('leisure') or t.get('railway') == 'station'):
         out['pois'].append({'name': t['name'], 'kind': t.get('amenity') or t.get('shop') or t.get('tourism') or t.get('leisure') or 'station', 'p': xy(lat, lon)})
 # dedupe buildings by id

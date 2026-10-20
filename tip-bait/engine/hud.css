@@ -1,0 +1,4 @@
+html, body { margin: 0; background: #000; }
+#frame { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #000; font-family: 'Inter Display', Inter, sans-serif; color: #fff; }
+#stage canvas { display: block; }
+#hud { position: absolute; inset: 0; pointer-events: none; }
