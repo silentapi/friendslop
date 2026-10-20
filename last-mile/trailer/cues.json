@@ -1,0 +1,159 @@
+{
+  "fps": 30,
+  "bpm": 150,
+  "audioLagFrames": 0,
+  "note": "LAST MILE TikTok trailer (9:16). See docs/TRAILER.md. Shot lengths on the 150 BPM beat grid (0.4 s); cue times are local to each shot. Visuals, HUD and audio.py all read this file.",
+  "shots": [
+    {
+      "name": "ping",
+      "dur": 2.4,
+      "cues": {
+        "buzz": 0.15,
+        "card": 0.35,
+        "accept": 1.85,
+        "slam": 2.0
+      }
+    },
+    {
+      "name": "pickup",
+      "dur": 2.4,
+      "cues": {
+        "grab": 1.0,
+        "turn": 1.6
+      }
+    },
+    {
+      "name": "launch",
+      "dur": 2.0,
+      "cues": {
+        "kick": 0.4,
+        "whoosh": 0.9
+      }
+    },
+    {
+      "name": "skyline",
+      "dur": 2.4,
+      "cues": {
+        "rise": 0.0
+      }
+    },
+    {
+      "name": "traffic",
+      "dur": 2.8,
+      "cues": {
+        "bus": 0.7,
+        "miss": 1.25,
+        "horn": 1.3
+      }
+    },
+    {
+      "name": "train",
+      "dur": 2.8,
+      "cues": {
+        "bell": 0.0,
+        "horn": 0.5,
+        "pass": 1.05,
+        "train": 1.3
+      }
+    },
+    {
+      "name": "eola",
+      "dur": 3.2,
+      "cues": {
+        "swan": 1.2,
+        "hiss": 1.45,
+        "swerve": 1.6
+      }
+    },
+    {
+      "name": "towers",
+      "dur": 1.6,
+      "cues": {
+        "cuts": [
+          0.0,
+          0.4,
+          0.8,
+          1.2
+        ]
+      }
+    },
+    {
+      "name": "arrive",
+      "dur": 3.6,
+      "cues": {
+        "tiltEnd": 1.15,
+        "cutB": 1.2,
+        "enter": 1.3,
+        "brake": 2.0,
+        "stop": 2.35,
+        "dismount": 2.75,
+        "run": 3.15
+      }
+    },
+    {
+      "name": "elevator",
+      "dur": 1.6,
+      "cues": {
+        "ding": 0.1,
+        "sign": 0.5,
+        "scratch": 0.5
+      }
+    },
+    {
+      "name": "stairs",
+      "dur": 2.4,
+      "cues": {
+        "floors": [
+          0.0,
+          0.4,
+          0.8,
+          1.2,
+          1.6,
+          2.0
+        ]
+      }
+    },
+    {
+      "name": "slip",
+      "dur": 2.4,
+      "cues": {
+        "trip": 0.35,
+        "slowIn": 0.45,
+        "catch": 1.65,
+        "slowOut": 1.9
+      }
+    },
+    {
+      "name": "deliver",
+      "dur": 3.6,
+      "cues": {
+        "knock": 0.1,
+        "open": 0.45,
+        "hand": 0.85,
+        "kyle": 1.0,
+        "stars": 1.35,
+        "tip": 1.95,
+        "zero": 2.35,
+        "slam": 3.05
+      }
+    },
+    {
+      "name": "title",
+      "dur": 3.6,
+      "cues": {
+        "drop": 0.0,
+        "logo": 0.1,
+        "cta": 1.4
+      }
+    },
+    {
+      "name": "stinger",
+      "dur": 2.4,
+      "cues": {
+        "ping": 0.5,
+        "look": 0.95,
+        "groan": 1.35
+      }
+    }
+  ]
+}
