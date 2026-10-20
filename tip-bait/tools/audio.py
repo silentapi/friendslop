@@ -259,8 +259,8 @@ add(sfx, at('ramp', 'launch') - 0.05, whoosh(0.4), 1.0)
 d = SLOWMO[1] - SLOWMO[0]; x = tt(d)
 add(sfx, SLOWMO[0], fft_filter(noise(d), hi=400) * np.sin(np.pi * x / d) * 0.9, 0.9)
 add(sfx, at('ramp', 'land'), boom(0.6), 0.9)
-add(sfx, START['ramp'] + 1.3, horn(1.2, (311, 392, 466)), 1.1, pan=-0.3)
-add(sfx, START['ramp'] + 1.9, whoosh(0.9), 1.1, pan=-0.3)
+add(sfx, START['ramp'] + 1.45, horn(1.2, (311, 392, 466)), 1.1, pan=-0.1)
+add(sfx, START['ramp'] + 2.3, whoosh(0.6), 1.3, pan=0.2)
 add(sfx, at('ramp', 'land') + 0.15, pop(), 0.8)
 # real: impact on the split + wipe
 add(sfx, START['real'], boom(1.0), 0.7)
@@ -295,6 +295,7 @@ add(sfx, at('stairs', 'top'), steps(at('stairs', 'twenty') - at('stairs', 'top')
 add(sfx, at('stairs', 'twenty'), ding(1318.5, 1760), 0.9)
 # kyle
 add(sfx, at('kyle', 'open') - 0.05, creak(), 0.9)
+add(sfx, at('kyle', 'open') + 0.15, ding(1318.5, 1568), 0.6)
 add(sfx, at('kyle', 'sip') - 0.15, slurp(), 1.0)
 add(sfx, at('kyle', 'close'), boom(0.6) * 0.6, 0.8)
 # tip

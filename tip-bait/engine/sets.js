@@ -237,8 +237,8 @@ export function depot(ctx, L = 40, D = 11) {
 }
 export function tracks(len = 400) {
   const g = new THREE.Group();
-  box(4.5, 0.25, len, pbr('gravel_floor', { world: 1.5, color: 0x8a8278 }), 0, 0.12, 0, g, { cast: false });
-  const tie = new THREE.InstancedMesh(new THREE.BoxGeometry(2.6, 0.16, 0.24), pbr('wood_table_001', { world: 1, color: 0x4a3a2e }), Math.floor(len / 0.62)); const m4 = new THREE.Matrix4();
+  box(4.5, 0.25, len, pbr('gravel_floor', { world: 1.5, color: 0x7a7268, env: 0.5 }), 0, 0.12, 0, g, { cast: false });
+  const tie = new THREE.InstancedMesh(new THREE.BoxGeometry(2.6, 0.16, 0.24), mat(0x2e2620, { roughness: 1, envMapIntensity: 0.3 }), Math.floor(len / 0.62)); const m4 = new THREE.Matrix4();
   for (let i = 0; i < tie.count; i++) tie.setMatrixAt(i, m4.makeTranslation(0, 0.3, -len / 2 + i * 0.62)); g.add(tie);
   for (const dx of [-0.72, 0.72]) box(0.08, 0.16, len, new THREE.MeshPhysicalMaterial({ color: 0xc0c0c8, metalness: 1, roughness: 0.25 }), dx, 0.45, 0, g);
   return g;

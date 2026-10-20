@@ -124,3 +124,8 @@ export function crashScreen(lt, q) {
   const c = easeBack(seg(lt, q.cont, q.cont + 0.2));
   return `<div class="crash"><div class="cont" style="transform:scale(${c})">▶ CONTINUING FROM HERE</div></div>`;
 }
+export function onTime(lt, t0, t1) {
+  const a = inOut(lt, t0, t1, 0.05, 0.15); if (!a) return '';
+  const k = easeBack(seg(lt, t0, t0 + 0.25));
+  return `<div class="ontime" style="opacity:${a};transform:translateX(-50%) scale(${0.6 + 0.4 * k})">✓ DELIVERED · ON TIME</div>`;
+}

@@ -27,7 +27,7 @@ const S_HOOK = {
         aim(ctx.camera, cp, V(ORANGE_X + 1.9, 1.75 + push * 0.25, 79), 0.02);
         ctx.camera.fov = 52 - push * 6; ctx.camera.updateProjectionMatrix();
       },
-      post(lt, P) { const g = P.grade.uniforms; g.flash.value = lt > q.slam ? Math.max(0, 1 - (lt - q.slam) * 9) * 0.7 : 0; g.zoom.value = lt > q.slam ? (1 - seg(lt, q.slam, q.slam + 0.4)) * 0.08 : 0; },
+      post(lt, P) { const g = P.grade.uniforms; g.flash.value = lt > q.slam ? Math.max(0, 1 - (lt - q.slam) * 16) * 0.35 : 0; g.zoom.value = lt > q.slam ? (1 - seg(lt, q.slam, q.slam + 0.4)) * 0.08 : 0; },
       hud(lt) {
         return HUD.caption(lt, -0.2, DUR('hook'), 'POV: Kyle promised you / a *$50* tip', { y: 290, size: 70, per: 0 })
           + HUD.orderCard(lt, q.card - 0.5, q.accept, { y: 470 });
@@ -45,13 +45,13 @@ const S_CLOSED = {
     const ctx = await exterior({ center: [SUMMERLIN.x, SUMMERLIN.z], radius: 500, shadowBox: 25, dressR: 90, dressNames: ['Summerlin', 'Central'], skipDress: [[SUMMERLIN.x - 6, SUMMERLIN.z, 12]] });
     const sf = Sets.storefront(ctx, { open: false }); sf.position.set(SUMMERLIN.x - 7.6, 0, SUMMERLIN.z); sf.rotation.y = Math.PI / 2; ctx.scene.add(sf);
     const R = await rider(); ctx.scene.add(R.root);
-    const path = [[SUMMERLIN.x - 4.4, SUMMERLIN.z + 24], [SUMMERLIN.x - 4.9, SUMMERLIN.z + 1.6]];
+    const path = [[SUMMERLIN.x - 5.0, SUMMERLIN.z + 24], [SUMMERLIN.x - 5.6, SUMMERLIN.z + 0.8]];
     ctx.focusSun(V(SUMMERLIN.x, 0, SUMMERLIN.z), 300);
     return {
       ctx,
       update(lt) {
         const k = easeOut(seg(lt, 0, q.brake + 0.2));
-        const s = k * 22.4;
+        const s = k * 23.2;
         const { p, yaw } = along(path, s);
         R.root.position.copy(p); R.root.rotation.y = yaw;
         const stopped = lt > q.brake + 0.15;
@@ -59,13 +59,13 @@ const S_CLOSED = {
         if (stopped) { const hd = R.C.bone('Head'); hd.rotateY(-0.7 * smooth(seg(lt, q.sign - 0.1, q.sign + 0.2))); hd.updateMatrixWorld(true); }
         const push = easeInOut(seg(lt, 0, DUR('closed')));
         const cp = lerpV([SUMMERLIN.x - 4.4, 1.5, SUMMERLIN.z - 5.6], [SUMMERLIN.x - 4.6, 1.5, SUMMERLIN.z - 4.9], push).add(handheld(lt, 0.025));
-        aim(ctx.camera, cp, V(SUMMERLIN.x - 7.2, 1.45, SUMMERLIN.z - 0.6), -0.02);
+        aim(ctx.camera, cp, V(SUMMERLIN.x - 6.9, 1.4, SUMMERLIN.z - 0.5), -0.02);
         ctx.camera.fov = 62; ctx.camera.updateProjectionMatrix();
       },
       hud(lt) {
         return HUD.place(lt, 0.05, DUR('closed'), 'Starbucks', '20 N Summerlin Ave')
-          + HUD.caption(lt, q.sign, DUR('closed'), 'nearest Starbucks: / ~closed~ 💀', { y: 880, size: 66 })
-          + HUD.notif(lt, q.reroute, DUR('closed'), 'Rerouting… 🔁', 'Starbucks · 325 S Orange Ave · +1.1 mi', { y: 1180 });
+          + HUD.caption(lt, q.sign + 0.3, DUR('closed'), 'nearest Starbucks: / ~closed~ 💀', { y: 1380, size: 66, per: 0 })
+          + HUD.notif(lt, q.reroute, DUR('closed'), 'Rerouting… 🔁', 'Starbucks · 325 S Orange Ave · +1.1 mi', { y: 250 });
       },
     };
   },
@@ -271,7 +271,7 @@ const S_STORM = {
         flash.intensity = fl * 10;
         ctx.focusSun(R.root.position, 200);
       },
-      post(lt, P) { const g = P.grade.uniforms; g.sat.value = 0.8; g.contrast.value = 1.08; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.flash) * 10) * 0.55; g.vig.value = 0.5; },
+      post(lt, P) { const g = P.grade.uniforms; g.sat.value = 0.8; g.contrast.value = 1.08; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.flash) * 16) * 0.3; g.vig.value = 0.5; },
       hud(lt) {
         return HUD.caption(lt, 0.05, DUR('storm'), 'Florida weather: / 0% → *100%* 🙃', { y: 300, size: 66 })
           + HUD.gameHud({ secs: eta(START.storm + lt), tip: 50, a: 0.85 });
@@ -311,7 +311,7 @@ const S_RAMP = {
     gates[0].position.set(X.x + 5, 0, X.z - 6); gates[0].rotation.y = Math.PI;
     for (const gt of gates) ctx.scene.add(gt);
     const train = Sets.sunrail(3); ctx.scene.add(train);
-    const lip = X.x - 7.0, zr = X.z + 1.8;
+    const lip = X.x - 4.2, zr = X.z + 1.8;
     const rp = ramp(); rp.position.set(lip, 0, zr); ctx.scene.add(rp);
     const carrier = new THREE.Group(); ctx.scene.add(carrier);
     const R = await rider(); carrier.add(R.root);
@@ -320,7 +320,7 @@ const S_RAMP = {
     const W = (t) => (t < a ? t : t < b ? a + (t - a) * K : a + (b - a) * K + (t - b));
     const wL = W(q.launch), F = W(q.land) - wL, v = 13;
     const vy = (4.9 * F * F - 1.1) / F;
-    const wTrain = wL + 0.95; // cab crosses the road just behind him
+    const wTrain = wL + F + 0.12; // cab crosses the road right after he lands
     return {
       ctx, shutter: 0.6,
       update(lt) {
@@ -333,16 +333,15 @@ const S_RAMP = {
         const air = w > wL && w < wL + F;
         R.ride(px - lip + 40, { lean: air ? 0.2 : 0.5, stand: air ? 0.75 : 0.3 + 0.4 * seg(w, wL - 0.3, wL), look: air ? 0.2 : 0, bank: air ? -0.12 * Math.sin((w - wL) / F * Math.PI) : 0 });
         // southbound train (cab local +z) crosses the road at wTrain
-        train.position.copy(X).addScaledVector(dir, 12.7 - (w - wTrain) * 24).add(V(0, 0.35, 0)); train.rotation.y = yaw + Math.PI;
+        train.position.copy(X).addScaledVector(dir, 12.7 - (w - wTrain) * 22).add(V(0, 0.35, 0)); train.rotation.y = yaw + Math.PI;
         for (const gt of gates) gt.userData.set(lt, 1);
         ctx.focusSun(X, 300);
         // low side camera south of the crossing: he crosses left → right, the train comes at us
         const sm = seg(lt, a, b);
-        const follow = Math.max(0, px - X.x - 2) * 0.45;
-        const cp = V(X.x + 4.5 + follow - sm * 1.0, 1.35 + sm * 0.2, X.z + 12 - sm * 1.5).add(handheld(lt, 0.04)).add(shake(lt, q.land, 0.12, 0.4)).add(shake(w, wTrain + 0.3, 0.08, 0.8));
-        const back = smooth(seg(lt, q.land, q.land + 0.45)) * 0.55;
-        aim(ctx.camera, cp, V((px + 1) * (1 - back) + (X.x + 2) * back, 1.4 + py * 0.6, zr - back * 1.5), 0.02);
-        ctx.camera.fov = 62 - sm * 8 * (1 - seg(lt, b, b + 0.3)); ctx.camera.updateProjectionMatrix();
+        // low, on the rail line south of the crossing, looking up the tracks into the oncoming train
+        const cp = V(X.x + 1.8, 0.95 + sm * 0.1, X.z + 13).add(handheld(lt, 0.03)).add(shake(lt, q.land, 0.1, 0.4)).add(shake(w, wTrain + 0.35, 0.25, 0.6));
+        aim(ctx.camera, cp, V(X.x + (px - X.x) * 0.6, 1.5 + py * 0.45, zr - 1), 0.02);
+        ctx.camera.fov = 58 - sm * 6; ctx.camera.updateProjectionMatrix();
       },
       post(lt, P) { const g = P.grade.uniforms, s = seg(lt, a, a + 0.1) * (1 - seg(lt, b, b + 0.1)); g.sat.value = 1.05 + s * 0.15; g.contrast.value = 1 + s * 0.1; g.vig.value = 0.3 + s * 0.25; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.land) * 9) * 0.35; },
       hud(lt) {

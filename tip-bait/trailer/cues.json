@@ -8,12 +8,12 @@
     { "name": "dodge", "dur": 2.0, "cues": { "chat": 0.1, "bus": 0.3, "swipe": 0.6, "miss": 0.9 } },
     { "name": "crash", "dur": 4.0, "cues": { "brake": 0.45, "hit": 0.75, "land": 1.35, "freeze": 1.5, "adbtn": 1.75, "tap": 2.3, "ad": 2.45, "cont": 3.55 } },
     { "name": "storm", "dur": 1.4, "cues": { "flash": 0.2 } },
-    { "name": "ramp", "dur": 2.6, "cues": { "launch": 0.6, "land": 1.75 } },
-    { "name": "real", "dur": 3.2, "cues": { "wipe": 0.2, "wipeEnd": 1.0 } },
+    { "name": "ramp", "dur": 2.6, "cues": { "launch": 0.5, "land": 2.0 } },
+    { "name": "real", "dur": 3.2, "cues": { "wipe": -1.0, "wipeEnd": -0.2 } },
     { "name": "arrive", "dur": 3.6, "cues": { "chat": 0.3, "brake": 1.1, "stop": 1.7, "off": 2.3, "run": 2.9 } },
-    { "name": "elevator", "dur": 3.0, "cues": { "press": 0.6, "sign": 1.0, "stare": 1.9, "line": 2.15 } },
+    { "name": "elevator", "dur": 3.8, "cues": { "press": 0.55, "sign": 0.9, "signed": 1.75, "stare": 2.0, "line": 2.6 } },
     { "name": "stairs", "dur": 3.6, "cues": { "tired": 1.4, "text": 1.65, "top": 2.4, "twenty": 3.05 } },
-    { "name": "kyle", "dur": 3.4, "cues": { "open": 0.05, "sip": 1.1, "line": 1.65, "close": 3.2 } },
+    { "name": "kyle", "dur": 3.4, "cues": { "open": 0.05, "take": 0.6, "sip": 1.95, "line": 2.35, "close": 3.2 } },
     { "name": "tip", "dur": 3.2, "cues": { "notif": 0.2, "zero": 0.8, "caption": 1.5 } },
     { "name": "end", "dur": 3.0, "cues": { "logo": 0.1, "cta": 0.8, "tag": 1.3 } }
   ]
