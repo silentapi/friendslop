@@ -10,7 +10,7 @@ and pull the tip the second you hand it over. You're doing your best. They are n
 - **Core loop:** accept order → pick up → ride through real streets with live hazards → building entry (elevator / stairs) →
   hand-off → **the tip reveal** (the game's signature moment: the customer may raise, keep, or bait-and-switch).
 - **Customers:** each has a mood meter and a chat thread that escalates ("where r u" → "i can see u on the map" →
-  "????"). **Kyle** (Citi Tower, floor 20) is the recurring final boss: promises $50, always takes it back.
+  "????"). **Kyle S** (Citi Tower, floor 20) is the recurring final boss: promises $50, always takes it back. Look: 6'4" Black man, small afro, black tee, grey sweatpants, big white Jordans. In-app (order card, DMs, notifications) he is always "Kyle S".
 - **Hazards, all Orlando:** LYNX buses pulling out, SunRail crossings, tourists in mouse ears, 0%→100% Florida storms on
   brick streets, elevators out of order, closed Starbucks forcing a cross-town reroute.
 - **App:** in-game delivery app "Gobbl" (fictional, to avoid real-brand takedowns; one constant to swap). Real places
