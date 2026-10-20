@@ -6,7 +6,7 @@ export function project(camera, pos) { _p.copy(pos).project(camera); return { x:
 const inOut = (lt, t0, t1, fi = 0.1, fo = 0.12) => (lt < t0 || lt > t1 ? 0 : Math.min(seg(lt, t0, t0 + fi), 1 - seg(lt, t1 - fo, t1)));
 
 // Caption: words pop one by one (TikTok auto-caption feel). Markup: *yellow* ~red~ _green_ ; "/" = line break.
-export function caption(lt, t0, t1, text, { y = 300, size = 64, per = 0.06 } = {}) {
+export function caption(lt, t0, t1, text, { y = 300, size = 64, per = 0.03 } = {}) {
   const a = inOut(lt, t0, t1, 0.01, 0.1);
   if (!a) return '';
   const words = text.split(' ');

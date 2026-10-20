@@ -254,7 +254,7 @@ add(sfx, at('tip', 'zero'), boom(0.8), 0.6)
 add(sfx, END, boom(1.6), 1.0)
 add(sfx, END - 0.25, whoosh(0.3), 0.8)
 add(sfx, END + Q['end']['cta'], pop(), 0.7)
-add(sfx, START['end'] + CUES['shots'][-1]['dur'] - 0.45, ding(), 1.0)
+add(sfx, START['end'] + CUES['shots'][-1]['dur'] - 1.4, ding(), 1.0)
 
 # ------------------------------------------------------------------ mix: sidechain music under the big SFX moments
 duck = np.ones(N)

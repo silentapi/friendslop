@@ -27,9 +27,9 @@ const S_HOOK = {
         aim(ctx.camera, cp, V(ORANGE_X + 1.9, 1.75 + push * 0.25, 79), 0.02);
         ctx.camera.fov = 52 - push * 6; ctx.camera.updateProjectionMatrix();
       },
-      post(lt, P) { const g = P.grade.uniforms; g.flash.value = lt > q.slam ? Math.max(0, 1 - (lt - q.slam) * 9) * 0.7 : 0; g.zoom.value = lt > q.slam ? (1 - seg(lt, q.slam, q.slam + 0.4)) * 0.08 : 0; g.fade.value = 1 - seg(lt, 0, 0.12); },
+      post(lt, P) { const g = P.grade.uniforms; g.flash.value = lt > q.slam ? Math.max(0, 1 - (lt - q.slam) * 9) * 0.7 : 0; g.zoom.value = lt > q.slam ? (1 - seg(lt, q.slam, q.slam + 0.4)) * 0.08 : 0; },
       hud(lt) {
-        return HUD.caption(lt, 0.02, DUR('hook'), 'POV: Kyle promised you / a *$50* tip', { y: 290, size: 70, per: 0.07 })
+        return HUD.caption(lt, 0.02, DUR('hook'), 'POV: Kyle promised you / a *$50* tip', { y: 290, size: 70, per: 0 })
           + HUD.orderCard(lt, q.card, q.accept, { y: 470 });
       },
     };
@@ -171,7 +171,7 @@ const S_TOURISTS = {
     for (let i = 0; i < kinds.length; i++) {
       const c = await mixCharacter(`cast/${kinds[i]}.glb`, { maps: { casualsuit04: 'cast/tex/tourist_m_shirt.jpg', casualsuit02: 'cast/tex/tourist_f_shirt.jpg', casualsuit01: 'cast/tex/local_f_shirt.jpg' } });
       await c.load('walk');
-      if (kinds[i].startsWith('tourist')) c.attach('Head', Sets.mouseEars(), [0, 0.1, 0]);
+      if (kinds[i].startsWith('tourist')) c.attach('Head', Sets.mouseEars(), [0, 0.1, 0], [0, 0, 0], 1.5);
       ctx.scene.add(c.root);
       crowd.push({ c, x0: ORANGE_X + 0.9 + i * 0.6 - (i % 2) * 0.3, z: 68.6 + (i % 3) * 0.7, sp: 0.55 + (i % 3) * 0.08, ph: i * 0.37 });
     }
@@ -189,7 +189,7 @@ const S_TOURISTS = {
         ctx.camera.fov = 46; ctx.camera.updateProjectionMatrix();
       },
       hud(lt) {
-        return HUD.caption(lt, 0.1, DUR('tourists'), "it's Orlando. / there are *always* tourists 🐭", { y: 300, size: 62 })
+        return HUD.caption(lt, 0.1, DUR('tourists'), "it's Orlando. / there are *always* tourists 🐭", { y: 300, size: 62, per: 0 })
           + HUD.chat(lt, q.chat, DUR('tourists'), '??', { y: 1180 })
           + HUD.place(lt, 0.0, 1.0, 'Orange Ave & Church St', 'Downtown Orlando', { top: 1000 });
       },
@@ -283,6 +283,7 @@ const S_SUNRAIL = {
       post(lt, P) { P.grade.uniforms.zoom.value = seg(lt, q.train - 0.1, q.train + 0.15) * (1 - seg(lt, q.train + 0.5, DUR('sunrail'))) * 0.05; },
       hud(lt) {
         return HUD.place(lt, 0.0, DUR('sunrail'), 'Church Street Station', 'SunRail · since 1889')
+          + HUD.caption(lt, 0.15, DUR('sunrail'), 'SunRail said: / *not today* 🚆', { y: 420, size: 66, per: 0 })
           + HUD.chat(lt, q.chat, DUR('sunrail'), 'my ice is melting 😤', { y: 1150 })
           + HUD.gameHud({ secs: eta(START.sunrail + lt), tip: 50, a: 0.85 });
       },

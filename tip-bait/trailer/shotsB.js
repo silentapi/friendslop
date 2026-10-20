@@ -80,10 +80,10 @@ const S_ARRIVE = {
           R.walk(lt < q.run ? 'idle' : 'jog', (lt - q.off) * 1.2, { offset: startL.clone().lerp(doorL, easeIn(run) * 0.9), yaw: Math.atan2(doorL.x - startL.x, doorL.z - startL.z) * smooth(seg(lt, q.off, q.run)) });
         }
         const pan = easeInOut(seg(lt, 0.2, q.stop + 0.2));
-        const cp = CORNER.clone().add(lerpV([-17.5, 1.3, 12], [-15.5, 1.55, 9], pan)).add(handheld(lt, 0.03)).add(shake(lt, q.stop, 0.04, 0.3));
-        const tg = lerpV([p.x, 1.4, p.z], [sign.x - 3.2, 3.0, sign.z - 3.5], pan);
+        const cp = CORNER.clone().add(lerpV([-17.5, 1.3, 12], [-17.8, 1.7, -8.7], pan)).add(handheld(lt, 0.03)).add(shake(lt, q.stop, 0.04, 0.3));
+        const tg = lerpV([p.x, 1.4, p.z], [sign.x, 3.4, sign.z - 0.6], pan);
         aim(ctx.camera, cp, tg, 0.01);
-        ctx.camera.fov = 52; ctx.camera.updateProjectionMatrix();
+        ctx.camera.fov = 52 + pan * 8; ctx.camera.updateProjectionMatrix();
         ctx.focusSun(CORNER, 300);
       },
       hud(lt) {
@@ -132,11 +132,11 @@ const S_STAIRS = {
         R.C.root.updateMatrixWorld(true);
         cup.position.copy(R.C.boneWorld('RightHand')).add(V(0, -0.1, 0));
       },
-      post(lt, P) { const g = P.grade.uniforms; g.zoom.value = seg(lt, q.sign, q.sign + 0.12) * (1 - seg(lt, q.sign + 0.12, q.sign + 0.3)) * 0.05; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.cut) * 12) * 0.4; },
+      post(lt, P) { const g = P.grade.uniforms; g.zoom.value = seg(lt, q.sign, q.sign + 0.12) * (1 - seg(lt, q.sign + 0.12, q.sign + 0.3)) * 0.015; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.cut) * 12) * 0.4; },
       hud(lt) {
         const f = lt < q.cut ? 1 : Math.round(1 + 19 * easeIn(seg(lt, q.cut, DUR('stairs') - 0.15)));
         const pop = 1 + Math.max(0, 1 - (lt - (DUR('stairs') - 0.15)) * 6) * 0.25 * (f === 20 ? 1 : 0);
-        return (lt < q.cut ? HUD.caption(lt, q.sign + 0.1, q.cut, 'elevator: *out of order.* / of course.', { y: 300, size: 62, per: 0.05 }) : `<div class="floorn" style="top:420px;transform:scale(${pop});transform-origin:100% 50%;color:${f === 20 ? '#30d158' : '#fff'}"><small>FLOOR</small>${f}</div>`)
+        return (lt < q.cut ? HUD.caption(lt, q.sign + 0.1, q.cut, 'elevator: *out of order.* / of course.', { y: 300, size: 62, per: 0 }) : `<div class="floorn" style="top:420px;transform:scale(${pop});transform-origin:100% 50%;color:${f === 20 ? '#30d158' : '#fff'}"><small>FLOOR</small>${f}</div>`)
           + HUD.gameHud({ secs: eta(START.stairs + lt), tip: 50, a: 0.85 });
       },
     };
@@ -162,11 +162,11 @@ const S_KYLE = {
     const q = Q('kyle');
     const { ctx, hall, d, R, K, cup } = await hallSet();
     return {
-      ctx, fx: { ao: 0.5, bloom: 0.3 },
+      ctx, fx: { ao: 0.5, bloom: 0.12, bloomThreshold: 1.2 },
       update(lt) {
         const open = easeOut(seg(lt, q.open, q.open + 0.35)) * (1 - easeIn(seg(lt, q.close - 0.15, q.close)));
         d.leaf.rotation.y = open * 1.5;
-        hall.userData.aptLight.intensity = open * 25;
+        hall.userData.aptLight.intensity = open * 12;
         // Kyle steps into the doorway, takes it, sips, delivers the line
         K.root.position.set(2.4 - open * 0.85, 0, Sets.DOOR_Z + 0.1); K.root.rotation.y = -Math.PI / 2;
         K.pose(lt < q.line ? [['idle', 1 + lt]] : [['shrug', 0.25 + (lt - q.line) * 1.1, 1, false]]);
@@ -188,14 +188,14 @@ const S_KYLE = {
         // over the courier's right shoulder (helmet + Gobbl bag in frame)
         const push = easeInOut(seg(lt, 0, q.line));
         const cp = lerpV([-0.75, 1.72, Sets.DOOR_Z + 1.25], [-0.4, 1.7, Sets.DOOR_Z + 0.7], push).add(handheld(lt, 0.012)).add(shake(lt, q.close, 0.04, 0.4));
-        aim(ctx.camera, cp, V(1.5, 1.68, Sets.DOOR_Z - 0.05), 0.01);
-        ctx.camera.fov = 48 - push * 6; ctx.camera.updateProjectionMatrix();
+        aim(ctx.camera, cp, V(1.5, 1.68 + smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 0.15, Sets.DOOR_Z - 0.05), 0.01);
+        ctx.camera.fov = 48 - push * 6 - smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 12; ctx.camera.updateProjectionMatrix();
       },
       post(lt, P) { P.grade.uniforms.flash.value = lt > q.close ? Math.max(0, 1 - (lt - q.close) * 8) * 0.25 : 0; },
       hud(lt) {
         const kp = HUD.project(ctx.camera, K.boneWorld('Head').add(V(0, 0.35, 0)));
         const tag = lt > q.open + 0.2 && lt < q.close - 0.1 ? `<div class="loc" style="left:${kp.x - 110}px;top:${kp.y - 60}px;padding:8px 18px 8px 10px"><div class="pin" style="width:36px;height:36px;background:#f2c94c;font-size:20px">K</div><div><div class="t1" style="font-size:28px">Kyle S</div><div class="t2" style="font-size:15px">⭐ 4.1 · customer</div></div></div>` : '';
-        return tag + HUD.capbox(lt, q.line, q.close + 0.1, 'Kyle S: “kinda melted ngl”', { y: 1180, size: 46 })
+        return tag + HUD.capbox(lt, q.line, DUR('kyle'), 'Kyle S: “kinda melted ngl” 🥤', { y: 1060, size: 70 })
           + HUD.gameHud({ secs: eta(START.kyle + lt), tip: 50, a: 0.85 });
       },
     };
@@ -269,7 +269,7 @@ const S_END = {
           <div class="stores" style="transform:scale(${cta});opacity:${Math.min(1, cta)}"><div class="store"><small>COMING SOON ON</small>iPhone</div><div class="store"><small>COMING SOON ON</small>Android</div></div>
         </div>`
           + HUD.caption(lt, q.tag, DUR('end'), 'tag your *Kyle* 👇', { y: 1240, size: 60 })
-          + HUD.notif(lt, DUR('end') - 0.45, DUR('end'), 'New order from Kyle S 🙏', '$50 tip if ur fast', { y: 260 });
+          + HUD.notif(lt, DUR('end') - 1.4, DUR('end'), 'New order from Kyle S 🙏', '$50 tip if ur fast 😉', { y: 160 });
       },
     };
   },
