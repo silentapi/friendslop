@@ -9,6 +9,8 @@ import * as Sets from '../engine/sets.js';
 import { exterior, along, eta, DUR, Q, START, Wd } from './kit.js';
 
 const CORNER = V(CITI.x0, 0, CITI.z1); // Church St & Lake Ave
+// Kyle S: black tee, grey sweats, white sneakers
+const KYLE_LOOK = { maps: { casualsuit06: 'cast/tex/kyle_fit.jpg', shoes05: 'cast/tex/kyle_shoes.jpg' } };
 async function citiSet(opts = {}) {
   const ctx = await exterior({ center: [-20, 25], radius: 650, shadowBox: 45, dressR: 0, ...opts });
   const T = await citiTower(ctx);
@@ -149,7 +151,7 @@ async function hallSet() {
   const d = hall.userData.doors[2004];
   const R = await rider({ cup: false }); R.bike.visible = false; ctx.scene.add(R.root);
   R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.y = Math.PI / 2;
-  const K = await mixCharacter('cast/kyle.glb', { maps: { casualsuit06: 'cast/tex/kyle_shirt.jpg' } }); await K.load('av-leaning-wall', 'taunt', 'idle', 'nod', 'av-chilling'); ctx.scene.add(K.root);
+  const K = await mixCharacter('cast/kyle.glb', KYLE_LOOK); await K.load('idle', 'shrug'); ctx.scene.add(K.root);
   const cup = coldCup(1); ctx.scene.add(cup);
   return { ctx, hall, d, R, K, cup };
 }
@@ -166,7 +168,7 @@ const S_KYLE = {
         hall.userData.aptLight.intensity = open * 25;
         // Kyle steps into the doorway, takes it, sips, delivers the line
         K.root.position.set(2.4 - open * 0.85, 0, Sets.DOOR_Z + 0.1); K.root.rotation.y = -Math.PI / 2;
-        K.pose([[lt < q.line ? 'idle' : 'av-chilling', 1 + lt]]);
+        K.pose(lt < q.line ? [['idle', 1 + lt]] : [['shrug', 0.25 + (lt - q.line) * 1.1, 1, false]]);
         R.walk('idle', 2 + lt, { offset: V(0, 0, 0), yaw: 0 });
         const courierHand = R.C.boneWorld('RightHand');
         // courier holds the cup out
@@ -185,14 +187,14 @@ const S_KYLE = {
         // over the courier's right shoulder (helmet + Gobbl bag in frame)
         const push = easeInOut(seg(lt, 0, q.line));
         const cp = lerpV([-0.75, 1.72, Sets.DOOR_Z + 1.25], [-0.4, 1.7, Sets.DOOR_Z + 0.7], push).add(handheld(lt, 0.012)).add(shake(lt, q.close, 0.04, 0.4));
-        aim(ctx.camera, cp, V(1.5, 1.55, Sets.DOOR_Z - 0.05), 0.01);
+        aim(ctx.camera, cp, V(1.5, 1.68, Sets.DOOR_Z - 0.05), 0.01);
         ctx.camera.fov = 48 - push * 6; ctx.camera.updateProjectionMatrix();
       },
       post(lt, P) { P.grade.uniforms.flash.value = lt > q.close ? Math.max(0, 1 - (lt - q.close) * 8) * 0.25 : 0; },
       hud(lt) {
         const kp = HUD.project(ctx.camera, K.boneWorld('Head').add(V(0, 0.35, 0)));
-        const tag = lt > q.open + 0.2 && lt < q.close - 0.1 ? `<div class="loc" style="left:${kp.x - 110}px;top:${kp.y - 60}px;padding:8px 18px 8px 10px"><div class="pin" style="width:36px;height:36px;background:#f2c94c;font-size:20px">K</div><div><div class="t1" style="font-size:28px">Kyle</div><div class="t2" style="font-size:15px">⭐ 4.1 · customer</div></div></div>` : '';
-        return tag + HUD.capbox(lt, q.line, q.close + 0.1, 'Kyle: “kinda melted ngl”', { y: 1180, size: 46 })
+        const tag = lt > q.open + 0.2 && lt < q.close - 0.1 ? `<div class="loc" style="left:${kp.x - 110}px;top:${kp.y - 60}px;padding:8px 18px 8px 10px"><div class="pin" style="width:36px;height:36px;background:#f2c94c;font-size:20px">K</div><div><div class="t1" style="font-size:28px">Kyle S</div><div class="t2" style="font-size:15px">⭐ 4.1 · customer</div></div></div>` : '';
+        return tag + HUD.capbox(lt, q.line, q.close + 0.1, 'Kyle S: “kinda melted ngl”', { y: 1180, size: 46 })
           + HUD.gameHud({ secs: eta(START.kyle + lt), tip: 50, a: 0.85 });
       },
     };
@@ -229,7 +231,7 @@ const S_TIP = {
       },
       post(lt, P) { P.grade.uniforms.sat.value = 1.06 - seg(lt, q.zero, q.zero + 0.3) * 0.45; },
       hud(lt) {
-        return HUD.notif(lt, q.notif, DUR('tip'), 'Kyle changed your tip', 'thanks for the delivery! 🙂', { y: 260 })
+        return HUD.notif(lt, q.notif, DUR('tip'), 'Kyle S changed your tip', 'thanks for the delivery! 🙂', { y: 260 })
           + HUD.tipChange(lt, q.zero, { y: 560 })
           + HUD.caption(lt, q.caption, DUR('tip'), 'every. single. *time.*', { y: 1060, size: 76, per: 0.18 })
           + HUD.gameHud({ secs: 4, tip: lt > q.zero ? 0 : 50, a: 0.85 });
@@ -265,7 +267,7 @@ const S_END = {
           <div class="stores" style="transform:scale(${cta});opacity:${Math.min(1, cta)}"><div class="store"><small>COMING SOON ON</small>iPhone</div><div class="store"><small>COMING SOON ON</small>Android</div></div>
         </div>`
           + HUD.caption(lt, q.tag, DUR('end'), 'tag your *Kyle* 👇', { y: 1240, size: 60 })
-          + HUD.notif(lt, DUR('end') - 0.45, DUR('end'), 'New order from Kyle 🙏', '$50 tip if ur fast', { y: 260 });
+          + HUD.notif(lt, DUR('end') - 0.45, DUR('end'), 'New order from Kyle S 🙏', '$50 tip if ur fast', { y: 260 });
       },
     };
   },

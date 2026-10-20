@@ -37,12 +37,12 @@ export function orderCard(lt, t0, accept, { y = 760, hide = 1e9 } = {}) {
   const done = lt > accept;
   return `<div class="order" style="top:${y + (1 - k) * 160}px;opacity:${Math.min(1, k * 1.6)};transform:scale(${0.88 + 0.12 * k})">
     <div class="hd"><div class="brand">gobbl</div><div class="new">NEW ORDER</div></div>
-    <div class="bd"><div class="who"><div class="av">K</div><div class="nm">Kyle<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
+    <div class="bd"><div class="who"><div class="av">K</div><div class="nm">Kyle S<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
     <div class="tip"><b>$50.00</b><span>TIP 🤑</span></div>
     <div class="note">“1 iced caramel macchiato. if ur fast 🙏”</div>
     <div class="btn"><div class="fill" style="width:${f * 100}%"></div><span>${done ? 'ACCEPTED ✓' : 'HOLD TO ACCEPT'}</span></div></div></div>`;
 }
-export function chat(lt, t0, t1, text, { y = 1180, who = 'Kyle' } = {}) {
+export function chat(lt, t0, t1, text, { y = 1180, who = 'Kyle S' } = {}) {
   const a = inOut(lt, t0, t1, 0.05, 0.12); if (!a) return '';
   const k = easeBack(seg(lt, t0, t0 + 0.25));
   return `<div class="chat" style="top:${y}px;opacity:${a};transform:scale(${0.6 + 0.4 * k})"><div class="av">K</div><div class="bub"><small>${who.toUpperCase()} · GOBBL</small>${text}</div></div>`;

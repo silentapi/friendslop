@@ -53,10 +53,12 @@ SHOTS.push(still('kyle', async () => {
   const ctx = await setup({ sky: 'golden', sunAz: 255, sunEl: 16, shadowBox: 6, fov: 30 });
   const ground = mesh(new THREE.PlaneGeometry(60, 60), pbr('concrete_pavement', { world: 2.5 }), { cast: false });
   ground.rotation.x = -Math.PI / 2; ctx.scene.add(ground);
-  const k = await mixCharacter('cast/kyle.glb'); await k.load('taunt', 'av-leaning-wall'); k.root.position.set(-0.45, 0, 0); ctx.scene.add(k.root);
-  const k2 = await mixCharacter('cast/kyle.glb'); k2.root.position.set(0.55, 0, 0); ctx.scene.add(k2.root); await k2.load('av-call-me');
+  const LOOK = { maps: { casualsuit06: 'cast/tex/kyle_fit.jpg', shoes05: 'cast/tex/kyle_shoes.jpg' } };
+  const k = await mixCharacter('cast/kyle.glb', LOOK); await k.load('taunt', 'av-leaning-wall'); k.root.position.set(-0.45, 0, 0); ctx.scene.add(k.root);
+  const k2 = await mixCharacter('cast/courier.glb'); k2.root.position.set(0.55, 0, 0); ctx.scene.add(k2.root); await k2.load('av-call-me');
+  const bb = new THREE.Box3().setFromObject(k.root); console.warn('kyle height', (bb.max.y - bb.min.y).toFixed(3));
   ctx.focusSun(V(0, 1, 0), 60);
-  return { ctx, update(t) { k.pose([['taunt', 1.2 + t]]); k2.pose([['av-call-me', 3 + t]]); aim(ctx.camera, V(0.1, 1.45, 4.4), V(0.05, 1.05, 0)); } };
+  return { ctx, update(t) { k.pose([['taunt', 1.2 + t]]); k2.pose([['av-call-me', 3 + t]]); aim(ctx.camera, V(0.1, 1.3, 5.6), V(0.05, 1.0, 0)); } };
 }));
 
 SHOTS.push(still('cast', async () => {

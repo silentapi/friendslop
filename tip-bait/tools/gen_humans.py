@@ -22,8 +22,9 @@ CAST = {
     # name: macros, skin, hair, eyebrows, clothes
     'courier': dict(m=dict(gender=1.0, age=0.45, muscle=0.6, weight=0.45, height=0.55, proportions=0.6, race=dict(african=0.55, caucasian=0.25, asian=0.2)),
                     skin='young_african_male', hair='short04', brows='eyebrow001', clothes=['male_casualsuit05', 'shoes06']),
-    'kyle': dict(m=dict(gender=1.0, age=0.42, muscle=0.35, weight=0.68, height=0.5, proportions=0.45, race=dict(caucasian=0.9, african=0.05, asian=0.05)),
-                 skin='young_caucasian_male', hair='short02', brows='eyebrow006', clothes=['male_casualsuit06', 'shoes04']),
+    # Kyle S: 6'4", small afro, black tee, grey sweats, big white sneakers (tee/sweats/shoes recoloured in cast/tex)
+    'kyle': dict(m=dict(gender=1.0, age=0.42, muscle=0.62, weight=0.55, height=0.67, proportions=0.55, race=dict(african=0.95, caucasian=0.03, asian=0.02)),
+                 skin='young_african_male', hair='afro01', brows='eyebrow001', clothes=['male_casualsuit06', 'shoes05']),
     'tourist_m': dict(m=dict(gender=1.0, age=0.6, muscle=0.4, weight=0.75, height=0.45, proportions=0.4, race=dict(caucasian=0.8, african=0.1, asian=0.1)),
                       skin='middleage_caucasian_male', hair='short01', brows='eyebrow003', clothes=['male_casualsuit04', 'shoes05']),
     'tourist_f': dict(m=dict(gender=0.0, age=0.5, muscle=0.4, weight=0.6, height=0.45, proportions=0.5, race=dict(caucasian=0.5, asian=0.3, african=0.2)),
