@@ -82,6 +82,10 @@ export function lobby(ctx) {
   const sg = plane(ooo, 0.62, 0.46, { rough: 0.9 }); sg.position.set(0, 1.55, -2.78); sg.rotation.z = 0.05; g.add(sg);
   for (let i = -3; i <= 3; i++) box(0.2, 0.02, 0.2, emissive(0xfff2dc, 6), i * 2.2, 4.09, -1, g);
   const sp = new THREE.SpotLight(0xffe2c0, 30, 12, 0.9, 0.6, 1.5); sp.position.set(0, 4, 1.5); sp.target.position.set(0, 1, -3); g.add(sp, sp.target);
+  // back wall: lobby entrance glazing onto Lake Ave (daylight)
+  box(20, 4.2, 0.2, wall, 0, 2.1, 4.2, g);
+  const day = emissive(0xdfe9f2, 1.6);
+  for (let i = -1; i <= 1; i++) { box(2.4, 3.0, 0.05, day, i * 2.8, 1.6, 4.08, g); box(0.12, 3.2, 0.12, mat(0x16171b, { metalness: 0.6, roughness: 0.4 }), i * 2.8 - 1.26, 1.6, 4.05, g); }
   g.userData.sign = V(0, 1.55, -2.78);
   return g;
 }

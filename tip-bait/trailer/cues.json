@@ -3,17 +3,18 @@
   "bpm": 150,
   "shots": [
     { "name": "hook", "dur": 3.2, "cues": { "card": 0.0, "accept": 2.0, "slam": 2.4 } },
-    { "name": "closed", "dur": 2.0, "cues": { "brake": 0.4, "sign": 0.55, "reroute": 1.1 } },
-    { "name": "boost", "dur": 2.4, "cues": { "chat": 0.15, "pad": 0.8, "kick": 0.95 } },
-    { "name": "dodge", "dur": 2.4, "cues": { "chat": 0.15, "bus": 0.4, "swipe": 0.75, "miss": 1.05 } },
+    { "name": "closed", "dur": 2.4, "cues": { "brake": 0.4, "sign": 0.7, "reroute": 1.5 } },
+    { "name": "boost", "dur": 2.2, "cues": { "pad": 0.75, "kick": 0.9 } },
+    { "name": "dodge", "dur": 2.0, "cues": { "chat": 0.1, "bus": 0.3, "swipe": 0.6, "miss": 0.9 } },
     { "name": "crash", "dur": 4.0, "cues": { "brake": 0.45, "hit": 0.75, "land": 1.35, "freeze": 1.5, "adbtn": 1.75, "tap": 2.3, "ad": 2.45, "cont": 3.55 } },
-    { "name": "storm", "dur": 1.6, "cues": { "flash": 0.2 } },
-    { "name": "ramp", "dur": 2.6, "cues": { "launch": 0.6, "apex": 1.15, "land": 1.75, "train": 1.85 } },
-    { "name": "real", "dur": 2.8, "cues": { "wipe": 0.2, "wipeEnd": 1.0 } },
-    { "name": "arrive", "dur": 2.8, "cues": { "chat": 0.3, "brake": 0.9, "stop": 1.4, "off": 1.8, "run": 2.2 } },
-    { "name": "stairs", "dur": 2.4, "cues": { "ding": 0.1, "sign": 0.3, "cut": 1.2 } },
-    { "name": "kyle", "dur": 3.0, "cues": { "open": 0.2, "sip": 0.75, "line": 1.25, "close": 2.85 } },
-    { "name": "tip", "dur": 2.8, "cues": { "notif": 0.15, "zero": 0.7, "caption": 1.2 } },
+    { "name": "storm", "dur": 1.4, "cues": { "flash": 0.2 } },
+    { "name": "ramp", "dur": 2.6, "cues": { "launch": 0.6, "land": 1.75 } },
+    { "name": "real", "dur": 3.2, "cues": { "wipe": 0.2, "wipeEnd": 1.0 } },
+    { "name": "arrive", "dur": 3.6, "cues": { "chat": 0.3, "brake": 1.1, "stop": 1.7, "off": 2.3, "run": 2.9 } },
+    { "name": "elevator", "dur": 3.0, "cues": { "press": 0.6, "sign": 1.0, "stare": 1.9, "line": 2.15 } },
+    { "name": "stairs", "dur": 3.6, "cues": { "tired": 1.4, "text": 1.65, "top": 2.4, "twenty": 3.05 } },
+    { "name": "kyle", "dur": 3.4, "cues": { "open": 0.25, "sip": 1.2, "line": 1.75, "close": 3.2 } },
+    { "name": "tip", "dur": 3.2, "cues": { "notif": 0.2, "zero": 0.8, "caption": 1.5 } },
     { "name": "end", "dur": 3.0, "cues": { "logo": 0.1, "cta": 0.8, "tag": 1.3 } }
   ]
 }

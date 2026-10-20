@@ -29,7 +29,7 @@ export function along(pts, s) {
 export const yawTo = (from, to) => Math.atan2(to.x - from.x, to.z - from.z);
 // Order countdown shown in the game HUD across gameplay shots (game time runs fast).
 export function eta(t) {
-  const keys = [[START.hook + Q('hook').accept, 600], [START.closed, 560], [START.boost, 420], [START.dodge, 380], [START.crash, 330], [START.storm, 210], [START.ramp, 150], [START.arrive, 41], [START.stairs, 25], [START.kyle, 4]];
+  const keys = [[START.hook + Q('hook').accept, 600], [START.closed, 560], [START.boost, 420], [START.dodge, 380], [START.crash, 330], [START.storm, 210], [START.ramp, 150], [START.arrive, 41], [START.elevator, 30], [START.stairs, 26], [START.kyle, 4]];
   if (t <= keys[0][0]) return keys[0][1];
   for (let i = 0; i < keys.length - 1; i++) if (t < keys[i + 1][0]) return keys[i][1] + (keys[i + 1][1] - keys[i][1]) * (t - keys[i][0]) / (keys[i + 1][0] - keys[i][0]);
   return keys[keys.length - 1][1];

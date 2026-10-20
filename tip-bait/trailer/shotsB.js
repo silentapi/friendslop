@@ -1,6 +1,6 @@
 // Shots 8–13: REAL vs IN-GAME Citi Tower → pull up at the CITITOWER 101 canopy → out of order / 20 floors →
 // Kyle → the tip → end card over Lake Eola.
-import { THREE, V, W, H, aim, seg, lerp, lerpV, easeIn, easeOut, easeInOut, easeBack, smooth, handheld, shake, spring, mat, box, setup, ASSETS } from '../engine/core.js';
+import { THREE, V, W, H, aim, seg, lerp, lerpV, easeIn, easeOut, easeInOut, easeBack, smooth, handheld, shake, spring, mat, box, cyl, setup, ASSETS } from '../engine/core.js';
 import * as HUD from '../engine/hud.js';
 import { rider, coldCup, ik2 } from '../engine/rider.js';
 import { mixCharacter } from '../engine/chars.js';
@@ -95,48 +95,107 @@ const S_ARRIVE = {
   },
 };
 
-// ---------------------------------------------------------------- 10. STAIRS: elevator out of order → 20 floors
+// ---------------------------------------------------------------- 10. ELEVATOR: press the button … OUT OF ORDER … the stare
+const S_ELEVATOR = {
+  name: 'elevator', dur: DUR('elevator'),
+  async build() {
+    const q = Q('elevator');
+    const ctx = await setup({ sky: 'golden', sunEl: 30, shadowBox: 8, fov: 50 });
+    ctx.scene.background = new THREE.Color(0x0b0b0c); ctx.sun.intensity = 0.2;
+    const lob = Sets.lobby(ctx); ctx.scene.add(lob);
+    // call button panel right of the middle car
+    box(0.12, 0.3, 0.04, new THREE.MeshPhysicalMaterial({ color: 0xb8bcc4, metalness: 1, roughness: 0.25 }), 1.25, 1.2, -2.8, lob);
+    const btn = cyl(0.025, 0.025, 0.02, mat(0x222222, { emissive: 0xff9a3a, emissiveIntensity: 0 }), 16, 1.25, 1.22, -2.78, lob); btn.rotation.x = Math.PI / 2;
+    const R = await rider({ cup: false }); R.bike.visible = false; R.helm.visible = false; ctx.scene.add(R.root);
+    const cup = coldCup(1); ctx.scene.add(cup);
+    const stand = V(0.55, 0, -1.25);
+    return {
+      ctx, fx: { ao: 0.5, bloom: 0.2 },
+      update(lt) {
+        // jog in, stop, press, wait … then the slow turn to camera
+        const k = smooth(seg(lt, 0, q.press - 0.1));
+        R.root.position.copy(V(3.4, 0, -0.6).lerp(stand, k)); R.root.rotation.y = Math.PI;
+        R.walk(lt < q.press - 0.15 ? 'jog' : 'idle', lt * 1.3, { offset: V(0, 0, 0), yaw: lt < q.press - 0.15 ? -0.5 : 0 });
+        const press = smooth(seg(lt, q.press - 0.2, q.press)) * (1 - smooth(seg(lt, q.press + 0.15, q.press + 0.45)));
+        if (press > 0) { const h = R.C.boneWorld('RightHand'); ik2(R.C.bone('RightArm'), R.C.bone('RightForeArm'), R.C.bone('RightHand'), h.lerp(V(1.25, 1.22, -2.74), press), R.root.localToWorld(V(-0.5, 0.6, -0.6))); }
+        btn.material.emissiveIntensity = lt > q.press ? 2.5 : 0;
+        if (lt > q.stare) { const hd = R.C.bone('Head'); hd.rotateX(-0.12 * smooth(seg(lt, q.stare + 0.2, q.stare + 0.6))); hd.updateMatrixWorld(true); }
+        R.C.root.updateMatrixWorld(true);
+        cup.position.copy(R.C.boneWorld('LeftHand')).add(V(0, -0.1, 0));
+        if (lt < q.sign) {          // A: wide, behind him, the three cars
+          const cp = V(2.9, 1.65, 2.6).add(handheld(lt, 0.012));
+          aim(ctx.camera, cp, V(0.4, 1.35, -2.6), 0); ctx.camera.fov = 50;
+        } else if (lt < q.stare) {  // B: slow push on the sign
+          const z = easeInOut(seg(lt, q.sign, q.stare));
+          aim(ctx.camera, lerpV([0.15, 1.6, -1.25], [0.05, 1.57, -1.75], z).add(handheld(lt, 0.004)), V(0, 1.55, -2.78), 0.04); ctx.camera.fov = 42;
+        } else {                    // C: from the doors, he turns to us. silence.
+          const z = easeInOut(seg(lt, q.stare, DUR('elevator')));
+          aim(ctx.camera, lerpV([0.55, 1.5, -2.72], [0.55, 1.52, -2.62], z).add(handheld(lt, 0.003)), V(0.55, 1.45, -1.25), 0); ctx.camera.fov = 56 - z * 8;
+        }
+        ctx.camera.updateProjectionMatrix();
+      },
+      hud(lt) {
+        return HUD.caption(lt, q.sign + 0.25, q.stare, 'elevator: *out of order.*', { y: 360, size: 66, per: 0 })
+          + HUD.caption(lt, q.line, DUR('elevator'), '…20 floors.', { y: 360, size: 74, per: 0 })
+          + HUD.gameHud({ secs: eta(START.elevator + lt), tip: 50, a: lt < q.sign ? 0.85 : 0 });
+      },
+    };
+  },
+};
+
+// ---------------------------------------------------------------- 11. STAIRS: the climb, the collapse at 14, Kyle texts, the last flight to 20
 const S_STAIRS = {
   name: 'stairs', dur: DUR('stairs'),
   async build() {
     const q = Q('stairs');
     const ctx = await setup({ sky: 'golden', sunEl: 30, shadowBox: 8, fov: 50 });
     ctx.scene.background = new THREE.Color(0x0b0b0c); ctx.sun.intensity = 0.2;
-    const lob = Sets.lobby(ctx); ctx.scene.add(lob);
-    const well = Sets.stairwell(ctx, 21); well.position.set(60, 0, 0); ctx.scene.add(well);
-    const R = await rider({ cup: false }); R.bike.visible = false; ctx.scene.add(R.root);
+    const well = Sets.stairwell(ctx, 21); ctx.scene.add(well);
+    const R = await rider({ cup: false }); R.bike.visible = false; R.helm.visible = false; ctx.scene.add(R.root);
     const cup = coldCup(1); ctx.scene.add(cup);
+    const FH = Sets.FH;
     return {
       ctx, fx: { ao: 0.5, bloom: 0.25 },
       update(lt) {
-        if (lt < q.cut) {
-          R.root.position.set(0.9, 0, -1.6); R.root.rotation.y = 0;
-          R.walk('shrug', 0.4 + seg(lt, q.sign, q.cut) * 1.6, { offset: V(0, 0, 0), yaw: Math.PI, loop: false });
-          const z = easeIn(seg(lt, q.sign - 0.05, q.sign + 0.12));
-          const cp = lerpV([1.8, 1.55, 1.6], [0.3, 1.55, -1.1], z).add(handheld(lt, 0.015)).add(shake(lt, q.sign + 0.12, 0.03, 0.3));
-          aim(ctx.camera, cp, lerpV([0.5, 1.45, -2.8], [0, 1.55, -2.8], z), z * 0.06);
-          ctx.camera.fov = 52 - z * 12;
-        } else {
-          const u = seg(lt, q.cut, DUR('stairs'));
-          const s = 34 + u * 0.95;
+        if (lt < q.tired) {         // A: looking down the flight, he charges up at us
+          const u = seg(lt, 0, q.tired), s = 10 + u * 1.0;
           const { p, dir } = Sets.stairPath(s);
-          R.root.position.copy(p).add(V(60, 0.04, 0)); R.root.rotation.y = Math.atan2(dir.x, dir.z);
-          R.walk('jog', lt * 1.5, { offset: V(0, 0, 0), yaw: 0 });
-          const rp = R.root.position;
-          // looking up the stairwell core at him
-          const top = Sets.stairPath(35).p.y;
-          aim(ctx.camera, V(60 - 1.0, top + 1.75, -2.6).add(handheld(lt * 2, 0.03)), rp.clone().add(V(0, 1.0, 0)), 0.02);
-          ctx.camera.fov = 64;
+          R.root.position.copy(p).add(V(0, 0.04, 0)); R.root.rotation.y = Math.atan2(dir.x, dir.z);
+          R.walk('jog', lt * 1.6, { offset: V(0, 0, 0), yaw: 0 });
+          const top = Sets.stairPath(11).p.y;
+          aim(ctx.camera, V(-1.0, top + 1.75, -2.6).add(handheld(lt * 2, 0.03)), R.root.position.clone().add(V(0, 1.0, 0)), 0.02); ctx.camera.fov = 64;
+        } else if (lt < q.top) {    // B: floor 14 landing, doubled over
+          const y0 = 13 * FH;
+          R.root.position.set(0.9, y0, 2.15); R.root.rotation.y = -Math.PI / 2 + 0.45;
+          R.walk('idle', 1 + lt * 0.5, { offset: V(0, -0.06, 0), yaw: 0 });
+          const heave = 0.05 * Math.sin(lt * 10);
+          for (const [n, a] of [['Spine', 0.55 + heave], ['Spine1', 0.4], ['Spine2', 0.25]]) { const b = R.C.bone(n); b.rotateX(a); b.updateMatrixWorld(true); }
+          const hd = R.C.bone('Head'); hd.rotateX(-0.55); hd.updateMatrixWorld(true);
+          for (const [side, sx] of [['Left', 1], ['Right', -1]]) {
+            const knee = R.root.localToWorld(V(sx * 0.13, 0.55, 0.2));
+            ik2(R.C.bone(side + 'Arm'), R.C.bone(side + 'ForeArm'), R.C.bone(side + 'Hand'), knee, R.root.localToWorld(V(sx * 0.7, 0.9, -0.2)));
+          }
+          aim(ctx.camera, V(-1.3, y0 + 1.0, 2.75).add(handheld(lt, 0.01)), V(1.5, y0 + 1.15, 2.1), 0.02); ctx.camera.fov = 56;
+        } else {                    // C: the last flight up to 20
+          const u = seg(lt, q.top, q.twenty), s = 37 + u * 0.999;
+          const { p, dir } = Sets.stairPath(s);
+          R.root.position.copy(p).add(V(0, 0.04, 0)); R.root.rotation.y = Math.atan2(dir.x, dir.z);
+          R.walk(lt < q.twenty ? 'jog' : 'idle', lt * 1.5, { offset: V(0, 0, 0), yaw: 0 });
+          const y0 = 19 * FH;
+          aim(ctx.camera, V(-1.2, y0 + 1.7, 2.6).add(handheld(lt, 0.012)), V(1.6, y0 + 0.9, 0.6), 0.02); ctx.camera.fov = 60;
         }
         ctx.camera.updateProjectionMatrix();
         R.C.root.updateMatrixWorld(true);
         cup.position.copy(R.C.boneWorld('RightHand')).add(V(0, -0.1, 0));
       },
-      post(lt, P) { const g = P.grade.uniforms; g.zoom.value = seg(lt, q.sign, q.sign + 0.12) * (1 - seg(lt, q.sign + 0.12, q.sign + 0.3)) * 0.015; g.flash.value = Math.max(0, 1 - Math.abs(lt - q.cut) * 12) * 0.4; },
+      post(lt, P) { P.grade.uniforms.flash.value = Math.max(0, 1 - Math.abs(lt - q.twenty) * 8) * 0.25; },
       hud(lt) {
-        const f = lt < q.cut ? 1 : Math.round(1 + 19 * easeIn(seg(lt, q.cut, DUR('stairs') - 0.15)));
-        const pop = 1 + Math.max(0, 1 - (lt - (DUR('stairs') - 0.15)) * 6) * 0.25 * (f === 20 ? 1 : 0);
-        return (lt < q.cut ? HUD.caption(lt, q.sign + 0.1, q.cut, 'elevator: *out of order.* / of course.', { y: 300, size: 62, per: 0 }) : `<div class="floorn" style="top:420px;transform:scale(${pop});transform-origin:100% 50%;color:${f === 20 ? '#30d158' : '#fff'}"><small>FLOOR</small>${f}</div>`)
+        const f = lt < q.tired ? Math.round(1 + 10 * seg(lt, 0, q.tired)) : lt < q.top ? 14 : Math.min(20, 15 + Math.floor(seg(lt, q.top, q.twenty) * 6));
+        const pop = 1 + Math.max(0, 1 - Math.abs(lt - q.twenty) * 5) * 0.3 * (f === 20 ? 1 : 0);
+        const shakeX = lt > q.tired && lt < q.top ? Math.sin(lt * 50) * 4 : 0;
+        return `<div class="floorn" style="top:420px;transform:translateX(${shakeX}px) scale(${pop});transform-origin:100% 50%;color:${f === 20 ? '#30d158' : '#fff'}"><small>FLOOR</small>${f}</div>`
+          + HUD.chat(lt, q.text, q.top + 0.3, 'hello??', { y: 1150 })
+          + HUD.chat(lt, q.text + 0.35, q.top + 0.3, 'u coming or what', { y: 1300 })
           + HUD.gameHud({ secs: eta(START.stairs + lt), tip: 50, a: 0.85 });
       },
     };
@@ -149,7 +208,7 @@ async function hallSet() {
   ctx.scene.background = new THREE.Color(0x0b0b0c); ctx.sun.intensity = 0.0; ctx.scene.environmentIntensity = 0.5;
   const hall = Sets.hallway(ctx); ctx.scene.add(hall);
   const d = hall.userData.doors[2004];
-  const R = await rider({ cup: false }); R.bike.visible = false; ctx.scene.add(R.root);
+  const R = await rider({ cup: false }); R.bike.visible = false; R.helm.visible = false; ctx.scene.add(R.root);
   R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.y = Math.PI / 2;
   const K = await mixCharacter('cast/kyle.glb', KYLE_LOOK); await K.load('idle', 'shrug'); ctx.scene.add(K.root);
   for (const f of ['LeftFoot', 'RightFoot']) K.bone(f).scale.setScalar(1.18); // big white Jordans
@@ -183,8 +242,8 @@ const S_KYLE = {
         cup.visible = lt < q.close - 0.1;
         // over the courier's right shoulder (helmet + Gobbl bag in frame)
         const push = easeInOut(seg(lt, 0, q.line));
-        const cp = lerpV([-0.75, 1.72, Sets.DOOR_Z + 1.25], [-0.4, 1.7, Sets.DOOR_Z + 0.7], push).add(handheld(lt, 0.012)).add(shake(lt, q.close, 0.04, 0.4));
-        aim(ctx.camera, cp, V(1.5, 1.68 + smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 0.15, Sets.DOOR_Z - 0.05), 0.01);
+        const cp = lerpV([-0.75, 1.5, Sets.DOOR_Z + 1.25], [-0.4, 1.48, Sets.DOOR_Z + 0.7], push).add(handheld(lt, 0.012)).add(shake(lt, q.close, 0.04, 0.4));
+        aim(ctx.camera, cp, V(1.5, 1.78 + smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 0.1, Sets.DOOR_Z - 0.05), 0.01);
         ctx.camera.fov = 48 - push * 6 - smooth(seg(lt, q.line - 0.1, q.line + 0.2)) * 12; ctx.camera.updateProjectionMatrix();
       },
       post(lt, P) { P.grade.uniforms.flash.value = lt > q.close ? Math.max(0, 1 - (lt - q.close) * 8) * 0.25 : 0; },
@@ -229,8 +288,8 @@ const S_TIP = {
       post(lt, P) { P.grade.uniforms.sat.value = 1.06 - seg(lt, q.zero, q.zero + 0.3) * 0.45; },
       hud(lt) {
         return HUD.notif(lt, q.notif, DUR('tip'), 'Kyle S changed your tip', 'thanks for the delivery! 🙂', { y: 260 })
-          + HUD.tipChange(lt, q.zero, { y: 560 })
-          + HUD.caption(lt, q.caption, DUR('tip'), 'every. single. *time.*', { y: 1060, size: 76, per: 0.18 })
+          + HUD.tipChange(lt, q.zero, { y: 1120 })
+          + HUD.caption(lt, q.caption, DUR('tip'), 'every. single. *time.*', { y: 1470, size: 76, per: 0.25 })
           + HUD.gameHud({ secs: 4, tip: lt > q.zero ? 0 : 50, a: 0.85 });
       },
     };
@@ -271,4 +330,4 @@ const S_END = {
   },
 };
 
-export const SHOTS_B = [S_REAL, S_ARRIVE, S_STAIRS, S_KYLE, S_TIP, S_END];
+export const SHOTS_B = [S_REAL, S_ARRIVE, S_ELEVATOR, S_STAIRS, S_KYLE, S_TIP, S_END];

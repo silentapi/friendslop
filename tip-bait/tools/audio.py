@@ -77,7 +77,7 @@ RIFF = [78, None, 78, 81, None, 78, None, 76, 78, None, 73, None, 76, None, 74, 
 BASS = [(0, 42, 1.5, None), (1.5, 42, 0.5, None), (2.0, 45, 1.0, None), (3.0, 40, 1.0, 42),
         (4, 42, 1.5, None), (5.5, 42, 0.5, None), (6.0, 47, 1.0, None), (7.0, 45, 1.0, 40)]
 DROP = at('hook', 'slam')
-SCRATCH = at('stairs', 'sign')
+SCRATCH = at('elevator', 'sign')
 KYLE = START['kyle']; ZERO = at('tip', 'zero'); END = START['end']
 
 CRASH_STOP = (at('crash', 'freeze'), at('crash', 'cont'))
@@ -87,7 +87,8 @@ def section(t):
     if CRASH_STOP[0] <= t < CRASH_STOP[1]: return 'stop'
     if SLOWMO[0] <= t < SLOWMO[1]: return 'half'
     if START['real'] <= t < START['real'] + 0.8: return 'half'
-    if SCRATCH <= t < SCRATCH + 0.42: return 'stop'
+    if SCRATCH <= t < START['stairs']: return 'stop'
+    if at('stairs', 'tired') <= t < at('stairs', 'top'): return 'half'
     if KYLE <= t < ZERO: return 'tense'
     if ZERO <= t < END: return 'sad'
     return 'full'
@@ -270,9 +271,28 @@ add(sfx, at('arrive', 'chat'), pop(), 0.8)
 add(sfx, at('arrive', 'stop') - 0.25, skid(0.5), 0.9)
 add(sfx, at('arrive', 'run'), steps(0.5, 7), 0.6)
 # stairs
-add(sfx, at('stairs', 'ding'), ding(880, 698.5), 0.6)
-add(sfx, at('stairs', 'sign') - 0.05, scratch(), 1.0)
-add(sfx, at('stairs', 'cut'), steps(START['kyle'] - at('stairs', 'cut'), 8), 0.8)
+# elevator: jog in, beep, the sign (scratch + bwomp), silence, the stare
+add(sfx, START['elevator'], steps(at('elevator', 'press') - 0.15, 7), 0.6)
+add(sfx, at('elevator', 'press'), ding(1760, 1760), 0.35)
+add(sfx, at('elevator', 'sign') - 0.05, scratch(), 1.0)
+d = 1.1; x = tt(d); f = 220 * np.exp(-x * 0.9)
+add(sfx, at('elevator', 'sign') + 0.1, np.tanh(2 * np.sin(2 * np.pi * np.cumsum(f) / SR)) * np.exp(-x * 2.2) * 0.35, 0.9)
+d = START['stairs'] - at('elevator', 'sign'); x = tt(d)
+add(sfx, at('elevator', 'sign'), (np.sin(2 * np.pi * 60 * x) * 0.5 + fft_filter(noise(d), hi=300) * 0.4) * 0.06, 1.0)
+add(sfx, at('elevator', 'line'), boom(0.7) * 0.5, 0.7)
+# stairs: pounding steps, wheezing at 14, Kyle's texts, last flight, ding at 20
+add(sfx, START['stairs'], steps(at('stairs', 'tired'), 8.5), 0.9)
+def breath(d):
+    out = np.zeros(int(d * SR))
+    for j in range(int(d * 2.6)):
+        x = tt(0.3); b_ = fft_filter(noise(0.3), lo=500, hi=3000) * np.sin(np.pi * x / 0.3) ** 2
+        a_ = int(j / 2.6 * SR); out[a_:a_ + len(b_)] += b_[:len(out) - a_]
+    return out * 0.5
+add(sfx, at('stairs', 'tired'), breath(at('stairs', 'top') - at('stairs', 'tired')), 1.0)
+add(sfx, at('stairs', 'text'), pop(), 0.9)
+add(sfx, at('stairs', 'text') + 0.35, pop(), 0.9)
+add(sfx, at('stairs', 'top'), steps(at('stairs', 'twenty') - at('stairs', 'top'), 9), 0.9)
+add(sfx, at('stairs', 'twenty'), ding(1318.5, 1760), 0.9)
 # kyle
 add(sfx, at('kyle', 'open') - 0.05, creak(), 0.9)
 add(sfx, at('kyle', 'sip') - 0.15, slurp(), 1.0)

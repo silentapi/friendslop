@@ -57,7 +57,7 @@ export async function rider({ cup = true } = {}) {
   const C = await mixCharacter('cast/courier.glb', { tint: { casualsuit05: 0x2b3a2f } });
   await C.load('sitidle', 'jog', 'idle', 'defeated', 'facepalm', 'av-idle-male', 'shrug', 'lookdown');
   root.add(C.root);
-  const helm = helmet(); C.attach('Head', helm, [0, 0.075, 0.015], [0.08, 0, 0], 0.88);
+  const helm = helmet(); C.attach('Head', helm, [0, 0.095, 0.0], [-0.12, 0, 0], 0.88);
   const bag = deliveryBag(); C.attach('Spine2', bag, [0, 0.02, -0.25], [0, Math.PI, 0], 0.82);
   const R = { root, bike: bikeHolder, C, helm, bag, pivots, mode: 'ride' };
   // pose: dist travelled (m) spins wheels; crank angle from dist; lean (rad, forward), bank (rad), stand (0..1 out of the saddle)
