@@ -155,7 +155,7 @@ export function getRenderer() {
   return renderer;
 }
 // Prepare a scene: sky, env light, sun. sunAz/sunEl in degrees (az 0 = north/-z, 90 = east/+x).
-export async function setup({ sky = 'golden', sunAz = 250, sunEl = 14, skyRot = 0, fov = 50, shadowBox = 30, near = 0.05, far = 4000, fog = null } = {}) {
+export async function setup({ sky = 'golden', sunAz = 250, sunEl = 14, skyRot = 0, fov = 50, shadowBox = 30, near = 0.12, far = 4000, fog = null } = {}) {
   const r = getRenderer();
   const S = SKIES[sky];
   const scene = new THREE.Scene();

@@ -158,15 +158,15 @@ export async function streets(ctx, { center = [0, 0], radius = 700, curbs = true
   const nearInter = (x, z, pad) => inter.some(([ix, iz, iw]) => Math.hypot(x - ix, z - iz) < iw / 2 + pad);
   const asph = [], brick = [], lines = [], dashes = [], curbM = [], zebra = [];
   for (const r of roads) {
-    const g = ribbon(r.pts, r.w, r.hw === 'service' ? 0.006 : 0.01);
+    const g = ribbon(r.pts, r.w, r.hw === 'service' ? 0.02 : 0.025);
     (r.surface === 'bricks' || r.surface === 'paving_stones' || r.surface === 'sett' ? brick : asph).push(g);
     const major = ['primary', 'secondary', 'tertiary'].includes(r.hw);
     if (paint && major && r.surface !== 'bricks') {
       const rs = resample(r.pts, 1.0);
-      if (!r.oneway) for (const off of [-0.12, 0.12]) lines.push(ribbon(offsetLine(rs, off), 0.1, 0.016));
-      else for (let i = 0; i < rs.length - 1; i += 6) if (!nearInter(rs[i][0], rs[i][1], 3)) dashes.push(ribbon([rs[i], rs[Math.min(rs.length - 1, i + 3)]], 0.12, 0.016));
+      if (!r.oneway) for (const off of [-0.12, 0.12]) lines.push(ribbon(offsetLine(rs, off), 0.1, 0.04));
+      else for (let i = 0; i < rs.length - 1; i += 6) if (!nearInter(rs[i][0], rs[i][1], 3)) dashes.push(ribbon([rs[i], rs[Math.min(rs.length - 1, i + 3)]], 0.12, 0.04));
       // lane dividers either side of centre on 4+ lane roads
-      if (r.w > 13) for (const off of [-r.w / 4, r.w / 4]) { const o = offsetLine(rs, off); for (let i = 0; i < o.length - 1; i += 6) if (!nearInter(o[i][0], o[i][1], 3)) dashes.push(ribbon([o[i], o[Math.min(o.length - 1, i + 3)]], 0.12, 0.016)); }
+      if (r.w > 13) for (const off of [-r.w / 4, r.w / 4]) { const o = offsetLine(rs, off); for (let i = 0; i < o.length - 1; i += 6) if (!nearInter(o[i][0], o[i][1], 3)) dashes.push(ribbon([o[i], o[Math.min(o.length - 1, i + 3)]], 0.12, 0.04)); }
     }
     if (curbs && r.hw !== 'service' && !r.hw.startsWith('motorway')) {
       for (const side of [-1, 1]) {

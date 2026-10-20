@@ -201,8 +201,12 @@ export async function mixCharacter(path, { tint = null, maps = null } = {}) {
     return c;
   };
   const C = { root: holder, model: root, mixer, bones, prefix, actions };
+  // rest pose of every bone: restored before each pose() so IK / additive tweaks never accumulate across frames
+  const rest = Object.values(bones).map((b) => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()]);
   C.load = async (...names) => { for (const n of names) await getClip(n); };
+  C.captureRest = () => { for (const r of rest) { r[1].copy(r[0].position); r[2].copy(r[0].quaternion); r[3].copy(r[0].scale); } };
   C.pose = (layers) => {
+    for (const [b, p, q, sc] of rest) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(sc); }
     for (const a of Object.values(actions)) { a.enabled = false; a.setEffectiveWeight(0); }
     for (const [name, t, w = 1, loop = true] of layers) {
       const clip = retarget.get(name);
