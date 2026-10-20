@@ -168,6 +168,18 @@ export function lynxBus() {
   box(2.35, 1.4, 0.06, new THREE.MeshPhysicalMaterial({ color: 0x0c1218, roughness: 0.05, metalness: 0.2, clearcoat: 1 }), 0, 2.35, 6.02, g);
   const dest = plane(signTex('lynxdest', '9  ROSEMONT', { font: '800 120px Inter', color: '#ffb020', bg: '#050505' }), 1.9, 0.45, { emit: 2, transparent: false }); dest.position.set(0, 3.15, 6.04); g.add(dest);
   for (const x of [-0.95, 0.95]) box(0.32, 0.16, 0.05, emissive(0xf4f8ff, 5), x, 0.85, 6.03, g);
+  // rear: back window, engine grille, ad panel, tail lights, bumper
+  const rearGlass = new THREE.MeshPhysicalMaterial({ color: 0x0c1218, roughness: 0.05, metalness: 0.2, clearcoat: 1 });
+  box(2.2, 0.9, 0.06, rearGlass, 0, 2.8, -6.02, g);
+  const ad = canvasTex('lynxrear', 1024, 384, (c, w, h) => {
+    const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#c4005e'); gr.addColorStop(1, '#ff3d8f'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#fff'; c.font = '900 150px Inter'; c.textAlign = 'center'; c.fillText('LYNX', w / 2, 190);
+    c.font = '700 54px Inter'; c.fillText('ride with us · golynx.com', w / 2, 300);
+  });
+  const adP = plane(ad, 2.2, 0.82, { transparent: false }); adP.position.set(0, 1.85, -6.04); adP.rotation.y = Math.PI; g.add(adP);
+  for (let i = 0; i < 6; i++) box(1.9, 0.04, 0.04, mat(0x1a1a1e), 0, 1.0 + i * 0.07, -6.03, g);
+  for (const x of [-1.05, 1.05]) { box(0.22, 0.5, 0.05, emissive(0xff2a1a, 4), x, 1.2, -6.04, g); box(0.22, 0.14, 0.05, emissive(0xffa020, 3), x, 0.85, -6.04, g); }
+  box(2.6, 0.32, 0.18, mat(0x1c1c20, { roughness: 0.6 }), 0, 0.55, -6.05, g);
   const tire = mat(0x0c0c0e, { roughness: 0.9 });
   for (const [x, z] of [[-1.2, 3.8], [1.2, 3.8], [-1.2, -3.6], [1.2, -3.6]]) { const w = cyl(0.5, 0.5, 0.35, tire, 20, x, 0.5, z, g); w.rotation.z = Math.PI / 2; }
   return g; // faces +z

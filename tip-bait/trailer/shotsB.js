@@ -11,10 +11,10 @@ import { exterior, along, eta, DUR, Q, START, Wd } from './kit.js';
 const CORNER = V(CITI.x0, 0, CITI.z1); // Church St & Lake Ave
 // Kyle S: black tee, grey sweats, white sneakers
 const KYLE_LOOK = { maps: { casualsuit06: 'cast/tex/kyle_fit.jpg', shoes05: 'cast/tex/kyle_shoes.jpg' } };
-async function citiSet(opts = {}) {
+async function citiSet({ parked = 4, ...opts } = {}) {
   const ctx = await exterior({ center: [-20, 25], radius: 650, shadowBox: 45, dressR: 0, ...opts });
   const T = await citiTower(ctx);
-  await Wd.traffic(ctx, { names: ['Lake Avenue'], center: [-29, 30], radius: 120, n: 0, parked: 4, seed: 4 });
+  if (parked) await Wd.traffic(ctx, { names: ['Lake Avenue'], center: [-29, 30], radius: 120, n: 0, parked, seed: 4 });
   return { ctx, T };
 }
 
@@ -57,7 +57,7 @@ const S_ARRIVE = {
   name: 'arrive', dur: DUR('arrive'),
   async build() {
     const q = Q('arrive');
-    const { ctx, T } = await citiSet({ shadowBox: 30 });
+    const { ctx, T } = await citiSet({ shadowBox: 30, parked: 0 });
     const R = await rider(); ctx.scene.add(R.root);
     const door = T.userData.door, sign = T.userData.signMid;
     const stop = V(-27.4, 0, door.z + 0.8);
@@ -249,6 +249,7 @@ const S_END = {
     // Citi Tower at dusk from the Church & Lake corner, lights coming on
     const ctx = await exterior({ center: [-20, 25], radius: 650, sky: 'dusk', sunAz: 250, sunEl: 6, shadowBox: 45, dressR: 0, night: 0.7 });
     await citiTower(ctx, { night: 0.7 });
+    ctx.renderer.toneMappingExposure *= 0.42; ctx.scene.backgroundIntensity *= 0.7; ctx.scene.environmentIntensity *= 0.7;
     await Wd.traffic(ctx, { names: ['Lake Avenue'], center: [-29, 30], radius: 120, n: 0, parked: 4, seed: 4 });
     return {
       ctx, fx: { bloom: 0.5, bloomThreshold: 0.8 },
@@ -258,7 +259,7 @@ const S_END = {
         ctx.camera.fov = 66; ctx.camera.updateProjectionMatrix();
         ctx.focusSun(CORNER, 300);
       },
-      post(lt, P) { P.grade.uniforms.vig.value = 0.42; P.grade.uniforms.flash.value = Math.max(0, 1 - lt * 6) * 0.6; },
+      post(lt, P) { const g = P.grade.uniforms; g.vig.value = 0.42; g.sat.value = 1.15; g.contrast.value = 1.1; g.flash.value = Math.max(0, 1 - lt * 6) * 0.6; },
       hud(lt) {
         const a = seg(lt, q.logo, q.logo + 0.25), s = 1.2 - 0.2 * easeOut(seg(lt, q.logo, q.logo + 0.4));
         const cta = easeBack(seg(lt, q.cta, q.cta + 0.3));

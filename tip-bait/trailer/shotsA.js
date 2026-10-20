@@ -100,14 +100,14 @@ const S_PICKUP = {
         if (lt < q.grab + 0.05) { const w = room.localToWorld(cupP.clone().add(V(0, 0.1, -0.05))); ik2(B.bone('RightArm'), B.bone('RightForeArm'), B.bone('RightHand'), w, room.localToWorld(V(1.6, 0.6, -1.4))); }
         // courier: walks in, reaches, grabs, spins away
         const spin = easeIn(seg(lt, q.spin, DUR('pickup')));
-        R.walk(lt > q.spin ? 'jog' : 'idle', lt * (lt > q.spin ? 1.2 : 1), { offset: V(0.55, 0, 0.75), yaw: Math.PI + spin * Math.PI * 0.9 });
+        R.walk(lt > q.spin ? 'jog' : 'idle', lt * (lt > q.spin ? 1.2 : 1), { offset: V(0.55 + spin * 2.6, 0, 0.75 + spin * 0.4), yaw: Math.PI - smooth(seg(lt, q.spin, q.spin + 0.25)) * Math.PI / 2 });
         const reach = smooth(seg(lt, q.grab - 0.35, q.grab));
         if (lt < q.spin) { const hand = room.localToWorld(slideTo.clone().add(V(0.02, 0.12, 0.02))); const rest = R.C.boneWorld('RightHand'); ik2(R.C.bone('RightArm'), R.C.bone('RightForeArm'), R.C.bone('RightHand'), rest.lerp(hand, reach), room.localToWorld(V(1.4, 0.8, 1.6))); }
         if (lt > q.grab) { const h = R.C.boneWorld('RightHand'); cup.position.copy(room.worldToLocal(h)).add(V(0, -0.1, 0)); cup.rotation.set(0, 0, 0); }
         else cup.position.copy(cupP);
         // camera: low over the counter, customer side; whip pan on the spin
         const cpL = lerpV([-1.9, 1.6, 2.1], [-1.6, 1.55, 1.8], easeInOut(seg(lt, 0, q.spin))).add(handheld(lt, 0.02));
-        const tgL = lerpV([0.7, 1.25, 0.0], [0.5, 1.3, 1.2], easeIn(seg(lt, q.spin, DUR('pickup'))));
+        const tgL = lerpV([0.7, 1.25, 0.0], [1.7, 1.3, 0.7], easeInOut(seg(lt, q.spin, DUR('pickup'))));
         aim(ctx.camera, room.localToWorld(cpL), room.localToWorld(tgL), -0.03 - spin * 0.25);
         ctx.camera.fov = 50; ctx.camera.updateProjectionMatrix();
       },
