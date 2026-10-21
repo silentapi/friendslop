@@ -1,0 +1,40 @@
+# Builds the Tip Bait game and rsyncs it to your VPS.
+# Repo Settings → Secrets and variables → Actions → add:
+#   VPS_HOST (e.g. yoursite.com)   VPS_USER (e.g. deploy)   VPS_SSH_KEY (private key whose .pub is in the VPS user's ~/.ssh/authorized_keys)
+#   VPS_PATH (e.g. /var/www/html/tip-bait)   VPS_PORT (optional, default 22)
+# Then: Actions → "Deploy Tip Bait" → Run workflow (it also runs on pushes that touch the game).
+name: Deploy Tip Bait
+on:
+  workflow_dispatch:
+  push:
+    paths: ['tip-bait/game/**']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SECRETS: ${{ secrets.VPS_HOST != '' && secrets.VPS_SSH_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Build
+        run: |
+          cd tip-bait && npm i --no-save --no-package-lock three@0.169.0
+          node game/build.mjs
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with: { name: tip-bait-site, path: tip-bait/game/dist-site }
+      - name: Rsync to VPS
+        if: env.HAS_SECRETS == 'true'
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+          DEST: ${{ secrets.VPS_PATH }}
+          PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          mkdir -p ~/.ssh && printf '%s\n' "$KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
+          P="${PORT:-22}"; D="${DEST:-/var/www/html/tip-bait}"
+          ssh-keyscan -p "$P" "$HOST" >> ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id -p "$P" "$USER@$HOST" "mkdir -p '$D'"
+          rsync -az --delete -e "ssh -i ~/.ssh/id -p $P" tip-bait/game/dist-site/ "$USER@$HOST:$D/"

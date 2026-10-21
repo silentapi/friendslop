@@ -1,0 +1,6 @@
+# If your VPS runs Caddy instead of nginx, add inside your site block:
+handle_path /tip-bait/* {
+    root * /var/www/html/tip-bait
+    encode gzip
+    file_server
+}

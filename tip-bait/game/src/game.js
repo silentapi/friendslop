@@ -116,9 +116,9 @@ function updateRain(t) {
 function resetRun(atS = 0) {
   G.s = atS; G.lat = 0; G.lane = 1; G.y = 0; G.vy = 0; G.v = 0; G.runT = 0; G.boostT = 0; G.slowT = 0; G.invT = 0; G.crashT = 0; G.slowmo = 1; G.cine = 0;
   if (atS === 0) {
-    G.base = Math.min(18, 12.5 + (G.order - 1) * 0.9);
+    G.base = Math.min(18.5, 13.2 + (G.order - 1) * 0.9);
     G.eta = Math.round(G.route.length / (G.base * 0.9) + 10); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
-    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; }
+    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; }
     for (const ic of G.lv.ice) ic.got = false;
     for (const w of G.pop.walkers) w.t = null;
     G.trainCab = null; G.trainGone = false;
@@ -132,7 +132,7 @@ function onSwipe(dir) {
   if (G.state !== 'run') return;
   if (dir === 'L') G.lane = Math.max(0, G.lane - 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'R') G.lane = Math.min(2, G.lane + 1), Audio.sfx('whoosh', 0.35, 1.6);
-  if (dir === 'U' && G.y <= 0.02) { G.vy = 7.2; Audio.sfx('pop', 0.6, 0.7); }
+  if (dir === 'U' && G.y <= 0.02) { G.vy = 7.8; Audio.sfx('pop', 0.6, 0.7); }
   if (dir === 'D') useBoost();
   G.hintT = 0; G.swiped = true; G.coachSlow = 0; UI.coach(null);
 }
@@ -183,6 +183,9 @@ const COACH = {
   ramp: { text: 'Hit the <b>ramp</b> to launch over traffic' },
   boost: { text: TOUCH_EARLY() ? 'BOOST is charged · tap the button' : 'BOOST is charged · press <b>Shift</b>' },
   tourists: { text: 'Tourists don\'t look both ways. <b>Pick a gap.</b>' },
+  merge: { text: '<b>Blinker</b> = that car is cutting over. Take the lane it leaves.', slow: true },
+  chicane: { text: 'Too tall to jump · <b>weave</b> through the barriers', slow: true },
+  wall: { text: 'Road closed · <b>jump</b> it, then dodge', slow: true },
 };
 function coach(key) {
   if (TUT[key] || G.coachT > 0) return;
@@ -193,7 +196,11 @@ function coach(key) {
 function tutorial() {
   const LN = LANES[G.lane];
   const ahead = (pred, d) => G.lv.obs.some((o) => !o.dead && pred(o) && o.s - G.s > 0 && o.s - G.s < d && Math.abs(o.lat - LN) < 1.4);
-  if (!TUT.dodge && ahead((o) => o.h > 1.0, 32)) coach('dodge');
+  const near = (pred, d) => G.lv.obs.some((o) => !o.dead && pred(o) && o.s - G.s > 0 && o.s - G.s < d);
+  if (!TUT.merge && TUT.dodge && near((o) => o.merge && o.mt == null, 40)) coach('merge');
+  else if (!TUT.chicane && TUT.dodge && near((o) => o.kind === 'jersey', 30)) coach('chicane');
+  else if (!TUT.wall && TUT.jump && near((o) => o.wall, 22)) coach('wall');
+  else if (!TUT.dodge && ahead((o) => o.h > 1.0, 32)) coach('dodge');
   else if (!TUT.jump && ahead((o) => o.h <= 1.0, 24)) coach('jump');
   else if (!TUT.pad && G.lv.pads.some((p) => p.s - G.s > 0 && p.s - G.s < 34)) coach('pad');
   else if (!TUT.ramp && G.lv.ramps.some((p) => p.s - G.s > 0 && p.s - G.s < 34)) coach('ramp');
@@ -241,6 +248,10 @@ function update(dt, t) {
   for (const o of G.lv.obs) {
     if (o.dead) continue;
     if (o.v && o.kind !== 'bus') { o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; }
+    if (o.merge) { // blinker on from far away; it cuts over with a fixed reaction window regardless of speed
+      if (o.mt == null && o.s - G.s > 0 && o.s - G.s < (G.v - o.v) * 1.9 + 6) { o.mt = 0; Audio.sfx('skid', 0.25, 1.5); }
+      if (o.mt != null) { o.mt += sdt; o.lat = lerp(o.lat0, o.to, smooth(seg(o.mt, 0, 1.0))); }
+    }
     if (o.kind === 'bus') { if (o.s - G.s < 42 && !o.t0) o.t0 = G.time; if (o.t0) { o.lat = lerp(o.lat0, o.pull, smooth(seg(G.time - o.t0, 0, 1.4))); o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; } }
   }
   for (const w of G.pop.walkers) {
@@ -323,6 +334,20 @@ function animateLevel(t, dt) {
     const f = route.at(o.s); route.world(o.s, o.lat, 0, tmp); qq.setFromAxisAngle(UP, f.yaw); m4.compose(tmp, qq, ONE); P.cars.set(i, m4);
   });
   P.cars.commit();
+  // turn signals on merging cars
+  const on = Math.floor(t * 3.2) % 2 === 0;
+  P.mergers.forEach((o, i) => {
+    const show = on && !o.dead && (o.mt == null || o.mt < 1.0) && o.s - G.s < 90 && o.s - G.s > -10, side = Math.sign(o.to - o.lat0);
+    o.arrow.visible = show && o.s - G.s > 4; if (o.arrow.visible) route.world(o.s, o.lat, 2.4, o.arrow.position);
+    for (let k = 0; k < 2; k++) { if (show) { route.world(o.s + (k ? 2.2 : -2.25), o.lat + side * 0.92, 0.78, tmp); m4.makeTranslation(tmp.x, tmp.y, tmp.z); } else m4.makeScale(0, 0, 0); P.blink.setMatrixAt(i * 2 + k, m4); }
+  });
+  P.blink.instanceMatrix.needsUpdate = true;
+  // smashed / cleared cones and barriers disappear
+  for (const st of P.statics) {
+    let dirty = false, idx = 0;
+    for (const o of st.list) { const vis = !o.dead; if (o._vis !== vis) { o._vis = vis; dirty = true; o.mats.forEach((m, k) => st.mesh.setMatrixAt(idx + k, vis ? m : m4.makeScale(0, 0, 0))); } idx += o.mats.length; }
+    if (dirty) st.mesh.instanceMatrix.needsUpdate = true;
+  }
   for (const o of P.buses) { const f = route.at(o.s); route.world(o.s, o.lat, 0, o.mesh.position); o.mesh.rotation.y = f.yaw + (o.t0 ? 0.08 * Math.sin(Math.PI * seg(G.time - o.t0, 0, 1.4)) * Math.sign(o.pull - o.lat0) : 0); o.mesh.visible = !o.dead; }
   // ice cubes spin
   lv.ice.forEach((ic, i) => {

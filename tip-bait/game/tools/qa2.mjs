@@ -14,7 +14,7 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => { errors.push(e.message); console.log('[pageerror]', e.message, (e.stack || '').split('\n').slice(1, 3).join(' | ')); });
 page.on('console', (m) => { if (m.type() === 'error') { errors.push(m.text()); console.log('[error]', m.text().slice(0, 300)); } });
-await page.goto('http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
+await page.goto(process.env.QA_URL || 'http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 const tick = (n, draw = false) => page.evaluate(([n, d]) => window.__tick(n, 1 / 30, d), [n, draw]);
 const shot = async (name) => { await tick(1, true); await page.screenshot({ path: `${out}/${name}.jpg`, type: 'jpeg', quality: 82 }); };
@@ -45,14 +45,14 @@ const pilot = () => page.evaluate((crashMode) => {
   if (g.state !== 'run' || crashMode) return null;
   const ahead = (li) => {
     let d = 999;
-    for (const o of g.lv.obs) if (!o.dead && o.s > g.s - 1 && Math.abs(o.lat - LANES[li]) < o.w / 2 + 0.5 && o.h > 1.0) d = Math.min(d, o.s - g.s);
+    for (const o of g.lv.obs) if (!o.dead && o.s > g.s - o.len / 2 - 1 && o.h > 1.0 && (Math.abs(o.lat - LANES[li]) < o.w / 2 + 0.5 || (o.merge && (o.mt == null || o.mt < 1) && Math.abs(o.to - LANES[li]) < 1.5))) d = Math.min(d, o.s - g.s);
     for (const w of g.pop.walkers) if (Math.abs(w.lat - LANES[li]) < 2.2 && w.s > g.s - 1 && w.s - g.s < 30) d = Math.min(d, w.s - g.s);
     return d;
   };
   const cur = ahead(g.lane);
   let act = null;
-  if (cur < 26) { const opts = [g.lane - 1, g.lane + 1].filter((l) => l >= 0 && l <= 2).sort((a, b) => ahead(b) - ahead(a)); if (ahead(opts[0]) > cur) act = opts[0] < g.lane ? 'ArrowLeft' : 'ArrowRight'; }
-  if (!act) for (const o of g.lv.obs) if (!o.dead && o.h <= 1.0 && o.s - g.s > 1.5 && o.s - g.s < 5.5 && Math.abs(o.lat - LANES[g.lane]) < 1.2 && g.y < 0.05) act = 'ArrowUp';
+  if (cur < 26) { const best = [0, 1, 2].sort((a, b) => ahead(b) - ahead(a) || Math.abs(a - g.lane) - Math.abs(b - g.lane))[0]; const step = g.lane + Math.sign(best - g.lane); if (ahead(best) > cur && (ahead(step) > 3 || step === best)) act = best < g.lane ? 'ArrowLeft' : 'ArrowRight'; }
+  if (!act) for (const o of g.lv.obs) if (!o.dead && o.h <= 1.0 && o.s - g.s > 2.9 && o.s - g.s < 4.7 && Math.abs(o.lat - LANES[g.lane]) < 1.2 && g.y < 0.05) act = 'ArrowUp';
   if (!act && g.rail) { const r = g.lv.ramps.find((r) => r.rail); if (r && r.s - g.s < 30 && r.s - g.s > 0 && g.lane !== 1) act = g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; }
   if (!act && g.boostCharge >= 1) act = 'Shift';
   return act;
@@ -68,7 +68,7 @@ while (i < 4000) {
   if (i % 90 === 0) { console.log(i, JSON.stringify(g)); }
   if (i % 150 === 0) await shot(`run_${String(i).padStart(4, '0')}`);
   if (mode === 'coach') { const c = await page.evaluate(() => document.querySelector('.coach')?.textContent || ''); if (c && !seen.has(c)) { seen.add(c); console.log('COACH', c); await shot(`coach_${seen.size}`); } if (i > 900) break; }
-  if (g.st === 'crashing') { await tick(12); await shot(`crash_${i}`); }
+  if (g.st === 'crashing') { console.log('CRASH', await page.evaluate(() => window.__G.crashKind + ' @' + window.__G.s.toFixed(0))); await tick(12); await shot(`crash_${i}`); }
   if (g.st === 'crashed') {
     await shot(`crashui_${i}`);
     await page.click('#watchad'); await page.waitForTimeout(500); await shot(`ad_${i}`);

@@ -58,7 +58,7 @@ function boostPadTex() {
 // ---------------------------------------------------------------- generation
 export async function buildLevel(scene, route, { order, cross, rail = null, storm = false }) {
   const r = mulberry(1000 + order * 77);
-  const d = clamp((order - 1) / 5); // difficulty 0..1
+  const d = clamp(0.12 + (order - 1) / 5); // difficulty 0..1
   const L = route.length;
   const obs = [];   // {kind, s, lat, len, w, h, v (forward m/s), vl (lateral), solid}
   const pads = [], ramps = [], ice = [], puddles = [], groups = [];
@@ -73,27 +73,44 @@ export async function buildLevel(scene, route, { order, cross, rail = null, stor
   // the rhythm: a pattern every 22–34 m, denser with difficulty
   let s = start;
   while (s < end) {
-    s += lerpN(42, 22, d) + r() * 10;
+    s += lerpN(34, 20, d) + r() * 9;
     if (s > end) break;
     if (Math.abs(s - railS) < 50 || groups.some((g) => Math.abs(g.s - s) < 22)) continue;
     const pick = r();
     const free = Math.floor(r() * 3); // guarantee one open lane
-    if (pick < 0.28) { // traffic: slower cars in two lanes
+    if (pick < 0.2) { // traffic: slower cars in two lanes
       for (let li = 0; li < 3; li++) if (li !== free && r() < 0.75) obs.push({ kind: 'car', s: s + r() * 6, lat: LANES[li], len: 4.7, w: 1.9, h: 1.45, v: 3 + r() * 4 });
-    } else if (pick < 0.42) { // LYNX bus pulling out of the curb lane
+    } else if (pick < 0.3) { // LYNX bus pulling out of the curb lane
       const li = r() < 0.5 ? 0 : 2; if (li === free) continue;
       obs.push({ kind: 'bus', s, lat: LANES[li] + (li ? 1.2 : -1.2), len: 12, w: 2.6, h: 3.1, v: 4, pull: LANES[li], t0: null });
-    } else if (pick < 0.62) { // cones / road work: jumpable
+    } else if (pick < 0.42) { // cones / road work: jumpable
       for (let li = 0; li < 3; li++) if (li !== free) obs.push({ kind: r() < 0.5 ? 'cone' : 'barrier', s, lat: LANES[li], len: 0.6, w: 1.2, h: r() < 0.5 ? 0.75 : 0.95, v: 0 });
-    } else if (pick < 0.74) { // boost pad lane + ice trail
+    } else if (pick < 0.52) { // boost pad lane + ice trail
       pads.push({ s, lat: LANES[free] });
       for (let k = 1; k <= 6; k++) ice.push({ s: s + 6 + k * 3, lat: LANES[free], y: 0.9 });
-    } else if (pick < 0.86) { // ramp over a parked car
+    } else if (pick < 0.61) { // ramp over a parked car
       const li = free; ramps.push({ s, lat: LANES[li] });
       obs.push({ kind: 'car', s: s + 11, lat: LANES[li], len: 4.7, w: 1.9, h: 1.45, v: 0 });
       for (let k = 0; k < 5; k++) { const u = k / 4; ice.push({ s: s + 4 + u * 14, lat: LANES[li], y: 1.2 + Math.sin(u * Math.PI) * 2.6 }); }
-    } else { // ice cube zig-zag
+    } else if (pick < 0.67) { // ice cube zig-zag
       let li = free; for (let k = 0; k < 8; k++) { ice.push({ s: s + k * 3.2, lat: LANES[li], y: 0.9 }); if (k % 3 === 2) li = clamp(li + (r() < 0.5 ? -1 : 1), 0, 2); }
+    } else if (pick < 0.79) { // SKILL: a car blinks, then cuts into the middle lane. The lane it leaves is the gap.
+      const a = r() < 0.5 ? 0 : 2;
+      obs.push({ kind: 'car', merge: true, s, lat: LANES[a], to: LANES[1], len: 4.7, w: 1.9, h: 1.45, v: 4 + r() * 2, t0: null });
+      if (r() < 0.35 + d * 0.5) obs.push({ kind: 'car', s: s + 8 + r() * 6, lat: LANES[2 - a], len: 4.7, w: 1.9, h: 1.45, v: 4 });
+      if (r() < 0.6) for (let k = 0; k < 4; k++) ice.push({ s: s + 4 + k * 3, lat: LANES[a], y: 0.9 });
+    } else if (pick < 0.9) { // SKILL: chicane of concrete barriers - two quick lane changes, too tall to jump
+      const a = free, b = a === 1 ? (r() < 0.5 ? 0 : 2) : (r() < 0.4 + d * 0.4 ? 2 - a : 1);
+      const gap = lerpN(17, 12, d);
+      for (let li = 0; li < 3; li++) if (li !== a) obs.push({ kind: 'jersey', s, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 });
+      for (let li = 0; li < 3; li++) if (li !== b) obs.push({ kind: 'jersey', s: s + gap, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 });
+      ice.push({ s: s, lat: LANES[a], y: 0.9 }, { s: s + gap, lat: LANES[b], y: 0.9 });
+      s += gap;
+    } else { // SKILL: road closed across every lane - jump it, then dodge the car behind it
+      for (let li = 0; li < 3; li++) obs.push({ kind: 'barrier', s, lat: LANES[li], len: 0.6, w: 1.2, h: 0.8, v: 0, wall: true });
+      obs.push({ kind: 'car', s: s + 16, lat: LANES[free], len: 4.7, w: 1.9, h: 1.45, v: 0 });
+      const il = (free + 1) % 3; for (let k = 0; k < 4; k++) { const u = k / 3; ice.push({ s: s - 2 + u * 5, lat: LANES[il], y: 0.9 + Math.sin(u * Math.PI) * 0.9 }); }
+      s += 16;
     }
     if (storm && r() < 0.5) puddles.push({ s: s + 12, lat: LANES[Math.floor(r() * 3)] });
   }
@@ -119,13 +136,28 @@ export async function populate(scene, route, lv) {
   const coneG = BGU.mergeGeometries([new THREE.ConeGeometry(0.28, 0.75, 12).translate(0, 0.4, 0), new THREE.BoxGeometry(0.62, 0.05, 0.62).translate(0, 0.025, 0)]);
   const coneTex = canvasTex('cone', 64, 64, (c, w, h) => { c.fillStyle = '#ff6a00'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.fillRect(0, 22, w, 10); c.fillRect(0, 40, w, 8); });
   const cim = new THREE.InstancedMesh(coneG, new THREE.MeshLambertMaterial({ map: coneTex }), Math.max(1, cones.length * 3));
-  cones.forEach((o, i) => { for (let k = 0; k < 3; k++) cim.setMatrixAt(i * 3 + k, place(o.s, o.lat + (k - 1) * 0.42)); });
+  cones.forEach((o, i) => { o.mats = []; for (let k = 0; k < 3; k++) { const m = place(o.s, o.lat + (k - 1) * 0.42).clone(); o.mats.push(m); cim.setMatrixAt(i * 3 + k, m); } });
   cim.castShadow = true; scene.add(cim);
   const barTex = canvasTex('barrier', 256, 64, (c, w, h) => { for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#fff' : '#ff6a00'; c.beginPath(); c.moveTo(i * 32, 0); c.lineTo(i * 32 + 32, 0); c.lineTo(i * 32 + 16, h); c.lineTo(i * 32 - 16, h); c.fill(); } c.fillStyle = '#111'; c.font = '900 26px system-ui'; c.textAlign = 'center'; });
   const barG = BGU.mergeGeometries([new THREE.BoxGeometry(1.5, 0.32, 0.08).translate(0, 0.78, 0), new THREE.BoxGeometry(0.08, 0.95, 0.6).translate(-0.62, 0.47, 0), new THREE.BoxGeometry(0.08, 0.95, 0.6).translate(0.62, 0.47, 0)]);
   const bim = new THREE.InstancedMesh(barG, new THREE.MeshLambertMaterial({ map: barTex }), Math.max(1, bars.length));
-  bars.forEach((o, i) => bim.setMatrixAt(i, place(o.s, o.lat, 0, Math.PI / 2 - Math.PI / 2)));
+  bars.forEach((o, i) => { o.mats = [place(o.s, o.lat, 0, 0, V(1, o.h / 0.95, 1)).clone()]; bim.setMatrixAt(i, o.mats[0]); });
   bim.castShadow = true; scene.add(bim);
+  out.statics = [{ mesh: cim, list: cones }, { mesh: bim, list: bars }];
+  // concrete jersey barriers (chicanes): too tall to jump
+  const jers = lv.obs.filter((o) => o.kind === 'jersey');
+  const jTex = canvasTex('jersey', 256, 64, (c, w, h) => { c.fillStyle = '#c9c6bf'; c.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#fff' : '#ff5a00'; c.fillRect(i * 44 + 6, 8, 40, 20); } c.fillStyle = '#9d9a93'; c.fillRect(0, h - 10, w, 10); });
+  const jG = BGU.mergeGeometries([new THREE.BoxGeometry(2.2, 0.85, 0.32).translate(0, 0.875, 0), new THREE.BoxGeometry(2.2, 0.45, 0.7).translate(0, 0.225, 0)]);
+  const jim = new THREE.InstancedMesh(jG, new THREE.MeshLambertMaterial({ map: jTex }), Math.max(1, jers.length));
+  jers.forEach((o, i) => jim.setMatrixAt(i, place(o.s, o.lat)));
+  jim.castShadow = true; scene.add(jim); out.jersey = { mesh: jim, list: jers };
+  // turn signals for merging cars (two per car, on the side it's turning toward)
+  out.mergers = lv.obs.filter((o) => o.merge);
+  out.blink = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.22, 0.34), new THREE.MeshBasicMaterial({ color: 0xffb030 }), Math.max(1, out.mergers.length * 2));
+  out.blink.frustumCulled = false; scene.add(out.blink);
+  const arrowTex = (dir) => canvasTex('merge' + dir, 128, 96, (c, w, h) => { c.translate(w / 2, h / 2); c.scale(dir, 1); c.fillStyle = '#ffa21a'; c.strokeStyle = '#1a1206'; c.lineWidth = 8; c.lineJoin = 'round'; c.beginPath(); c.moveTo(-50, -18); c.lineTo(8, -18); c.lineTo(8, -40); c.lineTo(54, 0); c.lineTo(8, 40); c.lineTo(8, 18); c.lineTo(-50, 18); c.closePath(); c.stroke(); c.fill(); });
+  const arrowMat = { 1: new THREE.SpriteMaterial({ map: arrowTex(1), depthTest: false }), [-1]: new THREE.SpriteMaterial({ map: arrowTex(-1), depthTest: false }) };
+  for (const o of out.mergers) { o.arrow = new THREE.Sprite(arrowMat[Math.sign(o.to - o.lat)]); o.arrow.scale.set(2.2, 1.6, 1); o.arrow.renderOrder = 5; o.arrow.visible = false; scene.add(o.arrow); }
   // boost pads (scrolling chevrons)
   const padT = boostPadTex();
   const pim = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.3, 5).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: padT, transparent: true, opacity: 0.95 }), Math.max(1, lv.pads.length));

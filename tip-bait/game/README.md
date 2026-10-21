@@ -11,3 +11,14 @@ Desktop-first 3D web game (works on touch too). Deliver an iced caramel macchiat
 - **Build:** `node tip-bait/game/build.mjs` → `tip-bait/game/dist/` (one inlined page + assets; three.js from jsDelivr).
 - **QA:** `node tip-bait/game/tools/qa2.mjs <outDir> play|crash|finale|ramp <order>` — deterministic stepping
   (`?qa=1`), autopilot, screenshots. Data tools: `tools/route.py`, `tools/city.py`, `tools/glb2json.py`.
+
+## Deploy to your own server (VPS)
+
+`node tip-bait/game/build.mjs` also writes `dist-site/`: a self-contained static folder with three.js bundled in, so no CDN is needed. It runs from any path, for example `yoursite.com/tip-bait/`.
+
+- **From your machine:** `./tip-bait/game/deploy/deploy.sh user@yoursite.com /var/www/html/tip-bait` builds the folder and rsyncs it over SSH.
+- **From GitHub:** add the secrets listed at the top of `.github/workflows/deploy-tip-bait.yml`, then run **Actions → Deploy Tip Bait**. Every build also uploads the folder as a downloadable `tip-bait-site` artifact.
+- **Web server config:**
+  - nginx: paste `deploy/nginx-tipbait.conf` into your server block.
+  - Caddy: see `deploy/Caddyfile.example`.
+  - Apache: no config needed when the folder is under the document root.
