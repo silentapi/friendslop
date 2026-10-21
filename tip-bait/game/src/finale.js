@@ -9,7 +9,7 @@ import { buildEncounter, prefetchHallFolks, hallWindows, HALL_KINDS } from './ha
 
 // floor-20 hallway blocking (corridor runs along -z, x ∈ ±1.24): courier walks in from the stairs, she walks the dog toward him
 const HALL = { c0: 3.0, c: -1.5, cx: 0.25, d0: -6.4, d: -2.95, dx: -0.3, w0: -7.2, w: -3.75, wx: -0.64 };
-const STEP_FLIGHTS = 0.6; // flights per clean step: 63 alternating taps to the 20th floor
+const STEP_FLIGHTS = 0.78; // flights per clean step: ~49 alternating taps to the 20th floor (~7 s of mashing)
 const LUNGE = 0.17, DODGE_X = { arrowleft: -0.52, arrowright: 0.52, arrowup: 0 };
 
 const KYLE_LOOK = { maps: { casualsuit06: 'tex/kyle_fit.jpg', shoes05: 'tex/kyle_shoes.jpg' } };
@@ -308,7 +308,7 @@ export class Finale {
     for (const [fl, arr] of KY.STAIRS_TEXTS.slice(1)) if (floor >= fl && !this['st' + fl]) { this['st' + fl] = true; UI.dm(KY.pickLine(arr)); this.Audio.sfx('pop', 0.7); }
     if (this.sCur >= 37.9 && !this.climbed) {
       this.climbed = true; this.G.stairTime = this.t; this.Audio.sfx('ding', 1);
-      const g = this.misses === 0 && this.t < 11 ? 'PERFECT' : this.misses <= 2 && this.t < 15 ? 'GOOD' : 'GASSED';
+      const g = this.misses === 0 && this.t < 9.5 ? 'PERFECT' : this.misses <= 2 && this.t < 13 ? 'GOOD' : 'GASSED';
       const pts = { PERFECT: 800, GOOD: 400, GASSED: 100 }[g];
       this.G.score += pts; this.G.fin = { ...(this.G.fin || {}), stairs: g, stairT: this.t };
       UI.pop('FLOOR 20', `${g === 'GASSED' ? 'gassed 😮‍💨' : g + ' climb 💪'} · +${pts}`); setTimeout(() => this.toDoor(), 900);

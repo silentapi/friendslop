@@ -200,6 +200,12 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .dhint b { color: #fff; }
 .dogui .stairs { pointer-events: auto; position: static; transform: none; width: 100%; display: flex; gap: 10px; }
 #climbui .floor { right: auto; left: var(--sl); }
+#stairsui .floor { right: auto; left: var(--sl); }
+@media (pointer: fine) {
+  #stairsui .stairs { left: 50%; right: auto; transform: translateX(-50%); width: 300px; bottom: calc(var(--sb) + 18px); grid-template-columns: 1fr 1fr; gap: 10px; }
+  #stairsui .stairs button { height: 64px; font-size: 22px; border-radius: 18px; }
+  #stairsui .stairhint { bottom: calc(var(--sb) + 92px); }
+}
 .kv div { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; font: 700 12px var(--body); color: var(--mute); letter-spacing: .4px; }
 .kv b { display: block; font: 900 24px var(--display); color: var(--paper); font-variant-numeric: tabular-nums; }
 .res .row { display: flex; gap: 10px; }
