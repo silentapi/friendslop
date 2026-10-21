@@ -5,11 +5,11 @@ import { character, ik2, coldCup } from './chars.js';
 import * as Sets from './sets.js';
 import * as KY from './kyle.js';
 import { pitbull, prefetchDog } from './dog.js';
-import { buildEncounter, prefetchHallFolks, hallWindows, HALL_KINDS } from './hallqte.js';
+import { buildEncounter, prefetchHallFolks, hallWindows, HALL_KINDS, inHall } from './hallqte.js';
 import { Knock } from './knock.js';
 
 // floor-20 hallway blocking (corridor runs along -z, x ∈ ±1.24): courier walks in from the stairs, she walks the dog toward him
-const HALL = { c0: 3.0, c: -1.5, cx: 0.25, d0: -6.4, d: -2.95, dx: -0.3, w0: -7.2, w: -3.75, wx: -0.64 };
+const HALL = { c0: 2.2, c: -1.5, cx: 0.25, d0: -6.4, d: -2.95, dx: -0.3, w0: -7.2, w: -3.75, wx: -0.64 };
 const STEP_FLIGHTS = 0.78; // flights per clean step: ~49 alternating taps to the 20th floor (~7 s of mashing)
 const LUNGE = 0.17, DODGE_X = { arrowleft: -0.52, arrowright: 0.52, arrowup: 0 };
 const DOWN_T = 3.4, DOWN_COST = 2.5, LIMP_COST = 0.8; // dog bites: the second one puts you on the floor; the first leaves a limp
@@ -153,7 +153,7 @@ export class Finale {
     const pos = V(0.25, 1.75, 8.4).lerp(V(-1.3, 1.6, 7.0), zoom), look = V(0.1, 1.35, 2.9).lerp(V(-1.4, 1.45, 2.2), zoom); // zoom lines up between the door mullions
     // portrait phones can't fit a side-by-side two-shot: go over his shoulder from the right so he (front) and she (behind the desk) stack in a narrow frame
     const nar = clamp((1.2 - cam.aspect) / 0.75, 0, 1);
-    if (nar > 0) { pos.lerp(V(4.0, 1.9, 11.5).lerp(V(1.0, 1.65, 7.4), zoom), nar); look.lerp(V(0.7, 1.2, 4.2).lerp(V(-1.45, 1.4, 2.1), zoom), nar); }
+    if (nar > 0) { pos.lerp(V(4.0, 1.9, 11.5).lerp(V(-2.6, 1.62, 6.6), zoom), nar); /* zoomed: through the clear pane between the frames at x −3.0 and −1.47 */ look.lerp(V(0.7, 1.2, 4.2).lerp(V(-1.45, 1.4, 2.1), zoom), nar); }
     cam.fov = damp(cam.fov, lerp(42 - zoom * 10, 50 - zoom * 10, nar), 6, dt); cam.updateProjectionMatrix();
     const lift = clamp((620 - innerHeight) / 250, 0, 1) * 0.3 * (1 - nar); // short landscape phones: lift them clear of the desk UI
     cam.position.copy(pos); cam.lookAt(look.x, look.y - lift * pos.distanceTo(look) * Math.tan(cam.fov * Math.PI / 360), look.z);
@@ -163,7 +163,7 @@ export class Finale {
     this.buzzed = this.t; UI.remove('buzzui');
     const g = el < 4.5 ? ['PERFECT', 600, 'she buzzed you in instantly'] : el < 8 ? ['GOOD', 300, 'she sighed and buzzed you in'] : ['SLOW', 100, '“ugh. fine.”'];
     G.score += g[1]; G.fin = { ...(G.fin || {}), door: g[0], doorT: el };
-    UI.pop(g[0], `${g[2]} · +${g[1]}`); A.sfx('buzz', 0.9); setTimeout(() => A.sfx('ding', 0.5), 400);
+    UI.pop(g[0], `${g[2]} · +${g[1]}`, { top: innerWidth < innerHeight ? 28 : 34 }); // tall phones: between the DM banner and her head (mid-screen after the push-in) A.sfx('buzz', 0.9); setTimeout(() => A.sfx('ding', 0.5), 400);
     UI.sceneCap(el > 20 ? '“ugh. fine.”' : 'bzzzt.');
   }
   // ---------------------------------------------------------------- elevator
@@ -357,6 +357,9 @@ export class Finale {
   startHall() {
     const { UI, Audio } = this;
     this.phase = 'hall'; this.t = 0; this.camK = null; this.palmCup = palmCup;
+    // the cut from the stairwell lands on a brand-new set: fade up from black so its first frames (lights + textures
+    // still settling) read as a deliberate cut instead of a flash of unlit walls
+    UI.remove('fadein'); const fi = UI.layer('fadein', ''); setTimeout(() => fi.remove(), 500);
     if (this.enc) {
       this.keyH = (e) => { if (!e.repeat && this.phase === 'hall') this.enc.key(e.key.toLowerCase(), e); };
       window.addEventListener('keydown', this.keyH);
@@ -388,14 +391,14 @@ export class Finale {
     if (ok) {
       const pts = 150 * (h.i + 1); G.score += pts; h.slow = 0.22; // a beat of slow-mo on the empty snap
       this.hq.result(h.i === 2 && h.res.every(Boolean) ? 'PERFECT' : 'NICE', a.side === 0 ? 'hopped it' : 'sidestepped');
-      UI.pop('DODGED', `+${pts}`, { top: 24 });
+      UI.pop('DODGED', `+${pts}`, { top: 30 });
     } else {
       // every bite hurts: the first leaves you limping, the second puts you on the floor
       h.bites = (h.bites || 0) + 1; h.bit = 1; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1;
       const down = h.bites >= 2, cost = 1.6 + (down ? DOWN_COST : h.bites === 1 ? LIMP_COST : 0); h.pen += cost; h.limp = true;
       if (down) { h.downAt = 0.35; h.downT = null; }
       this.hq.result('MISS', h.dodge ? (h.dodge.k === 'arrowup' || Math.sign(DODGE_X[h.dodge.k]) === a.side ? 'dodged into it' : 'wrong way') : 'too slow');
-      UI.pop(down ? 'DOWN IN PAIN' : a.side === 0 ? 'ANKLE BITER' : 'GOT YOUR SLEEVE', down ? 'second bite · ice −7' : 'now you’re limping · ice −7', { top: 24 });
+      UI.pop(down ? 'DOWN IN PAIN' : a.side === 0 ? 'ANKLE BITER' : 'GOT YOUR SLEEVE', down ? 'second bite · ice −7' : 'now you’re limping · ice −7', { top: 30 });
       UI.timeCost?.(cost, down ? 'bitten · collapsed' : 'bitten · limping'); A.sfx('crash', 0.35, 1.6); A.sfx('growl', 0.9, 1.1); navigator.vibrate?.(60);
       h.shake = 0.9;
     }
@@ -538,6 +541,7 @@ export class Finale {
     R.C.root.updateMatrixWorld(true);
     palmCup(this.cup, R.C);
     // ---- the dog
+    if (h.downT != null && h.dz > h.cz - 1.65) h.dz = lerp(h.dz, h.cz - 1.65, smooth(seg(h.downT, 0, 0.3))); // he's on the floor, legs out: the dog is yanked clear instead of standing in him
     D.root.position.set(h.dx, 0, h.dz); D.root.rotation.y = h.st === 'pass' ? 0 : (h.st === 'tele' || h.st === 'lunge' || h.st === 'res') ? dogYaw : toC * 0.6;
     dp.fwd = (dp.fwd || 0) + dogFwd; D.pose(dp);
     // ---- the neighbour, leash in her left hand
@@ -566,6 +570,7 @@ export class Finale {
     else if (camK === 'down') { const up = smooth(seg(h.downT ?? DOWN_T, DOWN_T - 1.0, DOWN_T)); cp = V(h.cx + 0.95, lerp(0.95, 1.35, up), h.cz - lerp(1.55, 1.9, up)); cl = V(h.cx - 0.05, lerp(0.38, 0.95, up), h.cz + 0.1); fov = 50; } // low, from in front: you on the floor holding your leg
     else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, Sets.DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, Sets.DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
     else { const push = h.st === 'lunge' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; this.camPush = damp(this.camPush || 0, push, 10, rdt); cp = V(-0.95, 1.78 - this.camPush * 0.1, HALL.c + 2.35 - this.camPush * 0.35); cl = V(-0.1, 0.62, HALL.c - 1.35); fov = 54 - this.camPush * 4; }
+    inHall(cp);
     if (camK !== this.camK) { this.camK = camK; cam.position.copy(cp); } // hard cuts between shots, smooth within
     cam.position.lerp(cp, 1 - Math.exp(-8 * rdt)); cam.position.add(jit);
     cam.lookAt(cl); cam.fov = fov; cam.updateProjectionMatrix();
@@ -575,7 +580,7 @@ export class Finale {
     const g = ['CHEW TOY', 'CHEWED', 'NICKED', 'UNTOUCHABLE'][n], pts = [0, 100, 250, 700][n];
     G.score += pts; G.fin = { ...(G.fin || {}), dog: g, dogT: h.pen, hall: g, hallT: h.pen, hallKind: 'dog', hallPerfect: n === 3 };
     this.dui?.done(g); setTimeout(() => UI.remove('dogui'), 1600);
-    UI.pop(g, n === 3 ? `didn’t lay a tooth on you · +${pts}` : n ? `${3 - n} bite${3 - n > 1 ? 's' : ''} · +${pts}` : 'he had a great time', { top: 24 });
+    UI.pop(g, n === 3 ? `didn’t lay a tooth on you · +${pts}` : n ? `${3 - n} bite${3 - n > 1 ? 's' : ''} · +${pts}` : 'he had a great time', { top: 30 });
     this.Audio.sfx(n === 3 ? 'jingle' : 'pop', 0.7);
   }
   enterDoor() {
@@ -665,7 +670,7 @@ export class Finale {
       if (this.perfect || this.paid > 0) R.walk(u < 0.9 ? 'idle' : 'reaction', u < 0.9 ? 1 + u : (u - 0.9) * 1.1 + 0.2, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
       else R.walk(u < 0.9 ? 'idle' : 'facepalm', u < 0.9 ? 1 + u : (u - 0.9) * 1.3 + 0.3, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
       const base = R.root.position;
-      cam.position.copy(base.clone().add(V(0.55, 1.5, -1.9).lerp(V(0.4, 1.55, -1.35), easeInOut(clamp(u / 3))))); cam.lookAt(base.clone().add(V(0, 1.4, 0))); cam.fov = 56; cam.updateProjectionMatrix();
+      cam.position.copy(base.clone().add(V(0.55, 1.5, -1.9).lerp(V(0.4, 1.55, -1.35), easeInOut(clamp(u / 3))))); cam.lookAt(base.clone().add(V(0, innerHeight < 500 ? 1.12 : 1.4, 0))); cam.fov = 56; cam.updateProjectionMatrix(); // short screens: aim low so he sits above the tip text
       K.root.visible = false; this.cup.visible = false; this.d.leaf.rotation.y = 0;
       if (this.perfect) {
         if (!this.tp) { this.tp = true; R.bag.visible = false; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'ok fine. you earned it 🫡') }); }
@@ -727,7 +732,7 @@ export class Finale {
     const S = this.sl, FX = S.fx;
     if (S.hold > 0) { // freeze on the shot (sparks hang in the air), a slow push in
       S.hold -= dt; cam.fov = damp(cam.fov, 36, 1.5, dt); cam.updateProjectionMatrix();
-      if (S.hold <= 0) UI.remove('akira');
+      if (S.hold <= 0 && !S.unheld) { S.unheld = true; const lb = document.getElementById('akira'); lb?.classList.add('out'); setTimeout(() => lb?.remove(), 260); } // bars slide away, not pop
       return;
     }
     const slow = ok && S.t > 0.3 && S.t < 1.55 ? 0.33 : 1, sdt = dt * slow; // slow-mo through the heart of the slide
@@ -835,6 +840,13 @@ export class Finale {
     else if (this.phase === 'door' && this.t < 6.8) { this.t = 6.85; }
   }
   update(dt, T) {
+    // shots are authored for landscape; on a tall phone widen the vertical lens so the same horizontal slice stays in
+    // frame (the desk and the knock frame themselves). The authored fov is restored first so damped zooms don't compound.
+    const cam = this.camera; if (this._fovA != null) { cam.fov = this._fovA; this._fovA = null; }
+    this.phaseUpdate(dt, T);
+    const A = 0.75; if (cam.aspect < A && this.phase !== 'locked' && this.phase !== 'knock') { this._fovA = cam.fov; cam.fov = 2 * Math.atan(Math.tan(cam.fov * Math.PI / 360) * A / cam.aspect) * 180 / Math.PI; cam.updateProjectionMatrix(); }
+  }
+  phaseUpdate(dt, T) {
     if (this.phase === 'arrive') this.updateArrive(dt);
     else if (this.phase === 'locked') this.updateLocked(dt);
     else if (this.phase === 'elevator') this.updateElevator(dt);

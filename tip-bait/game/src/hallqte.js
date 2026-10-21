@@ -10,7 +10,7 @@ import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mat, box,
 import * as Sets from './sets.js';
 import { character, ik2 } from './chars.js';
 
-const HC = { c0: 3.0, c: -1.5, cx: 0.25 }, DOOR_Z = -9;
+const HC = { c0: 2.2, c: -1.5, cx: 0.25 }, DOOR_Z = -9; // c0: just inside the stair door, so the follow cam (2 m back, clamped at the wall) has room
 // reaction windows, tight; a touch more lenient on your very first delivery
 // reaction windows for every hallway encounter: tight enough to need attention, always humanly doable (~0.25 s to react + a key)
 export const hallWindows = (G) => (G.delivered === 0 && !G.daily ? [0.85, 0.75, 0.66] : [0.72, 0.62, 0.54]);
@@ -107,8 +107,11 @@ function poseCourier(F, { x, z, yaw = Math.PI, walk = 0, jog = false, dodge = nu
   R.C.root.updateMatrixWorld(true);
   F.palmCup(F.cup, R.C);
 }
+// keep every hall shot inside the corridor: the stair-door wall is at z=4 and the walls at x=±1.3 — a follow cam 2 m
+// behind someone who just came through that door would otherwise start outside, staring at the back of the wall
+export const inHall = (cp) => { if (cp.x > 5 || cp.y < 0) return cp; /* the floor-19 hole + the stairwell set */ cp.z = Math.min(cp.z, 3.75); cp.x = clamp(cp.x, -1.12, 1.12); cp.y = Math.min(cp.y, 2.6); return cp; };
 function camera(F, cp, cl, fov, key, rdt, shake) {
-  const cam = F.camera;
+  const cam = F.camera; if (F.phase === 'hall') inHall(cp);
   if (key !== F.camK) { F.camK = key; cam.position.copy(cp); }
   cam.position.lerp(cp, 1 - Math.exp(-8 * rdt));
   const sh = shake * shake * 0.05; cam.position.add(V(Math.sin(F.t * 71) * sh, Math.sin(F.t * 53) * sh, 0));
@@ -192,12 +195,12 @@ async function buildLadder(F, scene) {
         q.set(1 - (a.tele + h.t) / (a.tele + 0.17));
         if (h.t >= 0.17) {
           h.st = 'res'; h.t = 0; const ok = h.dodge?.ok; h.res.push(!!ok); ui.set(h.res);
-          if (ok) { const pts = 150 * (h.i + 1); G.score += pts; h.slow = 0.22; q.result(h.i === 2 && h.res.every(Boolean) ? 'PERFECT' : 'NICE', { swingL: 'sidestepped', swingR: 'sidestepped', high: 'ducked it', low: 'hopped it' }[a.kind]); UI.pop('DODGED', `+${pts}`, { top: 24 }); A.sfx('whoosh', 0.9, 1.1); }
+          if (ok) { const pts = 150 * (h.i + 1); G.score += pts; h.slow = 0.22; q.result(h.i === 2 && h.res.every(Boolean) ? 'PERFECT' : 'NICE', { swingL: 'sidestepped', swingR: 'sidestepped', high: 'ducked it', low: 'hopped it' }[a.kind]); UI.pop('DODGED', `+${pts}`, { top: 30 }); A.sfx('whoosh', 0.9, 1.1); }
           else {
             // one bonk: you stagger, seeing stars. a second one lays you flat and you're slow getting up
             h.hits = (h.hits || 0) + 1; const flat = h.hits >= 2, cost = 1.6 + (flat ? FLAT_COST : 0);
             h.hit = true; h.hitK = 1; h.pen += cost; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9; if (flat) h.flatT = 0;
-            q.result('MISS', h.dodge ? 'wrong move' : 'too slow'); UI.pop(flat ? 'LAID OUT' : { swingL: 'BONK', swingR: 'BONK', high: 'CLONK', low: 'SHIN DESTROYER' }[a.kind], flat ? 'second hit · ice −7' : 'seeing stars · ice −7', { top: 24 });
+            q.result('MISS', h.dodge ? 'wrong move' : 'too slow'); UI.pop(flat ? 'LAID OUT' : { swingL: 'BONK', swingR: 'BONK', high: 'CLONK', low: 'SHIN DESTROYER' }[a.kind], flat ? 'second hit · ice −7' : 'seeing stars · ice −7', { top: 30 });
             UI.timeCost?.(cost, flat ? 'knocked flat' : 'bonked by the ladder');
             A.sfx('knock', 1.2, 0.7); A.sfx('crash', 0.4, 1.7); navigator.vibrate?.(60); stars.visible = true;
           }
@@ -211,7 +214,7 @@ async function buildLadder(F, scene) {
         if (h.t > hold + 0.75 && (h.flatT == null || h.flatT > FLAT_T)) {
           h.flatT = null; h.flatThud = 0;
           h.i++; h.dodge = null; h.hit = false; h.said = false; h.t = 0; stars.visible = false; h.look = 0;
-          if (h.i >= 3) { h.st = 'outro'; E.finish(); const n = h.res.filter(Boolean).length; UI.pop(GRADES.ladder[n][0], n === 3 ? `not a scratch · +${GRADES.ladder[n][1]}` : `${3 - n} hit${3 - n > 1 ? 's' : ''} · +${GRADES.ladder[n][1]}`, { top: 24 }); A.sfx(n === 3 ? 'jingle' : 'pop', 0.7); setTimeout(() => UI.remove('evui'), 1500); }
+          if (h.i >= 3) { h.st = 'outro'; E.finish(); const n = h.res.filter(Boolean).length; UI.pop(GRADES.ladder[n][0], n === 3 ? `not a scratch · +${GRADES.ladder[n][1]}` : `${3 - n} hit${3 - n > 1 ? 's' : ''} · +${GRADES.ladder[n][1]}`, { top: 30 }); A.sfx(n === 3 ? 'jingle' : 'pop', 0.7); setTimeout(() => UI.remove('evui'), 1500); }
           else { h.st = 'wait'; h.wait = [1.0, 0.75, 0.55][h.i] * 0.8 + rnd('hall') * 0.5; }
         }
       } else if (h.st === 'outro') {
@@ -311,7 +314,7 @@ async function buildMop(F, scene) {
           h.b *= 0.3; h.bv = -s.side * 0.4; h.slow = 0.3;
           const pts = (perfect ? 220 : 140) * (h.i + 1); F.G.score += pts;
           q?.result(perfect ? 'PERFECT' : 'NICE', perfect ? 'caught it instantly' : 'caught it'); q = null;
-          F.UI.pop(perfect ? 'SAVED!' : 'CAUGHT IT', `+${pts}`, { top: 24 }); F.Audio.sfx('skid', 0.7, 1.6); F.Audio.sfx('ding', 0.5, 1.4);
+          F.UI.pop(perfect ? 'SAVED!' : 'CAUGHT IT', `+${pts}`, { top: 30 }); F.Audio.sfx('skid', 0.7, 1.6); F.Audio.sfx('ding', 0.5, 1.4);
           h.i++;
         } else E.fall('overcorrected');
         return;
@@ -322,7 +325,7 @@ async function buildMop(F, scene) {
       const G = F.G, UI = F.UI, A = F.Audio;
       if (h.slip) { h.res.push(false); ui?.set(h.res); q?.result('MISS', why); q = null; h.slip = null; h.i++; bang.visible = false; }
       h.fallT = 1.7; h.fallDur = 1.7; h.pen += 1.6; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9; h.b = 0; h.bv = 0;
-      UI.pop('SPLAT', `${why} · ice −7`, { top: 24 }); UI.timeCost?.(1.6, 'slipped on the wet floor'); A.sfx('splash', 1, 0.8); A.sfx('crash', 0.5, 1.3); navigator.vibrate?.(60);
+      UI.pop('SPLAT', `${why} · ice −7`, { top: 30 }); UI.timeCost?.(1.6, 'slipped on the wet floor'); A.sfx('splash', 1, 0.8); A.sfx('crash', 0.5, 1.3); navigator.vibrate?.(60);
       splash.visible = true;
       if (!h.fl) { h.fl = true; caption(F, 'janitor', ['AY. I JUST MOPPED THAT', 'that’s gonna leave a mark', 'bro is SWIMMING'][Math.floor(rnd('lines') * 3)], 1500); }
     },
@@ -380,7 +383,7 @@ async function buildMop(F, scene) {
         h.cz = damp(h.cz, DOOR_Z - 0.15, 8, dt); h.cx = damp(h.cx, 0.15, 6, dt);
         if (!h.fin) {
           h.fin = true; const r = E.finish();
-          UI.pop(r.g, r.n === 3 ? `didn’t touch the floor · +${r.pts}` : `${3 - r.n} spill${3 - r.n > 1 ? 's' : ''} · +${r.pts}`, { top: 24 }); A.sfx(r.n === 3 ? 'jingle' : 'pop', 0.7); A.sfx('knock', 0.8, 0.8);
+          UI.pop(r.g, r.n === 3 ? `didn’t touch the floor · +${r.pts}` : `${3 - r.n} spill${3 - r.n > 1 ? 's' : ''} · +${r.pts}`, { top: 30 }); A.sfx(r.n === 3 ? 'jingle' : 'pop', 0.7); A.sfx('knock', 0.8, 0.8);
           bang.visible = false; UI.remove('qte'); setTimeout(() => UI.remove('evui'), 1500);
         }
         if (t > 0.5 && !h.o1) { h.o1 = true; caption(F, 'janitor', h.res.every(Boolean) ? 'ok that was actually smooth 👏' : 'i’m gonna need you to sign an incident form', 1800); }
@@ -495,7 +498,7 @@ async function buildBeam(F, scene) {
         if (dir === -s.side) {
           const u = s.t / s.W, perfect = u < 0.5; h.res.push(true); ui.set(h.res); h.lurch = null; bang.visible = false;
           h.b *= 0.35; h.bv = -s.side * 0.35; h.slow = 0.3; const pts = (perfect ? 220 : 140) * (h.i + 1); F.G.score += pts; h.i++;
-          q?.result(perfect ? 'PERFECT' : 'NICE', perfect ? 'rock solid' : 'caught it'); q = null; F.UI.pop(perfect ? 'STEADY!' : 'CAUGHT IT', `+${pts}`, { top: 24 }); F.Audio.sfx('creak', 0.7, 1.6);
+          q?.result(perfect ? 'PERFECT' : 'NICE', perfect ? 'rock solid' : 'caught it'); q = null; F.UI.pop(perfect ? 'STEADY!' : 'CAUGHT IT', `+${pts}`, { top: 30 }); F.Audio.sfx('creak', 0.7, 1.6);
         } else E.fall('leaned the wrong way');
         return;
       }
@@ -507,7 +510,7 @@ async function buildBeam(F, scene) {
       h.res.push(false); ui?.set(h.res);
       h.fell = true; h.falls = (h.falls || 0) + 1; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.6; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1; h.landed = false;
       h.pen += 3; G.ice = Math.max(0, G.ice - 6); G.combo = 0; G.mult = 1;
-      UI.pop('AAAAAA', `${why} · back to the plank`, { top: 24 }); UI.timeCost?.(3, 'fell off the plank'); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
+      UI.pop('AAAAAA', `${why} · back to the plank`, { top: 30 }); UI.timeCost?.(3, 'fell off the plank'); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
     },
     hide() { set.g.visible = false; well.visible = false; bang.visible = dustS.visible = false; for (const m of F.hall.children) if (m.isMesh && m.geometry.type === 'PlaneGeometry' && m.geometry.parameters.height === 30) m.visible = true; },
     dispose() {},
@@ -561,7 +564,7 @@ async function buildBeam(F, scene) {
         if (h.st === 'cross' && h.cz <= HOLE.z1 - 0.35 && !h.lurch) {
           while (h.res.length < h.next) h.res.push(false);
           h.st = 'after'; h.t = 0; const r = E.finish();
-          UI.pop(r.g, `${r.avg < 0.22 ? 'like a gymnast' : 'made it'} · +${r.pts}`, { top: 24 }); A.sfx(r.g === 'TIGHTROPE' ? 'jingle' : 'pop', 0.7); UI.remove('qte'); bang.visible = false;
+          UI.pop(r.g, `${r.avg < 0.22 ? 'like a gymnast' : 'made it'} · +${r.pts}`, { top: 30 }); A.sfx(r.g === 'TIGHTROPE' ? 'jingle' : 'pop', 0.7); UI.remove('qte'); bang.visible = false;
           setTimeout(() => UI.remove('evui'), 1500); UI.skipChip(true).addEventListener('click', () => F.skip());
         }
       } else if (h.st === 'after') {
@@ -617,7 +620,7 @@ async function buildBeam(F, scene) {
       const P = R.root.position;
       if (camK === 'follow') { cp = V(P.x - 0.55, 1.68, P.z + 2.0); cl = V(P.x + 0.1, 0.9, P.z - 3); fov = 56; }
       else if (camK === 'reveal') { cp = V(-0.95, 1.65, HOLE.z1 - 0.9); cl = V(0.15, -0.5, (HOLE.z0 + HOLE.z1) / 2 + 0.6); fov = 54; }
-      else if (camK === 'plank') { cp = V(P.x - 0.85, 1.55, P.z + 1.25); cl = V(P.x + 0.12, 0.15, P.z - 1.6); fov = 50; }
+      else if (camK === 'plank') { cp = V(P.x - 0.9, 1.8, P.z + 1.75); cl = V(P.x + 0.1, 0.62, P.z - 1.5); fov = 54; } // far enough back that his whole body sits mid-frame, below the panel, with the drop still in view
       else if (camK === 'down') { cp = V(h.fallX + 0.55, 2.45, h.cz + 0.75); cl = V(P.x, P.y + 0.5, P.z - 0.2); fov = 58; }
       else if (camK === 'below') { cp = V(-0.9, HOLE.deep + 1.4, h.cz + 1.9); cl = V(h.fx, HOLE.deep + 0.3, h.cz); fov = 56; }
       else if (camK === 'well') { cp = V(60 + 9.5, P.y + 1.6, 0.2); cl = V(60 + 0.4, P.y + 0.7, 0); fov = 50; }

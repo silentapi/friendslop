@@ -375,7 +375,7 @@ export class Knock {
     this.draw();
   }
   frame(cam, dt) { // the knock shot: square on to the door, lens fitted so the playfield fills portrait or landscape
-    const D = 1.78, aspect = cam.aspect || 1, hh = Math.max(PH + 0.36, (PW + 0.2) / aspect);
+    const D = 1.78, aspect = cam.aspect || 1, hh = Math.max(PH + (innerHeight < 500 ? 0.17 : 0.36), (PW + 0.2) / aspect); // short landscape phones: less margin, bigger circles
     const fov = 2 * Math.atan(hh / D) * 180 / Math.PI, sh = this.shake * 0.006;
     const p = V(FACE_X - D, PY + 0.04, Sets.DOOR_Z + 0.02), l = V(FACE_X, PY + 0.02, Sets.DOOR_Z);
     this.thump = Math.max(0, (this.thump || 0) - dt * 9); p.x += this.thump * 0.014; // each knock nudges the shot into the door

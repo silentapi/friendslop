@@ -30,7 +30,7 @@ export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMu
       ${daily ? `<button class="btn daily${daily.done ? ' done' : ''}" id="dailybtn"><span class="dl-k">📅 PLAY DAILY · ${daily.label}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">D</small>'}</span><span class="dl-s">${daily.done ? `best ${daily.best.toLocaleString('en-US')} · retry for a better score` : 'same route for everyone · <b>+250 🪙 +500 XP</b>'}${daily.streak > 1 && daily.live ? ` · 🔥 ${daily.streak}` : ''}</span></button>` : ''}
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
       <div class="menu-row"><button class="btn ghost menu-shop" id="shop">STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button><button class="btn ghost menu-shop menu-bp" id="bpbtn"><span class="bpb">${bpTier}</span>BATTLE PASS${bpReady ? `<em>${bpReady}</em>` : ''}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">B</small>'}</button></div>
-      <div class="small">${TOUCH ? 'Swipe to dodge · swipe up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'} · best time ${best || '—'}</div>
+      <div class="small menu-foot">${TOUCH ? 'Swipe to dodge · up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'}${best ? ` · best time ${best}` : ''}</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
   el.querySelector('#play').onclick = onPlay;
@@ -184,6 +184,7 @@ export function countdown(n) { remove('count'); const el = layer('count', `<div 
 export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl); }
 
 export function crash({ tip, onAd, onRestart }) {
+  root().querySelectorAll('.coach, .dm, .thought').forEach((c) => c.remove()); // nothing talks over the wipe-out card
   const el = layer('crash', `
     <div class="wo">WIPED<br>OUT</div>
     <div class="wsub">your <b>${money(tip)}</b> tip is in danger</div>

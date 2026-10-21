@@ -73,10 +73,10 @@ export function openShop({ store, cos, onClose, sfx = () => {} }) {
     if (!items.some((i) => i.id === sel)) sel = equipped[cat];
     const it = byId(sel), isOwn = own.has(sel), eq = equipped[cat] === sel;
     body.innerHTML = `
-      <div class="shp-tabs">${CATS.map(([id, label, ic]) => `<button data-cat="${id}" class="${id === cat ? 'on' : ''}">${ic} ${label}<small>${pct(id)}%</small></button>`).join('')}</div>
+      <div class="shp-tabs">${CATS.map(([id, label, ic]) => `<button data-cat="${id}" class="${id === cat ? 'on' : ''}"><i class="ti">${ic} </i>${label}<small>${pct(id)}%</small></button>`).join('')}</div>
       <div class="shp-grid coll">${items.map((i) => {
         const o = own.has(i.id), e = equipped[cat] === i.id;
-        return `<button class="card2 r-${i.r}${i.id === sel ? ' sel' : ''}${o ? '' : ' locked'}" data-id="${i.id}" style="--rc:${RC(i.r)}"><span class="sw" style="${o ? `background:${i.sw}` : ''}">${o ? i.icon || '' : '?'}</span><span class="nm">${o ? i.name : '???'}</span><i class="st">${e ? 'EQUIPPED' : RARITY[i.r].name}</i></button>`;
+        return `<button class="card2 r-${i.r}${i.id === sel ? ' sel' : ''}${o ? '' : ' locked'}" data-id="${i.id}" style="--rc:${RC(i.r)}"><span class="sw" style="${o ? `background:${i.sw}` : ''}">${o ? i.icon || '' : '?'}</span><span class="nm">${o ? i.name : 'Locked'}</span><i class="st">${e ? 'EQUIPPED' : RARITY[i.r].name}</i></button>`;
       }).join('')}</div>
       <div class="shp-ft">
         <div class="shp-info"><b style="color:${isOwn ? '#fff' : RC(it.r)}">${isOwn ? it.name : RARITY[it.r].name + ' · locked'}</b><small>${isOwn ? it.desc : it.bp ? 'Battle Pass exclusive · Season 1' + (it.cat === 'bike' ? ' (gobbl+ track)' : '') : 'found in crates. keep delivering.'}</small></div>
@@ -314,7 +314,13 @@ function runOpening(crate, pulls, ctx) {
     const back = new THREE.Mesh(cardGeo, keep(new THREE.MeshBasicMaterial({ map: keep(backCanvas(KT ? glowCol(p.r) : '#3a4048')), transparent: true }))); back.rotation.y = Math.PI; back.position.z = -0.003; c.g.add(back);
     c.sharp.material.side = THREE.FrontSide; c.g.visible = false; c.p = p; c.flip = 0; c.flipT = null; mcards.push(c);
   });
-  const rowSpot = (i, n, y = 0.25) => { const span = Math.min(halfW * 1.8, n * (CWID + 0.25)), x = -span / 2 + (i + 0.5) * span / n, s = Math.min(1, span / n / (CWID + 0.25)); return { x, y, s }; };
+  const rowSpot = (i, n, y = 0.25, grid = innerWidth < innerHeight * 0.9 && n > 3 && y === 0.25) => {
+    if (grid) { // phones: the ×5 deal/flip goes 3 + 2 so each card is big enough to read
+      const per = 3, r = Math.floor(i / per), cnt = Math.min(per, n - r * per), step = Math.min(halfW * 1.9, per * (CWID + 0.25)) / per, s = Math.min(1, step / (CWID + 0.25));
+      return { x: (i - r * per - (cnt - 1) / 2) * step, y: y + (r === 0 ? 1 : -1) * (CHGT / 2 + 0.15) * s, s };
+    }
+    const span = Math.min(halfW * 1.8, n * (CWID + 0.25)), x = -span / 2 + (i + 0.5) * span / n, s = Math.min(1, span / n / (CWID + 0.25)); return { x, y, s };
+  };
 
   // ---- timeline
   const FLY = 0.6, steps = KT ? [0, 1, 2, 3, 4] : [0, 0, 0];

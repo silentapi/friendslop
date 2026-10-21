@@ -1153,6 +1153,10 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 @media (max-height: 460px) { .res.r3 { max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; row-gap: 8px; } .r3 .srows { grid-row: 1 / span 4; grid-column: 2; } .r3 .srows .srow { gap: 6px; } }
 #results { background: rgba(8,10,12,.94); }
 .r3-rew .xptier b { display: block; color: #2a1a00; line-height: 1; }
+@media (min-width: 900px) and (min-height: 640px) { /* desktop: the one-screen card can breathe a little */
+  .res.r3 { max-width: 460px; gap: 12px; } .r3 .srows { gap: 6px; } .r3 .srow .sn { font-size: 14px; } .r3 .srow .si { font-size: 16px; }
+  .r3-head .grade { width: 64px; height: 64px; font-size: 46px; } .r3-score span { font-size: 40px; } .r3-tip b { font-size: 28px; } .r3-quote { font-size: 13px; }
+}
 /* ---- /results v3 ---- */
 
 /* ---- hud v2: pause button + roomy portrait layout ---- */
@@ -1168,6 +1172,66 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   .icem { top: calc(var(--st) + 100px); } .icem .tube { height: 80px; }
 }
 /* ---- /hud v2 ---- */
+
+/* ---- polish A ---- */
+/* one thing at a time up top: a Kyle text never lands on an event banner */
+#ui:has(#evui) .dms, #ui:has(#evui) .thought { opacity: 0; pointer-events: none; }
+@media (max-aspect-ratio: 1/1) {
+  .dogui.run { top: calc(var(--st) + 132px); } /* below the score row, not over it */
+  .dms { top: calc(var(--st) + 132px); }
+}
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { /* landscape phones: keep combo keys low, off the rider */
+  #combo { padding-bottom: calc(var(--sb) + 10px); }
+  .cbox { gap: 6px; } .clab { font-size: 15px !important; }
+  .ck { min-width: 50px; height: 50px; font-size: 26px; padding: 0 10px; }
+}
+/* ---- /polish A ---- */
+
+/* ---- polish B ---- */
+/* tall phones: Kyle's DMs run full width across the top, so the stairwell floor counter sits low-left, above the LEFT/RIGHT pads */
+@media (max-aspect-ratio: 3/4) { #climbui .floor, #stairsui .floor { top: auto; bottom: calc(var(--sb) + 222px); font-size: 64px; } }
+/* short landscape phones: the hallway encounter panels (dog / ladder / mop / plank) move to the top-left corner and
+   shrink, so the courier — centre frame in every hall shot — is never under them */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) {
+  #evui .dogui:not(.run), #dogui .dogui { left: var(--sl); transform: none; top: calc(var(--st) + 8px); width: min(300px, 40vw); padding: 6px 10px 8px; gap: 4px; }
+  #evui .dogui:not(.run) .dtitle, #dogui .dogui .dtitle { font-size: 14px; } #evui .dogui:not(.run) .dhint, #dogui .dogui .dhint { font-size: 10px; line-height: 1.25; }
+}
+/* the slide's letterbox bars leave the way they came in */
+#akira.out .lbx { animation: lbxOut .25s ease-in both; } #akira .lbx.t { transform-origin: top; } #akira .lbx.b { transform-origin: bottom; }
+@keyframes lbxOut { to { transform: scaleY(0); } }
+/* tall phones: captions run the full width of the bottom, so the cutscene Skip chip moves to the top-right corner */
+@media (max-aspect-ratio: 3/4) { .skipchip { top: calc(var(--st) + 12px); bottom: auto; } }
+/* tall phones: QTE labels ("he's going for your RIGHT — dodge left") wrap under the key instead of running off both edges */
+@media (max-aspect-ratio: 3/4) { .qlab { white-space: normal; width: min(340px, calc(100vw - 32px)); left: 50%; transform: translateX(-50%); text-align: center; line-height: 1.2; } }
+/* stairwell → floor 20 cut: a quick fade up from black */
+#fadein { background: #000; pointer-events: none; z-index: 30; animation: fadeUp .45s ease-out .05s both; }
+@keyframes fadeUp { from { opacity: 1; } to { opacity: 0; } }
+/* ---- /polish B ---- */
+
+/* ---- polish C (menus/meta) ---- */
+.shp-tabs button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 420px) { .shp-tabs:not(.top) button { font-size: 11px; letter-spacing: 0; padding: 8px 2px; } }
+.card2.locked .nm { color: var(--fg3, #8a949c); font-weight: 600; }
+.menu-foot { text-wrap: balance; }
+#crash .btn.ghost { background: rgba(13,15,18,.72); box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+#crash .wsub { text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+@media (max-aspect-ratio: 1/1) { /* phones: crash controls in the thumb zone, scene stays visible up top */
+  #crash { justify-content: flex-end; padding-bottom: calc(var(--sb) + 40px); background: linear-gradient(rgba(0,0,0,0) 30%, rgba(0,0,0,.78) 70%); }
+}
+.shp-tabs button .ti { font-style: normal; }
+@media (max-width: 420px), (max-height: 500px) { .shp-tabs:not(.top) button .ti { display: none; } .shp-tabs:not(.top) button { font-size: 11px; letter-spacing: 0; padding: 8px 2px; } }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { /* landscape phones: the order card goes two-column so ACCEPT is always on screen */
+  #order { flex-direction: row; gap: 14px; padding-top: calc(var(--st) + 8px); padding-bottom: calc(var(--sb) + 8px); }
+  #order .othought { max-width: 200px; margin: 0; align-self: center; font-size: 13px; }
+  #order .card { max-width: 560px; }
+  #order .card .hd { padding: 8px 14px; }
+  #order .card .bd { display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; row-gap: 8px; padding: 12px 14px; align-items: center; }
+  #order .card .who { grid-column: 1; grid-row: 1; } #order .card .tip { grid-column: 1; grid-row: 2; font-size: 40px; }
+  #order .card .note { grid-column: 2; grid-row: 1 / span 2; font-size: 13px; } #order .card .route { grid-column: 1; grid-row: 3; font-size: 12px; }
+  #order .card .small { grid-column: 2; grid-row: 3; } #order .card #accept { grid-column: 1 / span 2; grid-row: 4; padding: 12px; font-size: 18px; }
+}
+#ui:has(#crash) .coach, #ui:has(#crash) .dms, #ui:has(#pause) .coach { display: none; }
+/* ---- /polish C ---- */
 </style>
 <div id="app">
   <canvas id="gl"></canvas>

@@ -743,7 +743,7 @@ const CAM = { p: null, v: {} }, CKEYS = ['ds', 'lat', 'y', 'lds', 'llat', 'ly', 
 const SMOOTH = { ds: 0.22, lat: 0.2, y: 0.28, lds: 0.14, llat: 0.16, ly: 0.18, fov: 0.35 };
 function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x), ch = cur - tgt, t = ((CAM.v[k] || 0) + o * ch) * dt; CAM.v[k] = ((CAM.v[k] || 0) - o * t) * e; return tgt + (ch + t) * e; }
 const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
-function crashShot() { const c = chaseShot(); return { ...c, ds: c.ds + 1.2, y: c.y + 2.4, lds: 2.5, ly: 0.5 }; } // a wipeout: lift the lens over traffic and look down at where you land
+function crashShot() { const c = chaseShot(), port = camera.aspect < 1; return { ...c, ds: c.ds + (port ? 2.6 : 1.2), y: c.y + (port ? 1.8 : 2.4), lds: 3, ly: 0.5 }; } // a wipeout: lift the lens over traffic and look down at where you land
 function clipShot() { // train clip: from up the road looking back, so the cab sweeps through behind you as you're thrown at the lens
   const sd = -Math.sign(G.clip.vl || 1), h = halfAt(G.s);
   return { ds: 8.5, lat: clamp(G.lat + sd * 2.5, -h + 0.8, h - 0.8), y: 2.6 + G.y * 0.4, lds: -1.5, llat: G.lat, ly: 0.7 + G.y * 0.7, fov: baseFov() + 4 };
@@ -777,6 +777,12 @@ function orbitMix(a, b, k, minR = 5.5) {
 }
 function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {}) {
   const route = G.route, h = halfAt(G.s + shot.ds);
+  // corners: a look point far ahead sits round the bend, which swings the rider out of a narrow (phone) frame. Pull the
+  // look point back toward the rider by how much the street turns between him and it.
+  if (shot.lds > 2 && G.state === 'run') {
+    let dy = route.at(Math.min(route.length, G.s + shot.lds)).yaw - route.at(G.s).yaw; dy = Math.abs(Math.atan2(Math.sin(dy), Math.cos(dy)));
+    const k = clamp(dy / (camera.aspect < 1 ? 0.4 : 0.9)), keep = 1 - k * 0.9; shot = { ...shot, lds: 1.5 + (shot.lds - 1.5) * keep, llat: lerp(shot.llat, G.lat, k * 0.6), ds: shot.ds < 0 ? shot.ds * (1 - 0.3 * k) : shot.ds };
+  }
   // keep the lens inside the street and out of anything solid (raise it over buses, cars and barriers)
   shot.lat = clamp(shot.lat, -h + 0.5, h - 0.5);
   if (G.lv) for (const o of G.lv.obs) if (!o.dead && Math.abs(o.s - (G.s + shot.ds)) < o.len / 2 + 1.2 && Math.abs(o.lat - shot.lat) < o.w / 2 + 0.9) shot.y = Math.max(shot.y, o.h + 1.0);
