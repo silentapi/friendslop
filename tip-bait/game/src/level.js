@@ -56,12 +56,14 @@ function boostPadTex() {
 }
 
 // ---------------------------------------------------------------- generation
-export async function buildLevel(scene, route, { order, cross, rail = null, storm = false }) {
-  const r = mulberry(1000 + order * 77);
+export async function buildLevel(scene, route, { order, seed = order, cross, rail = null, storm = false }) {
+  const r = mulberry(1000 + order * 77 + seed * 7919);
   const d = clamp(0.12 + (order - 1) / 5); // difficulty 0..1
   const L = route.length;
   const obs = [];   // {kind, s, lat, len, w, h, v (forward m/s), vl (lateral), solid}
-  const pads = [], ramps = [], ice = [], puddles = [], groups = [];
+  const pads = [], ramps = [], ice = [], puddles = [], groups = [], coins = [], pickups = [];
+  const coinLine = (s0, li, n, gap = 2.2, y = 0.9) => { for (let k = 0; k < n; k++) coins.push({ s: s0 + k * gap, lat: LANES[li], y }); };
+  const coinArc = (s0, li, len, h, n = 7, y0 = 0.9) => { for (let k = 0; k < n; k++) { const u = k / (n - 1); coins.push({ s: s0 + u * len, lat: LANES[li], y: y0 + Math.sin(u * Math.PI) * h }); } };
   const used = (s, lat, pad = 6) => obs.some((o) => Math.abs(o.s - s) < pad + o.len / 2 && Math.abs(o.lat - lat) < 1.5) || ramps.some((o) => Math.abs(o.s - s) < pad + 3) || pads.some((o) => Math.abs(o.s - s) < 4 && Math.abs(o.lat - lat) < 1.5);
   const nearCross = (s, pad) => cross.some((c) => Math.abs(c - s) < pad);
   const railS = rail ? rail.s : -999;
@@ -70,30 +72,49 @@ export async function buildLevel(scene, route, { order, cross, rail = null, stor
   for (const c of cross.filter((c) => c > start + 10 && c < end && Math.abs(c - railS) > 40).slice(0, 1 + Math.round(d * 2))) groups.push({ s: c, n: 3 + Math.round(r() + d * 3), seed: r() });
   // the SunRail crossing: gates + a ramp in the middle lane, boost pad before it, train scripted to the player
   if (rail) { ramps.push({ s: railS - 13, lat: 0, rail: true }); pads.push({ s: railS - 40, lat: 0 }); obs.push({ kind: 'gate', s: railS - 6, lat: 0, len: 0.6, w: 9, h: 1.25, v: 0 }); }
+  // SET PIECE: mega ramp over a parked LYNX bus, side lanes walled off (one per run, somewhere in the middle)
+  let megaS = start + (end - start) * (0.4 + r() * 0.25);
+  if (rail && Math.abs(megaS - railS) < 90) megaS = railS > (start + end) / 2 ? Math.max(start + 60, railS - 120) : Math.min(end - 40, railS + 110);
+  const mega = (s) => {
+    pads.push({ s: s - 22, lat: 0 });
+    ramps.push({ s, lat: 0, mega: true, len: 5, h: 1.8 });
+    obs.push({ kind: 'bus', s: s + 14, lat: 0, len: 12, w: 2.6, h: 3.1, v: 0, pull: 0, parked: true });
+    for (const li of [0, 2]) obs.push({ kind: 'jersey', s: s + 10, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 }, { kind: 'jersey', s: s + 18, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 });
+    coinArc(s + 3, 1, 18, 3.4, 11, 2.2);
+    coinLine(s - 16, 1, 6);
+  };
+  mega(megaS);
   // the rhythm: a pattern every 22–34 m, denser with difficulty
   let s = start;
   while (s < end) {
-    s += lerpN(34, 20, d) + r() * 9;
+    const gapS = lerpN(34, 20, d) + r() * 9, prevS = s;
+    s += gapS;
     if (s > end) break;
-    if (Math.abs(s - railS) < 50 || groups.some((g) => Math.abs(g.s - s) < 22)) continue;
+    // coin trail in the breather between patterns (Jetpack Joyride style: always something to chase)
+    if (gapS > 18 && Math.abs(prevS - railS) > 40) { const li = Math.floor(r() * 3), n = Math.floor((gapS - 12) / 2.1); if (r() < 0.3) { const ph = r() * 6; for (let k = 0; k < n; k++) coins.push({ s: prevS + 6 + k * 2.1, lat: Math.sin(ph + k * 0.5) * 2.4, y: 0.9 }); } else coinLine(prevS + 6, li, n, 2.1); }
+    if (Math.abs(s - railS) < 50 || groups.some((g) => Math.abs(g.s - s) < 22) || (s > megaS - 40 && s < megaS + 40)) continue;
     const pick = r();
     const free = Math.floor(r() * 3); // guarantee one open lane
     if (pick < 0.2) { // traffic: slower cars in two lanes
       for (let li = 0; li < 3; li++) if (li !== free && r() < 0.75) obs.push({ kind: 'car', s: s + r() * 6, lat: LANES[li], len: 4.7, w: 1.9, h: 1.45, v: 3 + r() * 4 });
+      coinLine(s - 4, free, 7);
     } else if (pick < 0.3) { // LYNX bus pulling out of the curb lane
       const li = r() < 0.5 ? 0 : 2; if (li === free) continue;
       obs.push({ kind: 'bus', s, lat: LANES[li] + (li ? 1.2 : -1.2), len: 12, w: 2.6, h: 3.1, v: 4, pull: LANES[li], t0: null });
     } else if (pick < 0.42) { // cones / road work: jumpable
       for (let li = 0; li < 3; li++) if (li !== free) obs.push({ kind: r() < 0.5 ? 'cone' : 'barrier', s, lat: LANES[li], len: 0.6, w: 1.2, h: r() < 0.5 ? 0.75 : 0.95, v: 0 });
+      coinArc(s - 4, (free + 1 + Math.floor(r() * 2)) % 3, 8, 1.1, 6);
     } else if (pick < 0.52) { // boost pad lane + ice trail
       pads.push({ s, lat: LANES[free] });
       for (let k = 1; k <= 6; k++) ice.push({ s: s + 6 + k * 3, lat: LANES[free], y: 0.9 });
     } else if (pick < 0.61) { // ramp over a parked car
       const li = free; ramps.push({ s, lat: LANES[li] });
       obs.push({ kind: 'car', s: s + 11, lat: LANES[li], len: 4.7, w: 1.9, h: 1.45, v: 0 });
-      for (let k = 0; k < 5; k++) { const u = k / 4; ice.push({ s: s + 4 + u * 14, lat: LANES[li], y: 1.2 + Math.sin(u * Math.PI) * 2.6 }); }
+      for (let k = 0; k < 3; k++) { const u = (k + 1) / 4; ice.push({ s: s + 4 + u * 14, lat: LANES[li], y: 1.2 + Math.sin(u * Math.PI) * 2.9 }); }
+      coinArc(s + 3, li, 15, 2.7, 9, 1.3);
     } else if (pick < 0.67) { // ice cube zig-zag
-      let li = free; for (let k = 0; k < 8; k++) { ice.push({ s: s + k * 3.2, lat: LANES[li], y: 0.9 }); if (k % 3 === 2) li = clamp(li + (r() < 0.5 ? -1 : 1), 0, 2); }
+      if (r() < 0.5) { let li = free; for (let k = 0; k < 8; k++) { ice.push({ s: s + k * 3.2, lat: LANES[li], y: 0.9 }); if (k % 3 === 2) li = clamp(li + (r() < 0.5 ? -1 : 1), 0, 2); } }
+      else { const ph = r() * 6; for (let k = 0; k < 16; k++) { const lat = Math.sin(ph + k * 0.42) * 2.4; coins.push({ s: s + k * 1.9, lat, y: 0.9 + (k % 4 === 0 ? 0 : 0) }); } }
     } else if (pick < 0.79) { // SKILL: a car blinks, then cuts into the middle lane. The lane it leaves is the gap.
       const a = r() < 0.5 ? 0 : 2;
       obs.push({ kind: 'car', merge: true, s, lat: LANES[a], to: LANES[1], len: 4.7, w: 1.9, h: 1.45, v: 4 + r() * 2, t0: null });
@@ -114,7 +135,16 @@ export async function buildLevel(scene, route, { order, cross, rail = null, stor
     }
     if (storm && r() < 0.5) puddles.push({ s: s + 12, lat: LANES[Math.floor(r() * 3)] });
   }
-  return { obs, pads, ramps, ice, puddles, groups, rail };
+  const KINDS = ['magnet', 'shield', 'cool', 'x2'];
+  for (let ps = start + 70 + r() * 40; ps < end - 30; ps += 140 + r() * 70) {
+    if (Math.abs(ps - railS) < 40) continue;
+    const li = Math.floor(r() * 3), lat = LANES[li];
+    if (obs.some((o) => Math.abs(o.s - ps) < 8 && Math.abs(o.lat - lat) < 1.6) || ramps.some((o) => Math.abs(o.s - ps) < 8)) { ps -= 120; ps += 20; continue; }
+    pickups.push({ s: ps, lat, kind: KINDS[Math.floor(r() * KINDS.length)] });
+  }
+  // coins must not sit inside solid obstacles
+  const clear = coins.filter((c) => !obs.some((o) => o.h > 1 && Math.abs(o.s - c.s) < o.len / 2 + 0.6 && Math.abs(o.lat - c.lat) < o.w / 2 + 0.3 && c.y < o.h + 0.3));
+  return { obs, pads, ramps, ice, puddles, groups, rail, coins: clear, pickups };
 }
 const lerpN = (a, b, t) => a + (b - a) * t;
 
@@ -167,12 +197,25 @@ export async function populate(scene, route, lv) {
   const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(3.4, 0); sh.lineTo(3.4, 1.1); sh.lineTo(0, 0);
   const rg = new THREE.ExtrudeGeometry(sh, { depth: 2.2, bevelEnabled: false }); rg.translate(-1.7, 0, -1.1); rg.rotateY(-Math.PI / 2);
   const rim = new THREE.InstancedMesh(rg, new THREE.MeshLambertMaterial({ color: 0xff6a00, emissive: 0x401400 }), Math.max(1, lv.ramps.length));
-  lv.ramps.forEach((o, i) => rim.setMatrixAt(i, place(o.s, o.lat)));
+  lv.ramps.forEach((o, i) => rim.setMatrixAt(i, place(o.s, o.lat, 0, 0, V(o.mega ? 1.15 : 1, (o.h ?? 1.1) / 1.1, (o.len ?? 3.4) / 3.4))));
   rim.castShadow = true; scene.add(rim);
   // ice cubes
   const iceG = new THREE.BoxGeometry(0.42, 0.42, 0.42);
   const iim = new THREE.InstancedMesh(iceG, new THREE.MeshStandardMaterial({ color: 0xc8f2ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x2a6a88, emissiveIntensity: 0.6 }), Math.max(1, lv.ice.length));
   iim.frustumCulled = false; scene.add(iim); out.iceMesh = iim;
+  // tip coins (spinning gold discs)
+  const coinG = new THREE.CylinderGeometry(0.32, 0.32, 0.07, 20).rotateX(Math.PI / 2);
+  out.coinMesh = new THREE.InstancedMesh(coinG, new THREE.MeshStandardMaterial({ color: 0xffc21a, metalness: 0.85, roughness: 0.28, emissive: 0x7a4a00, emissiveIntensity: 0.7 }), Math.max(1, lv.coins.length));
+  out.coinMesh.frustumCulled = false; scene.add(out.coinMesh);
+  // power-up pickups: glowing badge sprites over a ground ring
+  const PU = { magnet: ['🧲', '#ff3d5a'], shield: ['🪖', '#3d8bff'], cool: ['❄️', '#46d8ff'], x2: ['✖2', '#ffc83d'] };
+  out.pickMeshes = lv.pickups.map((p) => {
+    const [icon, col] = PU[p.kind];
+    const t = canvasTex('pu' + p.kind, 128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 10, 64, 64, 64); g.addColorStop(0, '#fff'); g.addColorStop(0.55, col); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(64, 64, 62, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(64, 64, 40, 0, 7); c.fill(); c.font = '900 50px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#111'; c.fillText(icon, 64, 68); });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); sp.scale.set(1.5, 1.5, 1);
+    const ring = mesh(new THREE.RingGeometry(0.7, 0.95, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 }), { cast: false });
+    const g = new THREE.Group(); g.add(sp, ring); route.world(p.s, p.lat, 0.07, g.position); scene.add(g); p.mesh = g; p.sprite = sp; return g;
+  });
   // puddles
   const pud = new THREE.InstancedMesh(new THREE.CircleGeometry(1.4, 20).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x223040, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.7 }), Math.max(1, lv.puddles.length));
   lv.puddles.forEach((o, i) => pud.setMatrixAt(i, place(o.s, o.lat, 0.055, 0, V(1.2, 1, 0.8))));

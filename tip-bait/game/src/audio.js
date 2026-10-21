@@ -59,6 +59,9 @@ const SFX = {
   slurp() { const d = 0.5, b = hp(lp(noise(d), 2500), 500); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] *= Math.pow(0.5 + 0.5 * Math.sin(2 * Math.PI * 16 * t), 2) * Math.sin(Math.PI * t / d) * 0.5; } return b; },
   splash() { const d = 0.35, b = lp(hp(noise(d), 600), 3000); for (let i = 0; i < b.length; i++) b[i] *= Math.exp(-i / SR * 9) * 0.45; return b; },
   thunder() { const d = 2.2, b = buf(d); let y = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; y = y * 0.995 + rnd() * 0.05; b[i] = y * 6 * Math.min(1, t / 0.05) * Math.exp(-t * 1.5); } return lp(b, 400); },
+  knock() { const d = 0.12, b = buf(d); const n = lp(noise(d), 1400); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += (190 - 60 * t / d) / SR; b[i] = (Math.sin(2 * Math.PI * ph) * 0.8 + n[i] * 0.5) * Math.exp(-t * 45) * 0.9; } return b; },
+  rattle() { const d = 0.45, b = buf(d); const n = hp(lp(noise(d), 5000), 900); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = n[i] * Math.pow(0.5 + 0.5 * Math.sin(2 * Math.PI * 19 * t), 6) * Math.exp(-t * 4) * 0.7; } return b; },
+  buzz() { const d = 0.9, b = buf(d); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = Math.tanh(((120 * t) % 1 - 0.5) * 3 + Math.sin(2 * Math.PI * 240 * t) * 0.4) * Math.min(1, t / 0.02) * Math.min(1, (d - t) / 0.05) * 0.22; } return lp(b, 3000); },
   bwomp() { const d = 1.0, b = buf(d); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += 220 * Math.exp(-t * 0.9) / SR; b[i] = Math.tanh(2 * Math.sin(2 * Math.PI * ph)) * Math.exp(-t * 2.2) * 0.3; } return b; },
 };
 

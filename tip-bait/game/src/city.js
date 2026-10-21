@@ -118,7 +118,7 @@ export function streets(scene, city, route) {
   const half = (s) => Math.max(10.4, route.street(s).w) / 2;
   for (let s = 4; s < route.length - 4; s += 6) {
     if (nearCross(s, 6)) continue;
-    for (const lat of [-1.3, 1.3]) { const a = route.world(s, lat), b = route.world(s + 2.6, lat); dash.push(ribbon([[a.x, a.z], [b.x, b.z]], 0.13, 0.05)); }
+    for (const lat of [-1.2, 1.2]) { const a = route.world(s, lat), b = route.world(s + 2.6, lat); dash.push(ribbon([[a.x, a.z], [b.x, b.z]], 0.2, 0.06)); }
   }
   const curbs = [];
   for (let s = 0; s < route.length; s += 2) {
@@ -126,8 +126,10 @@ export function streets(scene, city, route) {
     for (const side of [-1, 1]) curbs.push([s, side * (half(s) + 0.12)]);
     for (const side of [-1, 1]) { const a = route.world(s, side * (half(s) - 0.35)), b = route.world(s + 2, side * (half(s) - 0.35)); edge.push(ribbon([[a.x, a.z], [b.x, b.z]], 0.12, 0.05)); }
   }
-  scene.add(mesh(BGU.mergeGeometries(dash), new THREE.MeshLambertMaterial({ color: 0xeeeeea }), { cast: false }));
-  scene.add(mesh(BGU.mergeGeometries(edge), new THREE.MeshLambertMaterial({ color: 0xd9b23a }), { cast: false }));
+  // road paint: pulled well in front of the road surface in depth so it doesn't z-fight away at distance
+  const paint = (color) => new THREE.MeshLambertMaterial({ color, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -12 });
+  scene.add(mesh(BGU.mergeGeometries(dash), paint(0xf4f4f0), { cast: false }));
+  scene.add(mesh(BGU.mergeGeometries(edge), paint(0xd9b23a), { cast: false }));
   const cm = new THREE.InstancedMesh(new THREE.BoxGeometry(0.26, 0.16, 2.05), new THREE.MeshLambertMaterial({ color: 0xcfcac2 }), curbs.length);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = V(0, 1, 0);
   curbs.forEach(([s, lat], i) => { const f = route.at(s + 1); const p = route.world(s + 1, lat); q.setFromAxisAngle(up, f.yaw); m4.compose(V(p.x, 0.08, p.z), q, V(1, 1, 1)); cm.setMatrixAt(i, m4); });
@@ -136,7 +138,7 @@ export function streets(scene, city, route) {
   const zeb = [];
   const seen = [];
   for (const c of cross) { if (seen.some((x) => Math.abs(x - c) < 18)) continue; seen.push(c); for (const off of [-7, 7]) { if (c + off < 3 || c + off > route.length - 3) continue; for (let lat = -4.6; lat <= 4.6; lat += 1.15) { const a = route.world(c + off - 1.5, lat), b = route.world(c + off + 1.5, lat); zeb.push(ribbon([[a.x, a.z], [b.x, b.z]], 0.5, 0.05)); } } }
-  if (zeb.length) scene.add(mesh(BGU.mergeGeometries(zeb), new THREE.MeshLambertMaterial({ color: 0xf2f2ee }), { cast: false }));
+  if (zeb.length) scene.add(mesh(BGU.mergeGeometries(zeb), paint(0xf2f2ee), { cast: false }));
   return { cross: seen, half };
 }
 

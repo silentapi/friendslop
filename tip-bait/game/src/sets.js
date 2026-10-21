@@ -22,11 +22,43 @@ export function lobby(ctx) {
   const sg = plane(ooo, 0.62, 0.46, { rough: 0.9 }); sg.position.set(0, 1.55, -2.78); sg.rotation.z = 0.05; g.add(sg);
   for (let i = -3; i <= 3; i++) box(0.2, 0.02, 0.2, emissive(0xfff2dc, 6), i * 2.2, 4.09, -1, g);
   const sp = new THREE.SpotLight(0xffe2c0, 30, 12, 0.9, 0.6, 1.5); sp.position.set(0, 4, 1.5); sp.target.position.set(0, 1, -3); g.add(sp, sp.target);
-  // back wall: lobby entrance glazing onto Lake Ave (daylight)
-  box(20, 4.2, 0.2, wall, 0, 2.1, 4.2, g);
-  const day = emissive(0xdfe9f2, 1.6);
-  for (let i = -1; i <= 1; i++) { box(2.4, 3.0, 0.05, day, i * 2.8, 1.6, 4.08, g); box(0.12, 3.2, 0.12, mat(0x16171b, { metalness: 0.6, roughness: 0.4 }), i * 2.8 - 1.26, 1.6, 4.05, g); }
   g.userData.sign = V(0, 1.55, -2.78);
+  const frame = mat(0x16171b, { metalness: 0.6, roughness: 0.4 });
+  if (!ctx?.glass) {
+    // back wall: lobby entrance glazing onto Lake Ave (daylight)
+    box(20, 4.2, 0.2, wall, 0, 2.1, 4.2, g);
+    const day = emissive(0xdfe9f2, 1.6);
+    for (let i = -1; i <= 1; i++) { box(2.4, 3.0, 0.05, day, i * 2.8, 1.6, 4.08, g); box(0.12, 3.2, 0.12, frame, i * 2.8 - 1.26, 1.6, 4.05, g); }
+    return g;
+  }
+  // entrance seen from the sidewalk: a glass storefront with a pair of (locked) sliding doors
+  const glassM = new THREE.MeshPhysicalMaterial({ color: 0xb8dce8, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false });
+  box(20, 0.9, 0.2, frame, 0, 3.75, 4.2, g);
+  for (const x of [-9.4, -6.2, -3.0, 3.0, 6.2, 9.4]) box(0.14, 3.3, 0.16, frame, x, 1.65, 4.2, g);
+  for (const x of [-7.8, -4.6, 4.6, 7.8]) box(3.05, 3.3, 0.03, glassM, x, 1.65, 4.2, g);
+  box(6.0, 0.08, 0.2, frame, 0, 3.3, 4.2, g); box(6.0, 0.05, 0.3, frame, 0, 0.02, 4.2, g);
+  const doors = [];
+  for (const sx of [-1, 1]) {
+    const d = new THREE.Group(); d.position.set(sx * 0.75, 0, 4.22); g.add(d);
+    box(1.5, 3.2, 0.03, glassM, 0, 1.62, 0, d);
+    for (const x of [-0.72, 0.72]) box(0.06, 3.2, 0.06, frame, x, 1.62, 0, d);
+    box(1.5, 0.08, 0.06, frame, 0, 0.06, 0, d); box(1.5, 0.08, 0.06, frame, 0, 3.2, 0, d);
+    box(0.04, 0.5, 0.05, mat(0xd8dadc, { metalness: 1, roughness: 0.2 }), -sx * 0.6, 1.1, 0.06, d);
+    doors.push(d);
+  }
+  const decal = plane(signTex('citidoor', 'CITITOWER 101', { w: 1024, h: 128, font: '700 76px system-ui', color: '#e8eef2' }), 2.4, 0.3, { transparent: true }); decal.position.set(0, 2.95, 4.26); g.add(decal);
+  const hours = plane(signTex('hours', 'GUESTS PLEASE CHECK IN', { w: 1024, h: 96, font: '600 52px system-ui', color: '#e8eef2' }), 0.9, 0.085, { transparent: true }); hours.position.set(0.75, 1.32, 4.26); g.add(hours);
+  // sidewalk outside
+  const walk = mesh(new THREE.PlaneGeometry(20, 10), pbr('concrete', { color: 0xb8b2a8 }), { cast: false }); walk.rotation.x = -Math.PI / 2; walk.position.set(0, 0.005, 9.3); g.add(walk);
+  // front desk + monitor + plant
+  const desk = new THREE.Group(); desk.position.set(-2.1, 0, 0.9); g.add(desk);
+  box(3.0, 1.08, 0.75, mat(0x2a221c, { roughness: 0.6 }), 0, 0.54, 0, desk);
+  box(3.1, 0.06, 0.85, pbr('marble', { color: 0xeeeae2 }), 0, 1.11, 0, desk);
+  box(2.8, 0.12, 0.02, emissive(0xffd8a8, 1.5), 0, 0.95, 0.39, desk);
+  box(0.55, 0.36, 0.04, mat(0x101114, { roughness: 0.3 }), 0.8, 1.36, -0.1, desk); box(0.08, 0.2, 0.08, mat(0x101114), 0.8, 1.2, -0.1, desk);
+  const lbl = plane(signTex('desk', 'CONCIERGE', { w: 512, h: 96, font: '700 60px system-ui', color: '#d8b880' }), 0.9, 0.17, { transparent: true }); lbl.position.set(0, 0.7, 0.385); desk.add(lbl);
+  cyl(0.28, 0.22, 0.6, mat(0xe8e4dc), 14, -4.2, 0.3, 1.0, g);
+  g.userData.doors = doors; g.userData.desk = desk;
   return g;
 }
 export const FH = 3.1;

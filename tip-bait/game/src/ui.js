@@ -14,7 +14,7 @@ export function loading() {
   return { set(p) { el.querySelector('.bar i').style.width = `${Math.round(p * 100)}%`; } };
 }
 
-export function title({ best, orders, muted, onPlay, onMute }) {
+export function title({ bestScore, best, orders, muted, onPlay, onMute }) {
   const el = layer('title', `
     <div class="top">
       <div class="logo">Tip<b>Bait</b></div>
@@ -24,7 +24,7 @@ export function title({ best, orders, muted, onPlay, onMute }) {
     <div class="bottom">
       <div class="stats">${orders ? `Orders delivered: <b>${orders}</b> · Tips received: <b>$0.00</b>` : TOUCH ? 'Swipe to dodge · Swipe up to jump · Tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'}</div>
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
-      <div class="small">Best time: ${best ? best : '—'} · gobbl courier #4412</div>
+      <div class="small">Best score: ${bestScore ? bestScore.toLocaleString('en-US') : '—'} · best time: ${best ? best : '—'} · gobbl courier #4412</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
   el.querySelector('#play').onclick = onPlay;
@@ -32,10 +32,11 @@ export function title({ best, orders, muted, onPlay, onMute }) {
   return el;
 }
 
-export function orderCard({ tip, note, pickup, dropoff, eta, n, onAccept }) {
+export function orderCard({ tip, note, pickup, dropoff, eta, n, thought = '', onAccept }) {
   const el = layer('order', `
+    ${thought ? `<div class="othought">💭 ${thought}</div>` : ''}
     <div class="card">
-      <div class="hd">gobbl <span>ORDER #${n}</span></div>
+      <div class="hd">gobbl <span>NEW ORDER #${n} · from Kyle S</span></div>
       <div class="bd">
         <div class="who"><div class="av">K</div><div class="nm">Kyle S<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
         <div class="tip">${money(tip)}<small>TIP 🤑</small></div>
@@ -62,34 +63,48 @@ export function hud(marks = []) {
       <div class="prog"><i id="progf"></i><em style="left:0">☕</em>${marks.map(([p, name]) => `<span class="mk" style="left:${(p * 100).toFixed(1)}%"><b></b>${name}</span>`).join('')}<em style="left:100%">🏢</em><span class="me" id="me">🚲</span></div>
       <div class="pill tipv"><small>TIP</small><b id="tipv">$50.00</b></div>
     </div>
+    <div class="scorebox"><div class="score" id="score">0</div><div class="mult" id="mult">x1</div><div class="coins" id="coins"><i></i><span>0</span></div></div>
+    <div class="pups" id="pups"></div>
     <div class="icem" id="icem"><div class="tube"><i id="icef"></i></div><span>ICE</span></div>
-    <div class="dms" id="dms"></div>
     <div class="speed" id="speed"></div>
     <div class="hint" id="hint">${TOUCH ? 'Swipe <b>⟵ ⟶</b> to switch lanes · <b>↑</b> to jump' : '<b>← →</b> or <b>A D</b> switch lanes · <b>↑ W Space</b> jump · <b>Shift</b> boost'}</div>
     <button class="boostb" id="boost" aria-label="Boost"><span>BOOST${TOUCH ? '' : '<br><small>SHIFT</small>'}</span></button>`);
   const q = (s) => el.querySelector(s);
   const me = q('#me'), etaEl = q('#eta'), etaS = q('#eta span'), prog = q('#progf'), ice = q('#icef'), icem = q('#icem'), boost = q('#boost'), tipv = q('#tipv'), speed = q('#speed');
+  const scoreEl = q('#score'), multEl = q('#mult'), coinsEl = q('#coins span'), pups = q('#pups');
   let last = {};
   return {
     el,
-    update({ eta, prog: p, ice: ic, boost: bo, tip, speed: sp }) {
-      const e = fmtTime(eta); if (e !== last.e) { etaS.textContent = e; etaEl.classList.toggle('late', eta <= 10); last.e = e; }
+    coinTarget() { return q('#coins i').getBoundingClientRect(); },
+    update({ eta, etaTotal = 60, prog: p, ice: ic, boost: bo, tip, speed: sp, score = 0, mult = 1, coins = 0, powers = [] }) {
+      const e = fmtTime(eta); if (e !== last.e) { etaS.textContent = e; etaEl.classList.toggle('late', eta <= 12); etaEl.classList.toggle('warn', eta > 12 && eta <= Math.max(20, etaTotal * 0.3)); last.e = e; }
+      const sc = Math.floor(score); if (sc !== last.sc) { scoreEl.textContent = sc.toLocaleString('en-US'); last.sc = sc; }
+      if (mult !== last.mult) { multEl.textContent = `x${mult}`; multEl.className = `mult m${mult}`; if (mult > (last.mult || 1)) { multEl.classList.add('bump'); } last.mult = mult; }
+      if (coins !== last.coins) { coinsEl.textContent = coins; last.coins = coins; }
+      const pk = powers.map((w) => w.id + Math.ceil(w.t)).join(); if (pk !== last.pk) { last.pk = pk; pups.innerHTML = powers.map((w) => `<div class="pu" style="--p:${Math.round(100 * w.t / w.dur)}%"><span>${w.icon}</span><small>${Math.ceil(w.t)}s</small></div>`).join(''); }
       prog.style.width = `${(p * 100).toFixed(1)}%`; me.style.left = `${(p * 100).toFixed(1)}%`;
       ice.style.height = `${Math.max(0, ic)}%`; icem.classList.toggle('low', ic < 25);
       boost.style.setProperty('--p', `${Math.min(100, bo * 100)}%`); boost.classList.toggle('ready', bo >= 1);
-      if (tip !== last.tip) { tipv.textContent = money(tip); last.tip = tip; }
+      if (tip !== last.tip) { if (last.tip != null && tip < last.tip) { const d = h(`<div class="tipdelta">-${money(last.tip - tip)}</div>`); tipv.parentElement.appendChild(d); setTimeout(() => d.remove(), 1400); tipv.parentElement.classList.remove('hit'); void tipv.offsetWidth; tipv.parentElement.classList.add('hit'); } tipv.textContent = money(tip); last.tip = tip; }
       speed.style.opacity = sp;
     },
     hint(show) { q('#hint').style.opacity = show ? 1 : 0; },
     onBoost(fn) { boost.addEventListener('pointerdown', (e) => { e.stopPropagation(); fn(); }); },
   };
 }
-export function dm(text, { who = 'Kyle S', ttl = 3200 } = {}) {
-  const box = document.getElementById('dms'); if (!box) return;
-  const el = h(`<div class="dm"><div class="av">K</div><div class="bub"><small>${who.toUpperCase()} · GOBBL</small>${text}</div></div>`);
+// Kyle's texts: phone-style notifications that slide in at the top-right, out of the way of the road
+export function dm(text, { who = 'Kyle S', ttl = 4200, tone = '' } = {}) {
+  let box = document.getElementById('dms');
+  if (!box) { box = h('<div class="dms" id="dms"></div>'); root().appendChild(box); }
+  const el = h(`<div class="dm ${tone}"><div class="av">${who === 'Kyle S' ? 'K' : 'g'}</div><div class="bub"><small><b>${who}</b> · now</small>${text}</div></div>`);
   box.appendChild(el);
   while (box.children.length > 2) box.firstElementChild.remove();
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, ttl);
+}
+// the courier's inner monologue
+export function thought(text, ttl = 2600) {
+  root().querySelectorAll('.thought').forEach((p) => p.remove());
+  const el = h(`<div class="thought">💭 ${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl);
 }
 export function pop(text, sub = '', { top = 34 } = {}) {
   root().querySelectorAll('.pop').forEach((p) => p.remove());
@@ -119,6 +134,24 @@ export function skipChip(show) {
   if (!show) { el?.remove(); return; }
   if (!el) { el = h(`<button class="skipchip" id="skipchip">Skip ▶${TOUCH ? '' : ' <small>Space</small>'}</button>`); root().appendChild(el); }
   return el;
+}
+// a collected coin flies from its screen position up into the HUD coin counter
+export function coinFly(x, y, target) {
+  const el = h(`<div class="cfly" style="left:${x}px;top:${y}px"></div>`); root().appendChild(el);
+  const dx = target.left + target.width / 2 - x, dy = target.top + target.height / 2 - y;
+  el.animate([{ transform: 'translate(-50%,-50%) scale(1.3)', opacity: 1 }, { transform: `translate(calc(-50% + ${dx * 0.35}px), calc(-50% + ${dy * 0.15 - 40}px)) scale(1.1)`, opacity: 1, offset: 0.35 }, { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.6)`, opacity: 0.9 }], { duration: 520, easing: 'cubic-bezier(.4,0,.7,1)' }).onfinish = () => el.remove();
+}
+const KEYCAP = { arrowup: '↑', arrowdown: '↓', arrowleft: '←', arrowright: '→', ' ': 'SPACE' };
+// quick-time prompt: a key with a closing ring; set(u) moves the ring (1 → 0), result(grade) shows the verdict
+export function qte({ key, label = '' }) {
+  remove('qte');
+  const el = layer('qte', `<div class="qbox"><div class="qring" id="qring"></div><div class="qkey">${KEYCAP[key] || key.toUpperCase()}</div><div class="qlab">${label}</div></div>`);
+  const ring = el.querySelector('#qring');
+  return {
+    set(u) { ring.style.transform = `translate(-50%,-50%) scale(${0.55 + u * 1.6})`; ring.classList.toggle('hot', u < 0.28 && u > 0.02); },
+    result(grade, sub = '') { el.querySelector('.qbox').classList.add('g-' + grade.toLowerCase()); el.querySelector('.qlab').innerHTML = `<b>${grade}</b>${sub ? ' · ' + sub : ''}`; setTimeout(() => el.remove(), 700); },
+    remove() { el.remove(); },
+  };
 }
 export function countdown(n) { remove('count'); const el = layer('count', `<div class="count">${n}</div>`); el.style.padding = 0; setTimeout(() => el.remove(), 700); }
 export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl); }
@@ -180,27 +213,72 @@ export function stairsUI({ onTap }) {
     },
   };
 }
+// front-door minigame: get the receptionist to look up from her phone
+export function buzzUI() {
+  const el = layer('buzzui', `
+    <div class="buzz">
+      <div class="bstat" id="bstat">📱 she’s on her phone</div>
+      <div class="bbar"><i id="bm"></i><b id="bcap"></b></div>
+      <div class="bhint">${TOUCH ? 'Tap <b>WAVE</b> fast · <b>KNOCK</b> when she looks up 👀' : 'Mash <b>←</b> <b>→</b> to wave · <b>Space</b> to knock · go hard when she looks up 👀'}</div>
+      ${TOUCH ? '<div class="stairs"><button id="bw">👋 WAVE</button><button id="bk">✊ KNOCK</button></div>' : ''}
+    </div>`);
+  return {
+    el,
+    bind(onWave, onKnock) { el.querySelector('#bw')?.addEventListener('pointerdown', (e) => { e.preventDefault(); onWave(); }); el.querySelector('#bk')?.addEventListener('pointerdown', (e) => { e.preventDefault(); onKnock(); }); },
+    set({ meter, looking, cap }) {
+      el.querySelector('#bm').style.width = `${Math.round(meter * 100)}%`;
+      el.querySelector('#bcap').style.left = `${Math.round(cap * 100)}%`; el.querySelector('#bcap').style.opacity = looking ? 0 : 1;
+      const st = el.querySelector('#bstat'); const txt = looking ? '👀 SHE’S LOOKING — NOW!' : '📱 she’s on her phone';
+      if (st.textContent !== txt) { st.textContent = txt; st.classList.toggle('look', looking); }
+    },
+  };
+}
+// stairs rhythm climb: hit ↑ when the marker crosses the green zone
+export function climbUI() {
+  const el = layer('climbui', `
+    <div class="floor" id="floor"><small>FLOOR</small><span>1</span></div>
+    <div class="climb">
+      <div class="cbar"><em class="zg"></em><em class="zp"></em><i id="cm"></i></div>
+      <div class="chint">${TOUCH ? 'Tap <b>STEP</b> when the marker hits <b>green</b>' : 'Press <b>↑</b> / <b>Space</b> when the marker hits <b>green</b>'}</div>
+      ${TOUCH ? '<div class="stairs"><button id="cs" class="next">STEP ↑</button></div>' : ''}
+    </div>`);
+  return {
+    el,
+    bind(fn) { el.querySelector('#cs')?.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(); }); },
+    set({ floor, u, zone, perfect, hide }) {
+      el.querySelector('#floor span').textContent = floor; el.querySelector('#floor').classList.toggle('done', floor >= 20);
+      el.querySelector('#cm').style.left = `${(u * 100).toFixed(1)}%`;
+      const zg = el.querySelector('.zg'), zp = el.querySelector('.zp');
+      zg.style.left = `${(50 - zone * 100)}%`; zg.style.width = `${zone * 200}%`; zp.style.left = `${(50 - perfect * 100)}%`; zp.style.width = `${perfect * 200}%`;
+      el.querySelector('.climb').style.opacity = hide ? 0.25 : 1;
+    },
+    flash(kind) { const b = el.querySelector('.cbar'); b.classList.remove('hit', 'miss', 'perf'); void b.offsetWidth; b.classList.add(kind); },
+  };
+}
 export function notif(title, body) { return `<div class="notif"><div class="ic">g</div><div><b>${title}</b><small>${body}</small></div></div>`; }
-export function results({ next, nextN, tip, pay, time, eta, ice, crashes, nearMiss, order, line, onNext, onShare }) {
+export function results({ next, nextN, tip, promised, pay, time, eta, ice, crashes, nearMiss, order, line, score: S, onNext, onShare }) {
   const onTime = time <= eta;
   const el = layer('results', `
     <div class="res">
       <h2>Delivered${onTime ? ' on time' : ''}.<br><em>Tip: $0.00</em></h2>
-      <div class="ledger">
-        <div><span>Base pay</span><span>${money(pay)}</span></div>
-        <div><span>Tip promised</span><s>${money(tip)}</s></div>
-        <div><span>Tip received</span><span class="z">$0.00</span></div>
-        <div><span>You earned</span><span>${money(pay)}</span></div>
+      <div class="scard">
+        <div class="grade g${S.grade}">${S.grade}</div>
+        <div class="stot"><small>SCORE${S.newBest ? ' · <b>NEW BEST!</b>' : ` · best ${S.best.toLocaleString('en-US')}`}</small><span>${S.total.toLocaleString('en-US')}</span></div>
+        <div class="sparts">
+          <div><span>Ride, coins &amp; tricks</span><b>${S.run.toLocaleString('en-US')}</b></div>
+          <div><span>Time left bonus</span><b>+${S.timeB.toLocaleString('en-US')}</b></div>
+          <div><span>Ice left bonus</span><b>+${S.iceB.toLocaleString('en-US')}</b></div>
+          <div><span>No-crash bonus</span><b>${S.cleanB ? '+1,000' : '—'}</b></div>
+        </div>
       </div>
+      <div class="ledger1">Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b> · you earned <b>${money(pay)}</b></div>
       <div class="kv">
-        <div>TIME<b>${fmtTime(time)}</b></div><div>ETA<b>${fmtTime(eta)}${onTime ? ' ✓' : ''}</b></div>
-        <div>ICE LEFT<b>${Math.round(ice)}%</b></div><div>NEAR MISSES<b>${nearMiss}</b></div>
-        <div>ADS WATCHED<b>${crashes}</b></div><div>KYLE'S RATING<b>⭐ 4.1</b></div>
+        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS<b>${S.coins}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div>
+        <div>TRICKS<b>${S.tricks}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div>
       </div>
-      <div class="small" style="color:#cfd6dc">Kyle S: “${line}”</div>
-      <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail crossing' : ''}</div>
-      <div class="row"><button class="btn" id="next">NEXT ORDER${TOUCH ? '' : ' ⏎'}</button></div>
-      <div class="row"><button class="btn ghost" id="share">Copy “tag your Kyle”</button></div>
+      <div class="small" style="color:#cfd6dc">Kyle S: “${line}” · ${crashes ? `${crashes} crash${crashes > 1 ? 'es' : ''}` : 'no crashes'} · ${nearMiss} near misses · ice ${Math.round(ice)}%</div>
+      <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>
+      <div class="row"><button class="btn" id="next">NEXT ORDER${TOUCH ? '' : ' ⏎'}</button><button class="btn ghost" id="share" style="flex:.6">Copy score</button></div>
     </div>`);
   el.querySelector('#next').onclick = onNext;
   el.querySelector('#share').onclick = onShare;
