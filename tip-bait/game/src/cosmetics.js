@@ -3,10 +3,11 @@
 // suit/shoe/hair materials of the courier model, and attachments on the Head / Spine / Hips bones.
 import { THREE, V, canvasTex, mat } from './core.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { createBikeSkin } from './bikes.js';
 
 // ---------------------------------------------------------------- catalogue
 // every item has a rarity; the defaults are free and always owned, everything else comes out of crates
-export const CATS = [['bag', 'BAGS', '🎒'], ['outfit', 'OUTFITS', '👕'], ['head', 'HEAD', '🧢']];
+export const CATS = [['bag', 'BAGS', '🎒'], ['outfit', 'OUTFITS', '👕'], ['head', 'HEAD', '🧢'], ['bike', 'BIKES', '🚲']];
 export const RARITY = {
   common: { name: 'COMMON', color: '#9aa3ad', rank: 0 },
   rare: { name: 'RARE', color: '#3b8bff', rank: 1 },
@@ -64,8 +65,25 @@ export const ITEMS = [
   I('head_fire', 'head', 'legendary', 'Hair on Fire', 'Kyle is late? no. YOU are late. permanently on fire.', 'linear-gradient(0deg,#ff2a00,#ffd000)', '🔥'),
   I('head_kyle', 'head', 'mythic', 'Kyle Mask', 'wear his face. become the problem.', 'radial-gradient(#ffd7b0,#7a4a2a)', '🎭'),
   I('head_crown', 'head', 'mythic', 'Delivery King', 'jewelled crown + floating halo. bow, Kyle.', 'linear-gradient(135deg,#ffe066,#b8860b)', '👑'),
+  // ---- Season 1 battle pass exclusives (bp: never in crates)
+  { ...I('bag_meter', 'bag', 'rare', 'Expired Meter', 'a parking meter on your back. it is always expired.', 'linear-gradient(135deg,#9aa3ad,#ff3b30)', '🅿️'), bp: true },
+  { ...I('bag_signal', 'bag', 'epic', 'Rush Hour Signal', 'a working traffic light. red means Kyle is waiting.', 'linear-gradient(180deg,#ff3b30,#ffd23b,#2ee66f)', '🚦'), bp: true },
+  { ...I('fit_reflect', 'outfit', 'rare', 'Night Shift', 'navy kit with stripes that glow in the headlights.', 'repeating-linear-gradient(0deg,#1d2433 0 16px,#e8f6ff 16px 20px)', '🌙'), bp: true },
+  { ...I('fit_racer', 'outfit', 'legendary', 'Rush Hour Racer', 'season racing leathers. sponsored by nobody.', 'linear-gradient(135deg,#ffffff,#ff6a00 55%,#111 56%)', '🏁'), bp: true },
+  { ...I('head_hardhat', 'head', 'rare', 'Site Boss', 'hard hat with a spinning amber beacon. works on cranes, too.', 'linear-gradient(135deg,#ffd23b,#e8a400)', '👷'), bp: true },
+  { ...I('head_visor', 'head', 'epic', 'LED Visor', 'your helmet now scrolls LATE ▸ LATE ▸ LATE.', 'linear-gradient(135deg,#16181d,#ff2a4d)', '📟'), bp: true },
+  // ---- bikes (battle pass premium only)
+  { ...I('bike_classic', 'bike', 'common', 'gobbl Cruiser', 'the company bike. squeaks.', 'linear-gradient(135deg,#8a1418,#e8e8e8)', '🚲'), def: true },
+  { ...I('bike_fixie', 'bike', 'rare', 'Matte Fixie', 'murdered-out single speed. no brakes (emotionally).', 'linear-gradient(135deg,#0c0c0e,#3a3d44)', '🚲'), bp: true },
+  { ...I('bike_bmx', 'bike', 'rare', 'Neon BMX', 'pegs, glow rims, zero chill.', 'linear-gradient(135deg,#39ff6a,#ff3bd4)', '🛹'), bp: true },
+  { ...I('bike_cargo', 'bike', 'epic', 'Cargo Hauler', 'a front crate for the big orders. and drinks.', 'linear-gradient(135deg,#2e6b4a,#b98a52)', '📦'), bp: true },
+  { ...I('bike_patrol', 'bike', 'epic', 'Night Patrol', 'light bar on the back. it does nothing. people move anyway.', 'linear-gradient(90deg,#ff1a2a 0 50%,#1a5cff 50%)', '🚨'), bp: true },
+  { ...I('bike_tandem', 'bike', 'epic', 'Tandem for Two', 'a cardboard Kyle rides on the back. he still won’t pedal.', 'linear-gradient(135deg,#ff9f1a,#c8a070)', '👥'), bp: true },
+  { ...I('bike_ebike', 'bike', 'legendary', 'Volt Courier', 'hub motors, a headlight beam and a battery that never quite fills.', 'linear-gradient(135deg,#26313c,#46ff8f)', '⚡'), bp: true },
+  { ...I('bike_synth', 'bike', 'legendary', 'Synthwave', 'chrome, neon tubes and light trails. it’s 1986 on Orange Ave.', 'linear-gradient(135deg,#ff2bd6,#3bf6ff)', '🌆'), bp: true },
+  { ...I('bike_chopper', 'bike', 'mythic', 'The Tip Collector', 'gold-chrome chopper. flame tank. exhaust flames. light trails. Season 1’s final reward.', 'linear-gradient(135deg,#fff3a0,#c8961e 45%,#ff6a00)', '🔥'), bp: true },
 ];
-export const DEFAULTS = { bag: 'bag_classic', outfit: 'fit_classic', head: 'head_helmet' };
+export const DEFAULTS = { bag: 'bag_classic', outfit: 'fit_classic', head: 'head_helmet', bike: 'bike_classic' };
 export const byId = (id) => ITEMS.find((i) => i.id === id);
 
 // ---------------------------------------------------------------- shared helpers
@@ -233,6 +251,23 @@ const BAGS = {
     A.push((t) => { const p = V(0.5 + Math.sin(t * 0.8) * 0.06, 0.95 + Math.sin(t * 1.7) * 0.05, 0.34 + Math.cos(t * 0.6) * 0.05); /* floats off his right shoulder, out of the over-the-shoulder cameras */ bal.position.copy(p); bal.rotation.z = Math.sin(t * 0.9) * 0.15; const a = V(0, 0.22, 0.12), d = p.clone().add(V(0, -0.4, 0)).sub(a); str.position.copy(a).addScaledVector(d, 0.5); str.scale.y = d.length(); str.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); });
     return g;
   },
+  bag_meter: (A) => {
+    const g = gobblBox('meter', 0x2a2c30, bagFace('meter', logoFace('#1d2026', '#cfd6dc', 'PAY TO PARK')));
+    const steel = std(0x9aa3ad, { metalness: 0.7, roughness: 0.35 });
+    M(new THREE.CylinderGeometry(0.025, 0.025, 0.3, 10), steel, 0, 0.36, 0.05, g);
+    const head = M(new RoundedBoxGeometry(0.2, 0.26, 0.16, 3, 0.04), steel, 0, 0.62, 0.05, g); void head;
+    const win = M(new THREE.PlaneGeometry(0.14, 0.08), new THREE.MeshBasicMaterial({ map: canvasTex('cos_meterwin', 128, 64, (x, w, h) => { x.fillStyle = '#2a0a0a'; x.fillRect(0, 0, w, h); x.fillStyle = '#ff3b30'; x.font = '900 26px system-ui'; x.textAlign = 'center'; x.fillText('EXPIRED', w / 2, 42); }) }), 0, 0.66, 0.135, g);
+    A.push((t) => { win.visible = Math.floor(t * 2.2) % 2 === 0; });
+    return g;
+  },
+  bag_signal: (A) => {
+    const g = gobblBox('signal', 0x1a1c20, bagFace('signal', logoFace('#101418', '#ffd23b', 'RUSH HOUR · S1')));
+    const housing = std(0x1d2a1f, { roughness: 0.5 }); M(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8), std(0x555555, { metalness: 0.7 }), 0, 0.32, 0.05, g);
+    M(new RoundedBoxGeometry(0.15, 0.44, 0.14, 3, 0.03), housing, 0, 0.62, 0.05, g);
+    const L = [0xff3b30, 0xffd23b, 0x2ee66f].map((c, k) => { const l = M(new THREE.CircleGeometry(0.045, 20), glow(c, 0.2), 0, 0.76 - k * 0.135, 0.122, g); M(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 16, 1, true, -Math.PI / 2, Math.PI), housing, 0, 0.79 - k * 0.135, 0.13, g).rotation.x = Math.PI / 2; return l; });
+    A.push((t) => { const ph = Math.floor(t / 1.2) % 3; L.forEach((l, k) => { l.material.emissiveIntensity = (2 - ph === k) ? 3 : 0.12; }); });
+    return g;
+  },
 };
 
 // ---------------------------------------------------------------- builders: head (Head bone frame: +y up, +z forward; crown of the head ≈ y 0.17)
@@ -258,9 +293,11 @@ const HEADS = {
     M(new THREE.CylinderGeometry(0.008, 0.008, 0.36, 6), std(0xc8a070), 0.05, -0.2, 0.19, g).rotation.z = 0.15; // the stick
     return g;
   },
+  head_hardhat: (A) => { const g = new THREE.Group(), y = std(0xffd23b, { roughness: 0.45 }); M(new THREE.SphereGeometry(0.13, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), y, 0, 0.1, 0, g).scale.set(1, 0.9, 1.1); const brim = M(new THREE.CylinderGeometry(0.165, 0.17, 0.014, 28), y, 0, 0.1, 0.02, g); brim.scale.z = 1.12; M(B(0.03, 0.03, 0.2), y, 0, 0.22, 0, g); M(new THREE.CylinderGeometry(0.03, 0.035, 0.03, 12), std(0x333333), 0, 0.235, 0, g); const bea = M(new THREE.SphereGeometry(0.035, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), glow(0xffa21a, 2), 0, 0.25, 0, g); const sweep = M(new THREE.ConeGeometry(0.12, 0.3, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb030, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }), 0, 0.26, 0, g); sweep.rotation.z = Math.PI / 2; sweep.geometry.translate(0, -0.15, 0); sweep.castShadow = false; A.push((t) => { sweep.rotation.y = t * 5; bea.material.emissiveIntensity = 1.6 + Math.sin(t * 10) * 0.6; }); return g; },
+  head_visor: (A) => { const g = new THREE.Group(), tex = canvasTex('cos_visor', 512, 64, (x, w, h) => { x.fillStyle = '#100306'; x.fillRect(0, 0, w, h); x.fillStyle = '#ff2a4d'; x.font = '900 44px monospace'; x.fillText('LATE ▸ LATE ▸ LATE ▸ LATE ▸', 6, 48); }); tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(0.5, 1); const v = M(new THREE.CylinderGeometry(0.128, 0.128, 0.05, 32, 1, true, -1.2, 2.4), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1.4, side: THREE.DoubleSide }), 0, 0.075, 0.0, g); v.rotation.y = Math.PI; v.scale.set(1, 1, 1.12); A.push((t) => { tex.offset.x = (t * 0.25) % 1; }); return g; },
 };
-const KEEP_HELMET = new Set(['head_coins', 'head_kyle']); // worn with the helmet still on
-const HAIR_HIDDEN = new Set(['head_afro', 'head_fire', 'head_cap', 'head_beanie', 'head_prop', 'head_bucket', 'head_cup']); // these replace / cover the hair
+const KEEP_HELMET = new Set(['head_coins', 'head_kyle', 'head_visor']); // worn with the helmet still on
+const HAIR_HIDDEN = new Set(['head_afro', 'head_fire', 'head_cap', 'head_beanie', 'head_prop', 'head_bucket', 'head_cup', 'head_hardhat']); // these replace / cover the hair
 
 // ---------------------------------------------------------------- outfits: suit + shoe materials, plus bone attachments
 const OUTFITS = {
@@ -278,9 +315,13 @@ const OUTFITS = {
   fit_hotdog: { suit: { color: 0xd8583c, roughness: 0.35 }, shoes: { color: 0xe8b06a }, extra: 'hotdog' },
   fit_astro: { suit: { color: 0xf7f8fa, roughness: 0.85, emissive: 0x202224 }, shoes: { color: 0xf0f2f4, roughness: 0.8 }, extra: 'astro' },
   fit_knight: { suit: { color: 0x8e959e, metalness: 0.9, roughness: 0.32, envMapIntensity: 1.6 }, shoes: { color: 0x9aa0a8, metalness: 0.9, roughness: 0.3 }, chrome: true, extra: 'knight' },
+  fit_reflect: { suit: { color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.55, roughness: 0.6 }, map: 'reflect' },
+  fit_racer: { suit: { color: 0xffffff, roughness: 0.35 }, shoes: { color: 0x111111, roughness: 0.3 }, map: 'racer' },
   fit_mascot: { suit: { color: 0x2ee66f, roughness: 1 }, shoes: { color: 0xffd23b, roughness: 0.9 }, extra: 'mascot' },
 };
 const MAPS = {
+  reflect: () => canvasTex('cos_reflect', 128, 128, (x, w, h) => { x.fillStyle = '#121826'; x.fillRect(0, 0, w, h); x.fillStyle = '#e8f6ff'; x.fillRect(0, 40, w, 9); x.fillRect(0, 80, w, 9); x.fillStyle = '#ffd23b'; x.fillRect(0, 52, w, 4); }),
+  racer: () => canvasTex('cos_racer', 256, 256, (x, w, h) => { x.fillStyle = '#f4f4f2'; x.fillRect(0, 0, w, h); x.fillStyle = '#ff6a00'; x.beginPath(); x.moveTo(0, 90); x.lineTo(w, 40); x.lineTo(w, 110); x.lineTo(0, 160); x.fill(); x.fillStyle = '#111'; x.beginPath(); x.moveTo(0, 168); x.lineTo(w, 118); x.lineTo(w, 136); x.lineTo(0, 186); x.fill(); x.fillStyle = '#111'; x.font = '900 30px system-ui'; x.fillText('S1', 20, 230); x.fillStyle = '#ff6a00'; x.fillText('RUSH', 120, 230); }),
   stripes: (cols) => canvasTex('cos_str_' + cols.join(''), 128, 128, (x, w, h) => { x.fillStyle = cols[0]; x.fillRect(0, 0, w, h); x.fillStyle = cols[1]; x.fillRect(0, 50, w, 10); x.fillRect(0, 72, w, 10); }),
   denim: () => canvasTex('cos_denim', 256, 256, (x, w, h) => { x.fillStyle = '#4a6fa8'; x.fillRect(0, 0, w, h); for (let i = 0; i < 3000; i++) { x.fillStyle = `rgba(${Math.random() > 0.5 ? '255,255,255' : '10,20,50'},${Math.random() * 0.12})`; x.fillRect(Math.random() * w, Math.random() * h, 1, 6); } }),
   galaxy: () => canvasTex('cos_galaxy', 512, 512, (x, w, h) => { const g = x.createRadialGradient(w * 0.4, h * 0.4, 10, w / 2, h / 2, w * 0.7); g.addColorStop(0, '#6a2bd9'); g.addColorStop(0.4, '#2a0f6a'); g.addColorStop(1, '#05020f'); x.fillStyle = g; x.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { const gg = x.createRadialGradient(0, 0, 0, 0, 0, 60); const c = ['255,60,200', '60,200,255', '140,80,255'][i % 3]; gg.addColorStop(0, `rgba(${c},.35)`); gg.addColorStop(1, `rgba(${c},0)`); x.save(); x.translate(Math.random() * w, Math.random() * h); x.fillStyle = gg; x.fillRect(-60, -60, 120, 120); x.restore(); } for (let i = 0; i < 700; i++) { x.fillStyle = `rgba(255,255,255,${0.4 + Math.random() * 0.6})`; const r = Math.random() < 0.95 ? 1 : 2.5; x.fillRect(Math.random() * w, Math.random() * h, r, r); } }),
@@ -288,7 +329,7 @@ const MAPS = {
 
 // ---------------------------------------------------------------- apply a loadout to the rider
 export function createCosmetics(R) {
-  const C = R.C, snap = new Map(), anim = { bag: [], head: [], outfit: [] }, extras = { head: [], outfit: [] };
+  const C = R.C, snap = new Map(), anim = { bag: [], head: [], outfit: [] }, extras = { head: [], outfit: [] }, bikeSkin = createBikeSkin(R);
   const meshes = []; C.model.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) meshes.push(o); });
   const named = (re) => meshes.filter((o) => re.test((o.material.name + ' ' + o.name).toLowerCase()));
   const suit = named(/casualsuit/), shoes = named(/shoes/), hair = named(/short0|hair/);
@@ -307,6 +348,7 @@ export function createCosmetics(R) {
     cur,
     apply(slot, id) {
       cur[slot] = id;
+      if (slot === 'bike') { bikeSkin.apply(id, { gold: cur.outfit === 'fit_gold' }); return; }
       if (slot === 'bag') {
         for (const c of [...R.bag.children]) c.removeFromParent(); anim.bag = [];
         if (id === 'bag_classic' || !BAGS[id]) for (const c of bagDefault) R.bag.add(c);
@@ -325,14 +367,12 @@ export function createCosmetics(R) {
       if (slot === 'outfit') {
         clear('outfit');
         for (const o of [...suit, ...shoes]) restore(o);
-        for (const [o, m] of bike) o.material = m;
         const f = OUTFITS[id];
         if (f) {
           const env = f.chrome ? (R.root.parent?.environment || chromeEnv()) : null;
-          for (const o of suit) { set(o, f.suit); if (f.map) { const m = f.map === 'stripes' ? MAPS.stripes(f.mapColor) : MAPS[f.map](); set(o, { map: m, emissiveMap: f.map === 'galaxy' ? m : null }); } else set(o, { map: null }); /* the stock suit texture is near-black: drop it so the colour reads */ if (env) set(o, { envMap: env }); }
+          for (const o of suit) { set(o, f.suit); if (f.map) { const m = f.map === 'stripes' ? MAPS.stripes(f.mapColor) : MAPS[f.map](); set(o, { map: m, emissiveMap: f.map === 'galaxy' || f.map === 'reflect' ? m : null }); } else set(o, { map: null }); /* the stock suit texture is near-black: drop it so the colour reads */ if (env) set(o, { envMap: env }); }
           if (f.shoes) for (const o of shoes) { set(o, f.shoes); if (env) set(o, { envMap: env }); }
           if (f.map === 'galaxy') anim.outfit.push((t) => { const m = suit[0]?.material.map; if (m) { m.offset.x = t * 0.02; m.offset.y = t * 0.013; } for (const o of suit) o.material.emissiveIntensity = 0.75 + Math.sin(t * 2) * 0.15; });
-          if (f.goldBike) { const gm = new THREE.MeshStandardMaterial({ color: 0xffc83a, metalness: 1, roughness: 0.2, envMap: chromeEnv() }); for (const [o] of bike) o.material = gm; }
           if (f.extra === 'cape') { // four linked panels: each bends a little more than the last, more with speed, with a lagging ripple
             const red = new THREE.MeshStandardMaterial({ color: 0xb3121f, roughness: 0.55, side: THREE.DoubleSide }), lining = new THREE.MeshStandardMaterial({ color: 0xffd23b, roughness: 0.4, side: THREE.DoubleSide });
             const root = new THREE.Group(); attach('outfit', 'Spine2', root, [0, 0.2, -0.46], [0, 0, 0], 1);
@@ -392,11 +432,12 @@ export function createCosmetics(R) {
           }
         }
         if (api._lastFit === 'fit_mascot' && id !== 'fit_mascot') { api._lastFit = id; api.apply('head', cur.head); } else { api._lastFit = id; mascotHides(); }
+        bikeSkin.apply(cur.bike, { gold: id === 'fit_gold' }); // Solid Gold gilds the stock bike (special bikes keep their paint)
       }
     },
     mascotHides,
-    applyAll(eq) { for (const slot of ['bag', 'outfit', 'head']) api.apply(slot, eq[slot] || DEFAULTS[slot]); },
-    tick(t, ctx) { for (const k of ['bag', 'head', 'outfit']) for (const f of anim[k]) f(t, ctx); },
+    applyAll(eq) { for (const slot of ['bag', 'outfit', 'head', 'bike']) api.apply(slot, eq[slot] || DEFAULTS[slot]); },
+    tick(t, ctx) { for (const k of ['bag', 'head', 'outfit']) for (const f of anim[k]) f(t, ctx); bikeSkin.tick(t, ctx); },
   };
   return api;
 }

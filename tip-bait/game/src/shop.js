@@ -3,7 +3,7 @@
 // light leaking from its seams climbs the rarity ladder (blue → purple → gold → red) before anything is shown, the
 // lid blows, a CS:GO-style reel decelerates past a near-miss, and the prize lands on the courier's turntable.
 import { ITEMS, CATS, DEFAULTS, RARITY, byId } from './cosmetics.js';
-import { CRATES, PITY, REFUND, TIERS, openCrate } from './crates.js';
+import { CRATES, PITY, REFUND, TIERS, openCrate, keysFor } from './crates.js';
 
 const TOUCH = matchMedia('(pointer: coarse)').matches;
 const coin = (n) => `<span class="coin">🪙</span>${Math.round(n).toLocaleString('en-US')}`;
@@ -47,7 +47,7 @@ export function openShop({ store, cos, onClose, sfx = () => {} }) {
             <b>${c.name}</b><small>${c.blurb}</small>
             <div class="odds">${TIERS.filter((t) => c.rates[t] > 0).map((t) => `<span style="--rc:${RC(t)}"><em>${RARITY[t].name}</em>${(c.rates[t] * 100).toFixed(c.rates[t] < 0.01 ? 1 : 0)}%</span>`).join('')}</div>
           </div>
-          <button class="btn copen${wallet() < c.price ? ' poor' : ''}" data-open="${i}">${wallet() < c.price ? `NEED ${coin(c.price - wallet())}` : `OPEN ${coin(c.price)}`}${TOUCH ? '' : ` <small>${i + 1}</small>`}</button>
+          ${keysFor(store, c) ? `<button class="btn copen key" data-open="${i}">🔑 OPEN WITH KEY <small>×${keysFor(store, c)}</small></button>` : `<button class="btn copen${wallet() < c.price ? ' poor' : ''}" data-open="${i}">${wallet() < c.price ? `NEED ${coin(c.price - wallet())}` : `OPEN ${coin(c.price)}`}${TOUCH ? '' : ` <small>${i + 1}</small>`}</button>`}
         </div>`).join('')}
       </div>
       <div class="pity"><div><b>LEGENDARY+ GUARANTEED</b> within ${PITY - pity} rolls</div><span><i style="width:${(pity / PITY) * 100}%"></i></span><small>duplicates refund ${TIERS.map((t) => `<em style="color:${RC(t)}">${REFUND[t]}</em>`).join(' · ')} coins</small></div>`;
@@ -67,7 +67,7 @@ export function openShop({ store, cos, onClose, sfx = () => {} }) {
         return `<button class="card2 r-${i.r}${i.id === sel ? ' sel' : ''}${o ? '' : ' locked'}" data-id="${i.id}" style="--rc:${RC(i.r)}"><span class="sw" style="${o ? `background:${i.sw}` : ''}">${o ? i.icon || '' : '?'}</span><span class="nm">${o ? i.name : '???'}</span><i class="st">${e ? 'EQUIPPED' : RARITY[i.r].name}</i></button>`;
       }).join('')}</div>
       <div class="shp-ft">
-        <div class="shp-info"><b style="color:${isOwn ? '#fff' : RC(it.r)}">${isOwn ? it.name : RARITY[it.r].name + ' · locked'}</b><small>${isOwn ? it.desc : 'found in crates. keep delivering.'}</small></div>
+        <div class="shp-info"><b style="color:${isOwn ? '#fff' : RC(it.r)}">${isOwn ? it.name : RARITY[it.r].name + ' · locked'}</b><small>${isOwn ? it.desc : it.bp ? 'Battle Pass exclusive · Season 1' + (it.cat === 'bike' ? ' (gobbl+ track)' : '') : 'found in crates. keep delivering.'}</small></div>
         <button class="btn shp-act${eq ? ' done' : isOwn ? '' : ' poor'}" id="shpact">${eq ? 'EQUIPPED ✓' : isOwn ? `EQUIP${TOUCH ? '' : ' <small>⏎</small>'}` : '🔒 LOCKED'}</button>
       </div>`;
     body.querySelectorAll('[data-cat]').forEach((b) => b.onclick = () => { cat = b.dataset.cat; sel = equipped[cat]; resetPreview(); sfx('pop', 0.5, 1); render(); });
@@ -92,12 +92,13 @@ export function openShop({ store, cos, onClose, sfx = () => {} }) {
 
   // ---------------- opening
   function tryOpen(i) {
-    const c = CRATES[i]; crateSel = i;
-    if (wallet() < c.price) { sfx('bwomp', 0.5, 1.4); const b = body.querySelector(`[data-open="${i}"]`); b?.classList.remove('shake'); void b?.offsetWidth; b?.classList.add('shake'); return; }
-    const pulls = openCrate(c, store); if (!pulls) return;
+    const c = CRATES[i]; crateSel = i; const key = keysFor(store, c) > 0;
+    if (!key && wallet() < c.price) { sfx('bwomp', 0.5, 1.4); const b = body.querySelector(`[data-open="${i}"]`); b?.classList.remove('shake'); void b?.offsetWidth; b?.classList.add('shake'); return; }
+    const pulls = openCrate(c, store, Math.random, { key }); if (!pulls) return;
     renderHead();
     el.classList.add('busy');
     opening = runOpening(c, pulls, { sfx, preview, resetPreview, equipped, store, onEquip: (it) => { equipped[it.cat] = it.id; store.set('equipped', equipped); cos.apply(it.cat, it.id); }, onDone: (again) => { opening = null; el.classList.remove('busy'); resetPreview(); render(); if (again) tryOpen(i); } });
+    opening.keyUsed = key;
   }
   const close = () => { if (opening || modal) return; resetPreview(); window.removeEventListener('keydown', key, true); el.remove(); onClose?.(); };
   el.querySelector('#shpback').onclick = close;
@@ -113,7 +114,7 @@ export function openShop({ store, cos, onClose, sfx = () => {} }) {
       const d = { arrowup: -1, w: -1, arrowdown: 1, s: 1, arrowleft: -1, a: -1, arrowright: 1, d: 1 }[k]; if (d) { stop(); crateSel = (crateSel + d + CRATES.length) % CRATES.length; render(); }
       return;
     }
-    if (k === 'q' || k === 'e') { stop(); const ids = CATS.map((c) => c[0]); cat = ids[(ids.indexOf(cat) + (k === 'q' ? 2 : 1)) % 3]; sel = equipped[cat]; resetPreview(); render(); return; }
+    if (k === 'q' || k === 'e') { stop(); const ids = CATS.map((c) => c[0]); cat = ids[(ids.indexOf(cat) + (k === 'q' ? ids.length - 1 : 1)) % ids.length]; sel = equipped[cat]; resetPreview(); render(); return; }
     if (k === 'enter' || k === ' ') { stop(); equip(); return; }
     const o = ITEMS.filter((i) => i.cat === cat).map((i) => i.id), i = o.indexOf(sel), grid = body.querySelector('.shp-grid'), cols = Math.max(1, Math.round((grid?.clientWidth || 300) / 130));
     const d = { arrowleft: -1, a: -1, arrowright: 1, d: 1, arrowup: -cols, w: -cols, arrowdown: cols, s: cols }[k];
@@ -159,7 +160,7 @@ function runOpening(crate, pulls, ctx) {
   let reelT = 0, reelDur = 3.1, reelFrom = 0, reelTo = 0, lastIdx = -1;
   if (!multi) {
     const rates = crate.rates, randR = () => { let x = Math.random(); for (const t of TIERS) { if ((x -= rates[t]) < 0) return t; } return 'rare'; };
-    const pick = (r) => { const l = ITEMS.filter((i) => !i.def && i.r === r); return l[Math.floor(Math.random() * l.length)]; };
+    const pick = (r) => { const l = ITEMS.filter((i) => !i.def && !i.bp && i.r === r); return l[Math.floor(Math.random() * l.length)]; };
     const cards = Array.from({ length: 40 }, (_, i) => (i === W ? best.item : i === W + 1 ? pick(top < 3 ? (Math.random() < 0.5 ? 'legendary' : 'mythic') : 'epic') : pick(randR())));
     strip.innerHTML = cards.map((it) => cardHTML(it)).join('');
     const frac = 0.58 + Math.random() * 0.34; // where on the winning card the marker stops: sometimes a hair from the next one

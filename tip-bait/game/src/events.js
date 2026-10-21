@@ -9,6 +9,7 @@ import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mulberry,
 import { character, ik2, helmet } from './chars.js';
 
 const LANES = [-2.4, 0, 2.4];
+const TOUCH = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 export const DUEL_SPEED = 0.88;
 const tiled = (p, rx, ry) => { const t = tex(p).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
 
@@ -205,7 +206,7 @@ export function createEvents(ctx) {
     E.locked = true; E.cur = ev; p.root.visible = true;
     clearTraffic(G.s - 6, ev.s + ev.len + 30); // nothing drives into a duel you can't steer out of
     const reals = ev.beats.filter((b) => b === 'real').length;
-    E.ui = UI.evUI({ title: '🛴 RIVAL COURIER', pips: reals, hint: `he throws COMBOS: <b>SHOVE</b> → <b>${ev.side > 0 ? '→' : '←'}</b> · <b>GRAB</b> → <b>↓</b> · <b>KICK</b> → <b>↑</b> · late = PERFECT · don’t bite on fakes`, keys: [ev.away, 'arrowup', 'arrowdown', ev.toward] });
+    E.ui = UI.evUI({ title: '🛴 RIVAL COURIER', pips: reals, hint: TOUCH ? `he throws COMBOS: <b>SHOVE</b> → swipe <b>${ev.side > 0 ? '→' : '←'}</b> · <b>GRAB</b> → swipe <b>↓</b> · <b>KICK</b> → swipe <b>↑</b>` : `he throws COMBOS: <b>SHOVE</b> → <b>${ev.side > 0 ? '→' : '←'}</b> · <b>GRAB</b> → <b>↓</b> · <b>KICK</b> → <b>↑</b> · late = PERFECT · don’t bite on fakes`, keys: null });
     E.ui.bind((k) => E.key(k));
     Audio.sfx('scratch', 0.5, 1.6); Audio.sfx('whoosh', 0.8, 0.7);
   }
@@ -446,7 +447,7 @@ export function createEvents(ctx) {
   // the camera: a tight over-the-shoulder two-shot for the duel; high and wide for the drop so you can read the road
   E.camera = () => {
     const ev = E.cur; if (!ev) return { w: 0 };
-    if (ev.kind === 'rival' && ev.st !== 'finish') { const rl = LANES[ev.rl], mid = (G.lat + rl) / 2; return { w: 1, scale: 1.2, shot: { ds: -4.9, lat: mid - ev.side * 0.3, y: 2.55, lds: 7, llat: mid, ly: 1.05, fov: baseFov() - 2 } }; }
+    if (ev.kind === 'rival' && ev.st !== 'finish') { const rl = ev.base ?? LANES[ev.rl], mid = (G.lat + rl) / 2, tall = innerWidth < innerHeight; return { w: 1, scale: 1.2, shot: tall ? { ds: -7.4, lat: mid, y: 3.3, lds: 8, llat: mid, ly: 0.9, fov: baseFov() + 4 } : { ds: -4.9, lat: mid - ev.side * 0.3, y: 2.55, lds: 7, llat: mid, ly: 1.05, fov: baseFov() - 2 } }; }
     if (ev.kind === 'crane' && ev.st === 'snap') return { w: 1, scale: 1.4, shot: { ds: -8.2, lat: G.lat * 0.45, y: 7.0 + G.y * 0.4, lds: 15, llat: G.lat * 0.25, ly: 0.2, fov: baseFov() + 4 } };
     return { w: 0 };
   };

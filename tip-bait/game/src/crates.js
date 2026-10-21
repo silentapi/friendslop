@@ -9,7 +9,7 @@ export const CRATES = [
   { id: 'premium', name: 'Premium Crate', price: 600, rolls: 1, look: 'prem', rates: { common: 0, rare: 0.55, epic: 0.32, legendary: 0.11, mythic: 0.02 }, blurb: 'no commons. real chance at Kyle-tier.' },
   { id: 'premium5', name: 'Premium ×5', price: 2700, rolls: 5, look: 'multi', rates: { common: 0, rare: 0.55, epic: 0.32, legendary: 0.11, mythic: 0.02 }, guarantee: 'epic', blurb: '5 premium rolls · 10% off · Epic+ guaranteed.' },
 ];
-const pool = (r) => ITEMS.filter((i) => !i.def && i.r === r);
+const pool = (r) => ITEMS.filter((i) => !i.def && !i.bp && i.r === r); // battle-pass items and bikes never drop
 const rank = (r) => RARITY[r].rank;
 
 function pickRarity(rates, pity, rnd) {
@@ -22,8 +22,12 @@ function pickRarity(rates, pity, rnd) {
 }
 
 // roll a crate: spends the coins, updates owned/pity, returns the pulls ({ item, r, dupe, refund })
-export function openCrate(crate, store, rnd = Math.random) {
-  const wallet = store.get('wallet', 0); if (wallet < crate.price) return null;
+// crate keys (battle pass rewards) open a crate for free: store 'keys' = { standard, premium }
+export const keysFor = (store, crate) => (store.get('keys', {})[crate.id] || 0);
+export function openCrate(crate, store, rnd = Math.random, { key = false } = {}) {
+  const keys = store.get('keys', {});
+  if (key) { if (!(keys[crate.id] > 0)) return null; keys[crate.id]--; store.set('keys', keys); }
+  const price = key ? 0 : crate.price, wallet = store.get('wallet', 0); if (wallet < price) return null;
   const owned = new Set(store.get('owned', [])); let pity = store.get('pity', 0);
   const out = [];
   for (let k = 0; k < crate.rolls; k++) {
@@ -37,7 +41,7 @@ export function openCrate(crate, store, rnd = Math.random) {
     owned.add(item.id);
   }
   const refunds = out.reduce((a, p) => a + p.refund, 0);
-  store.set('wallet', wallet - crate.price + refunds); store.set('owned', [...owned]); store.set('pity', pity);
+  store.set('wallet', wallet - price + refunds); store.set('owned', [...owned]); store.set('pity', pity);
   // multi-rolls reveal best-last, like every gacha you've ever lost money to
   if (crate.rolls > 1) out.sort((a, b) => rank(a.r) - rank(b.r));
   return out;
