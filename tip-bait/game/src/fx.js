@@ -64,7 +64,7 @@ export function createFX(scene) {
         q.z -= dt * (speed * 1.8 + 20);
         if (q.z < -14) seedStreak(q);
         const p = base.clone().addScaledVector(fwd, q.z).addScaledVector(right, q.o.x).add(V(0, q.o.y, 0));
-        const tail = p.clone().addScaledVector(fwd, 2.2 + speed * 0.12), lvl = Math.max(boostK * 0.95, cruise * 0.38 * (i % 3 ? 1 : 0)), a = lvl * Math.min(1, (q.z + 14) / 6);
+        const tail = p.clone().addScaledVector(fwd, 2.2 + speed * 0.12), lvl = Math.max(boostK * 0.95, cruise * 0.2 * (i % 3 ? 0 : 1)), a = lvl * Math.min(1, (q.z + 14) / 6);
         wpos.set([p.x, p.y, p.z, tail.x, tail.y, tail.z], i * 6); wcol.set([(0.85 - 0.25 * boostK) * a, a, (0.85 - 0.1 * boostK) * a, 0, 0, 0], i * 6);
       });
       wgeo.attributes.position.needsUpdate = wgeo.attributes.color.needsUpdate = true; wind.visible = boostK > 0.02 || cruise > 0.05;

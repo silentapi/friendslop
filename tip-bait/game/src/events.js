@@ -9,7 +9,7 @@ import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mulberry,
 import { character, ik2, helmet } from './chars.js';
 
 const LANES = [-2.4, 0, 2.4];
-export const DUEL_SPEED = 0.65;
+export const DUEL_SPEED = 0.88;
 const tiled = (p, rx, ry) => { const t = tex(p).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
 
 // ---------------------------------------------------------------- planning (inside buildLevel)
@@ -213,7 +213,7 @@ export function createEvents(ctx) {
     if (ev.bi >= ev.beats.length) { rivalFinish(ev); return; }
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length;
     ev.st = 'gap'; ev.t = 0; ev.gap = (0.4 + Math.random() * 0.55) * (ev.bi === 0 ? 1.5 : 1);
-    ev.W = (ev.first && k === 0 ? 0.62 : [0.5, 0.44, 0.38][Math.min(2, k)]) * (1 - d * 0.18);
+    ev.W = (ev.first && k === 0 ? 0.5 : [0.4, 0.35, 0.3][Math.min(2, k)]) * (1 - d * 0.15);
     ev.pressed = null;
   }
   function rivalFinish(ev) {
@@ -249,7 +249,7 @@ export function createEvents(ctx) {
     ev.st = 'after'; ev.t = 0; ev.grade = grade;
     if (grade === 'PERFECT' || grade === 'COUNTER') {
       const pts = grade === 'PERFECT' ? 400 : 250; G.score += pts * G.mult; ctx.addCombo(grade === 'PERFECT' ? 6 : 4);
-      ev.push = 1.25; ev.arm = 1; G.shake = Math.max(G.shake || 0, 0.3); E.slow = 0.18; ev.hitStop = 0.12;
+      ev.push = 1.25; ev.arm = 1; G.shake = Math.max(G.shake || 0, 0.3); ev.hitStop = 0.08;
       FX.burst(at, { color: 0xffffff, n: 26, speed: 6, up: 2, life: 0.5, size: 0.35 }); FX.shock(at, { color: grade === 'PERFECT' ? 0x46ff8f : 0xffffff, radius: 3, dur: 0.35 });
       Audio.sfx('crash', 0.55, 1.5); Audio.sfx('boom', 0.5, 1.6); if (grade === 'PERFECT') Audio.sfx('ding', 0.8, 1.6);
       UI.pop(grade === 'PERFECT' ? 'PERFECT COUNTER' : 'COUNTER', `+${pts * G.mult}`, { top: 30 }); sayBubble(p, '😤');
@@ -258,38 +258,38 @@ export function createEvents(ctx) {
       G.score += 100 * G.mult; ev.dodge = 1; Audio.sfx('whoosh', 0.9, 1.3); UI.pop('SIDESTEP', `+${100 * G.mult} · he whiffed`, { top: 30 }); sayBubble(p, '😠');
     } else {
       const lost = loseCoins(6 + Math.floor(G.coins * 0.1), G.R.root.position.clone().setY(1));
-      G.lat -= ev.side * 1.1; G.slowT = Math.max(G.slowT, 0.9); G.ice = Math.max(0, G.ice - 6); ctx.breakCombo(); G.shake = 0.5;
+      G.lat -= ev.side * 0.6; ctx.tumble?.(1.15); G.ice = Math.max(0, G.ice - 6); ctx.breakCombo(); G.shake = 0.5;
       Audio.sfx('crash', 0.7, 1.1); UI.pop('SHOVED', `${lost ? `−${lost} coins · ` : ''}ice −6`, { top: 30 }); sayBubble(p, '😂'); navigator.vibrate?.(50);
     }
   }
   function rivalUpdate(ev, dt, sdt) {
     const p = P(ev), route = G.route;
-    ev.t += sdt; ev.flinchCd = Math.max(0, (ev.flinchCd || 0) - sdt); ev.laughT = Math.max(0, (ev.laughT || 0) - sdt);
+    if (!(G.tumbleT > 0) || ev.st === 'finish') ev.t += sdt; ev.flinchCd = Math.max(0, (ev.flinchCd || 0) - sdt); ev.laughT = Math.max(0, (ev.laughT || 0) - sdt);
     ev.push = damp(ev.push, 0, 2.2, sdt); ev.arm = damp(ev.arm, 0, 5, sdt); ev.dodge = damp(ev.dodge || 0, 0, 3, sdt);
     let lean = 0, reach = 0, tell = 0;
     ev.hitStop = Math.max(0, ev.hitStop - dt);
     switch (ev.st) {
-      case 'approach': ev.ds = lerp(-15, 0.35, easeOut(seg(ev.t, 0, 1.3))); E.slow = 0.7;
+      case 'approach': ev.ds = lerp(-15, 0.35, easeOut(seg(ev.t, 0, 1.3))); E.slow = null;
         if (ev.t > 0.7 && !ev.said) { ev.said = true; UI.say('DashDash guy', ['that’s MY order, pal 😤', 'move, gobbl boy', 'nice bag. shame if it… fell 😏'][Math.floor(Math.random() * 3)]); Audio.sfx('horn', 0.35, 2.2); }
         if (ev.t > 1.45) rivalBeat(ev); break;
-      case 'gap': E.slow = 0.9; lean = Math.sin(ev.t * 3) * 0.05;
+      case 'gap': E.slow = null; lean = Math.sin(ev.t * 3) * 0.05;
         if (ev.t > ev.gap) { ev.st = 'tell'; ev.t = 0; ev.real = ev.beats[ev.bi] === 'real'; Audio.sfx('skid', 0.4, 1.8); } break;
       case 'tell': // the wind-up looks the same for real and fake: lean away, eyes on you
-        tell = smooth(clamp(ev.t / 0.24)); lean = -0.22 * tell; E.slow = 0.55;
+        tell = smooth(clamp(ev.t / 0.24)); lean = -0.22 * tell; E.slow = 0.85;
         if (ev.t > 0.24) {
-          if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.33; ev.q = UI.qte({ key: ev.toward, label: ev.first && ev.res.length === 0 ? `<b>${ev.side > 0 ? '→' : '←'}</b> SHOVE BACK — late = PERFECT` : 'SHOVE BACK!' }); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
+          if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.7; ev.q = UI.qte({ key: ev.toward, label: ev.first && ev.res.length === 0 ? `<b>${ev.side > 0 ? '→' : '←'}</b> SHOVE BACK — late = PERFECT` : 'SHOVE BACK!' }); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
           else { ev.st = 'feint'; ev.t = 0; }
         } break;
-      case 'feint': lean = lerp(-0.22, 0.18, smooth(seg(ev.t, 0, 0.18))) * (1 - smooth(seg(ev.t, 0.25, 0.55))); E.slow = 0.6;
+      case 'feint': lean = lerp(-0.22, 0.18, smooth(seg(ev.t, 0, 0.18))) * (1 - smooth(seg(ev.t, 0.25, 0.55))); E.slow = 0.85;
         if (ev.t > 0.12 && !ev.fk) { ev.fk = true; sayBubble(p, '😏'); }
         if (ev.t > 0.7) { ev.fk = false; rivalBeat(ev); } break;
       case 'strike': { // he swings in across the lane line
-        const u = clamp(ev.t / ev.W); lean = lerp(-0.22, 0.35, easeOut(u)); reach = u; E.slow = 0.33;
+        const u = clamp(ev.t / ev.W); lean = lerp(-0.22, 0.35, easeOut(u)); reach = u; E.slow = 0.7;
         ev.q?.set(1 - u);
         if (ev.t >= ev.W) { ev.q?.result('MISS', 'too slow'); ev.q = null; resolveStrike(ev, 'SHOVED'); }
         break; }
       case 'after': {
-        const g = ev.grade; E.slow = 0.8;
+        const g = ev.grade; E.slow = null;
         if (g === 'PERFECT' || g === 'COUNTER') { lean = -0.5 * Math.exp(-ev.t * 3) * Math.cos(ev.t * 14); }
         else if (g === 'DODGE') { lean = 0.4 * Math.exp(-ev.t * 3) * Math.cos(ev.t * 10); reach = Math.max(0, 1 - ev.t * 3); }
         else { lean = 0.3 * (1 - smooth(seg(ev.t, 0, 0.5))); reach = 1 - smooth(seg(ev.t, 0, 0.35)); }
@@ -306,7 +306,7 @@ export function createEvents(ctx) {
         if (ev.t > 2.2) { ev.st = 'done'; p.root.visible = false; p.bubble.visible = false; E.cur = null; }
         break;
     }
-    if (ev.hitStop > 0) E.slow = 0.12;
+    if (ev.hitStop > 0) E.slow = 0.35;
     if (ev.st === 'done') return;
     // place him: his lane, pushed out when you shove him, in toward you when he swings
     // shoulder to shoulder (≈1.5 m off your line), swinging wide while he catches up so he never brushes the lens
@@ -356,7 +356,7 @@ export function createEvents(ctx) {
     p.cable.scale.y = cableLen; p.cable.position.set(p.hook.position.x / 2, p.H - 0.4 - cableLen / 2, 6); p.cable.rotation.z = Math.atan2(p.hook.position.x, cableLen);
     if (ev.st === 'idle') return;
     const v = Math.max(G.v, 4);
-    E.slow = ev.st === 'clear' ? null : 0.34;
+    E.slow = ev.st === 'clear' ? null : 0.72;
     let pending = 0;
     for (const q of p.pieces) {
       const o = q.o;
@@ -400,10 +400,10 @@ export function createEvents(ctx) {
   }
   E.clonk = (o) => { // a dropped piece hit you: costly, never a wipeout
     const ev = E.cur?.kind === 'crane' ? E.cur : (G.lv.events || []).find((e) => e.kind === 'crane');
-    o.dead = true; G.invT = 1.0; G.slowT = Math.max(G.slowT, 1.2); G.ice = Math.max(0, G.ice - 10); ctx.breakCombo(); G.shake = 0.6;
+    o.dead = true; ctx.tumble?.(1.2); G.ice = Math.max(0, G.ice - 10); ctx.breakCombo(); G.shake = 0.6;
     const lost = loseCoins(10, G.R.root.position.clone().setY(1)); if (ev) ev.hits = (ev.hits || 0) + 1;
     FX.burst(G.R.root.position.clone().setY(1), { color: 0xffffff, n: 30, speed: 6, up: 3, life: 0.6, size: 0.4 });
-    UI.pop('CLONK!', `${lost ? `−${lost} coins · ` : ''}ice −10 · slowed`, { top: 30 }); Audio.sfx('crash', 0.9, 0.8); navigator.vibrate?.(70);
+    UI.pop('CLONK!', `${lost ? `−${lost} coins · ` : ''}ice −10`, { top: 30 }); Audio.sfx('crash', 0.9, 0.8); navigator.vibrate?.(70);
   };
 
   // ================================================================ hooks for the game loop

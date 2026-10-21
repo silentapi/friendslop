@@ -224,6 +224,44 @@ function* renderMusicG(kind) {
 }
 const renderMusic = (kind) => run(renderMusicG(kind));
 
+// ---------------------------------------------------------------- the original riding track (150 BPM phonk: cowbell riff,
+// 808 glides, trap hats). Brought back by request; the lo-fi set above stays for reference.
+const oRnd = (() => { let s = 7; return () => { s = (s * 16807) % 2147483647; return s / 2147483647 * 2 - 1; }; })();
+const oNote = (n) => 440 * Math.pow(2, (n - 69) / 12);
+const oBuf = (len) => new Float32Array(Math.floor(len * SR));
+function oAdd(dst, t0, src, g = 1) { const i0 = Math.floor(t0 * SR); for (let i = 0; i < src.length && i0 + i < dst.length; i++) if (i0 + i >= 0) dst[i0 + i] += src[i] * g; }
+function oLp(x, fc) { const a = Math.exp(-2 * Math.PI * fc / SR); let y = 0; for (let i = 0; i < x.length; i++) { y = (1 - a) * x[i] + a * y; x[i] = y; } return x; }
+function oHp(x, fc) { const a = Math.exp(-2 * Math.PI * fc / SR); let y = 0, px = 0; for (let i = 0; i < x.length; i++) { y = a * (y + x[i] - px); px = x[i]; x[i] = y; } return x; }
+const oNoise = (d) => { const b = oBuf(d); for (let i = 0; i < b.length; i++) b[i] = oRnd(); return b; };
+function oEnv(b, a, k) { for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] *= Math.min(1, t / a) * Math.exp(-k * t); } return b; }
+const oKick = () => { const d = 0.42, b = oBuf(d); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += (45 + 110 * Math.exp(-t * 30)) / SR; b[i] = Math.tanh(Math.sin(2 * Math.PI * ph) * Math.exp(-t * 7) * 1.8); } return b; };
+const oClap = () => { const b = oHp(oLp(oNoise(0.25), 6000), 900); for (let i = 0; i < b.length; i++) { const t = i / SR; let e = Math.exp(-t * 25); for (const o of [0, 0.011, 0.022]) if (t >= o) e += Math.exp(-(t - o) * 160) * 0.6; b[i] *= e * 0.55; } return b; };
+const oHat = (open = false) => oEnv(oHp(oNoise(open ? 0.22 : 0.045), 7000), 0.001, open ? 14 : 90).map((v) => v * 0.35);
+function oCowbell(f) { const d = 0.3, b = oBuf(d); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = (Math.sign(Math.sin(2 * Math.PI * f * t)) * 0.6 + Math.sign(Math.sin(2 * Math.PI * f * 1.48 * t)) * 0.4) * Math.exp(-t * 9) * 0.45; } return oLp(oHp(b, f * 0.8), f * 4); }
+function o808(f, d, glide) { const b = oBuf(d); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; const ff = glide ? f + (glide - f) * Math.min(1, Math.max(0, (t - d * 0.6) / (d * 0.3))) : f; ph += ff / SR; b[i] = Math.tanh(Math.sin(2 * Math.PI * ph) * 2.2) * Math.min(1, t / 0.005) * Math.min(1, Math.max(0, (d - t) / 0.03)) * 0.5; } return b; }
+const OB = 60 / 150, OSTEP = OB / 4;
+const ORIFF = [78, null, 78, 81, null, 78, null, 76, 78, null, 73, null, 76, null, 74, null, 78, null, 78, 81, null, 83, null, 81, 78, null, 76, null, 73, null, 71, null];
+const OBASS = [[0, 42, 1.5], [1.5, 42, 0.5], [2, 45, 1], [3, 40, 1, 42], [4, 42, 1.5], [5.5, 42, 0.5], [6, 47, 1], [7, 45, 1, 40]];
+function* classicG(kind) {
+  const len = 32 * OSTEP * 2, L = oBuf(len), cache = new Map(), memo = (k, f) => { if (!cache.has(k)) cache.set(k, f()); return cache.get(k); };
+  for (let k = 0; k < 64; k++) {
+    const t = k * OSTEP, i16 = k % 32, b16 = i16 % 16;
+    if (kind !== 'tense' && ORIFF[i16] != null) oAdd(L, t, memo('c' + ORIFF[i16], () => oCowbell(oNote(ORIFF[i16]))), kind === 'chill' ? 0.5 : 0.8);
+    if (b16 % 2 === 0) oAdd(L, t, memo('h', () => oHat()), kind === 'tense' ? 0.35 : 0.55);
+    if (kind === 'full' && [13, 14, 15].includes(b16) && Math.floor(k / 16) % 2) for (let r = 0; r < 3; r++) oAdd(L, t + r * OSTEP / 3, memo('h', () => oHat()), 0.4);
+    if (kind === 'full' && b16 === 10) oAdd(L, t, memo('ho', () => oHat(true)), 0.4);
+    if (kind === 'full') { if ([0, 7, 10].includes(b16) || (b16 === 3 && Math.floor(k / 16) % 2)) oAdd(L, t, memo('k', oKick), 0.95); if (b16 === 4 || b16 === 12) oAdd(L, t, memo('cl', oClap), 0.8); }
+    if (kind === 'chill' && b16 === 0) oAdd(L, t, memo('k', oKick), 0.7);
+    const bt = (i16 * OSTEP) / OB;
+    for (const [at0, n, dur, gl] of OBASS) if (Math.abs(bt - at0) < 1e-6 && kind !== 'chill') oAdd(L, t, o808(oNote(n), dur * OB * 0.95, gl ? oNote(gl) : null), kind === 'tense' ? 0.5 : 0.85);
+    if (k % 4 === 3) yield;
+  }
+  for (let i = 0; i < L.length; i++) L[i] = Math.tanh(L[i] * 1.1) * 0.8;
+  yield; return [L, L.slice()];
+}
+const MUSIC_STYLE = 'classic'; // 'classic' (phonk) | 'lofi'
+const musicGen = (kind) => (MUSIC_STYLE === 'classic' ? classicG(kind) : renderMusicG(kind));
+
 // ---------------------------------------------------------------- ambience: the city behind the music
 // Continuous beds are rendered long and their overhang crossfaded into the head (seamless); events (cars passing,
 // voices, birds) are added circularly. Distant horns / sirens / pigeons are separate one-shots scheduled at random
@@ -380,7 +418,7 @@ const SFX = {
 
 function toBuffer(f32) { const b = ctx.createBuffer(1, f32.length, SR); b.copyToChannel(f32, 0); return b; }
 function toBuffer2([L, R]) { const b = ctx.createBuffer(2, L.length, SR); b.copyToChannel(L, 0); b.copyToChannel(R, 1); return b; }
-const MUSIC_LVL = 0.5, AMB_LVL = 0.34;
+const MUSIC_LVL = 0.55, AMB_LVL = 0.34;
 let ambGain = null, amb = null, ambTimer = 0;
 // background render queue: steps one generator ~8 ms at a time between frames; urgent keys jump the queue
 const queue = []; let pumping = false;
@@ -418,10 +456,10 @@ export const Audio = {
     ambGain = ctx.createGain(); ambGain.gain.value = AMB_LVL; ambGain.connect(master); // ambience skips the compressor so SFX never pump it
     this.unlocked = true;
     // render lazily, one piece per idle slice so taps stay responsive: menu music first, then the ride, then the rest
-    const w = this._want; if (w) enqueue(w, () => renderMusicG(w)); // whatever is wanted right now goes first
-    for (const k of ['chill', 'full']) enqueue(k, () => renderMusicG(k));
+    const w = this._want; if (w) enqueue(w, () => musicGen(w)); // whatever is wanted right now goes first
+    for (const k of ['chill', 'full']) enqueue(k, () => musicGen(k));
     for (const k of ['city', 'cityTraffic']) enqueue('a_' + k, () => renderAmbG(k));
-    enqueue('tense', () => renderMusicG('tense'));
+    enqueue('tense', () => musicGen('tense'));
     for (const k of ['lobby', 'stair', 'hall']) enqueue('a_' + k, () => renderAmbG(k));
   },
   _ready(key) {
@@ -435,7 +473,7 @@ export const Audio = {
     const now = ctx.currentTime;
     if (current) { current.g.gain.cancelScheduledValues(now); current.g.gain.setTargetAtTime(0, now, 0.3); const c = current; setTimeout(() => { try { c.src.stop(); } catch {} }, 2200); current = null; }
     if (!kind) return;
-    if (!buffers[kind]) { enqueue(kind, () => renderMusicG(kind), true); return; }
+    if (!buffers[kind]) { enqueue(kind, () => musicGen(kind), true); return; }
     const src = ctx.createBufferSource(); src.buffer = buffers[kind]; src.loop = true;
     const g = ctx.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(1, now, 0.25);
     src.connect(g); g.connect(musicGain); src.start();

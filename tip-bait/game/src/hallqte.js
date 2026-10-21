@@ -494,10 +494,10 @@ async function buildBeam(F, scene) {
     fall(why) {
       const G = F.G, UI = F.UI, A = F.Audio;
       if (h.lurch) { q?.result('MISS', why); q = null; h.lurch = null; bang.visible = false; }
-      while (h.res.length < 3) h.res.push(false); ui?.set(h.res);
-      h.fell = true; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.3; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1;
-      h.pen += 6; G.ice = Math.max(0, G.ice - 10); G.combo = 0; G.mult = 1; setTimeout(() => F.phase === 'hall' && UI.remove('evui'), 1100);
-      UI.pop('AAAAAA', `${why} · +6s · ice −10`, { top: 24 }); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
+      h.res.push(false); ui?.set(h.res);
+      h.fell = true; h.falls = (h.falls || 0) + 1; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.6; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1; h.landed = false;
+      h.pen += 3; G.ice = Math.max(0, G.ice - 6); G.combo = 0; G.mult = 1;
+      UI.pop('AAAAAA', `${why} · back to the plank · +3s`, { top: 24 }); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
     },
     hide() { set.g.visible = false; well.visible = false; bang.visible = dustS.visible = false; for (const m of F.hall.children) if (m.isMesh && m.geometry.type === 'PlaneGeometry' && m.geometry.parameters.height === 30) m.visible = true; },
     dispose() {},
@@ -505,7 +505,7 @@ async function buildBeam(F, scene) {
       if (h.done) return h.r; h.done = true;
       while (h.res.length < 3) h.res.push(false);
       const avg = h.nB ? h.sumB / h.nB : 1;
-      const g = h.fell ? 'FELL A FLOOR' : avg < 0.22 ? 'TIGHTROPE' : avg < 0.38 ? 'STEADY' : 'SHAKY', pts = { 'FELL A FLOOR': 0, TIGHTROPE: 700, STEADY: 350, SHAKY: 150 }[g];
+      const g = h.falls > 1 ? 'FELL TWICE' : h.fell ? 'FELL A FLOOR' : avg < 0.22 ? 'TIGHTROPE' : avg < 0.38 ? 'STEADY' : 'SHAKY', pts = { 'FELL TWICE': 0, 'FELL A FLOOR': 50, TIGHTROPE: 700, STEADY: 350, SHAKY: 150 }[g];
       const G = F.G; G.score += pts; G.fin = { ...(G.fin || {}), hall: g, hallT: h.pen, hallKind: 'beam', hallPerfect: g === 'TIGHTROPE' && h.res.every(Boolean) };
       ui?.done(g); F.UI.remove('evui'); return (h.r = { g, pts, avg });
     },
@@ -563,7 +563,7 @@ async function buildBeam(F, scene) {
       } else if (h.st === 'fall') {
         // off the side, a beat of slow-mo, then down through the hole
         const t = h.t; fallPose = 1;
-        if (t > 0.25) { h.vy -= 9.8 * dt; h.y += h.vy * dt; }
+        if (t > 0.12) { h.vy -= 16 * dt; h.y += h.vy * dt; }
         y = Math.max(HOLE.deep, h.y); x = h.fallX + h.fallSide * Math.min(0.5, t * 0.9); z = h.cz;
         roll = h.fallSide * Math.min(1.2, t * 2.2); camK = 'down';
         if (y <= HOLE.deep && !h.landed) { h.landed = true; h.t = 0; h.st = 'below'; A.sfx('boom', 1, 0.8); A.sfx('crash', 0.9, 0.7); h.shake = 1; dustS.visible = true; dustS.position.set(x, HOLE.deep + 0.4, z); }
@@ -571,18 +571,22 @@ async function buildBeam(F, scene) {
       } else if (h.st === 'below') {
         // floor 19: flat on your back in the rubble, then up, dusting off
         const t = h.t; x = h.fx; z = h.cz; y = HOLE.deep; camK = 'below';
-        fallPose = 0; const u = clamp(t / 2.0);
+        fallPose = 0; const u = clamp(t / 0.9);
         dustS.scale.setScalar(0.5 + t * 0.2); dustS.material.opacity = 1 - u;
-        if (t > 0.4 && !h.l3) { h.l3 = true; UI.thought('floor 19. cool. cool cool cool.', 1700); }
+        if (t > 0.2 && !h.l3) { h.l3 = true; UI.thought(h.falls > 1 ? 'again. AGAIN.' : 'floor 19. cool. cool cool cool.', 1400); }
         h.lie = u;
-        if (t > 2.1) { h.st = 'climb'; h.t = 0; dustS.visible = false; A.sfx('step', 1, 1); }
+        if (t > 0.95) { h.st = 'climb'; h.t = 0; dustS.visible = false; A.sfx('step', 1, 1); }
       } else if (h.st === 'climb') {
         // back up the stairs to 20 (the long way, again)
-        const t = h.t, s = Math.min(1.999, t * 0.95); wellOn = true;
+        const t = h.t, s = Math.min(1.999, t * 2.1); wellOn = true;
         const sp = Sets.stairPath(2 + s); x = 60 + sp.p.x; y = sp.p.y; z = sp.p.z; yaw = Math.atan2(sp.dir.x, sp.dir.z); walk = 1;
         camK = 'well';
         if (t > 0.2 && !h.l4) { h.l4 = true; UI.sceneCap('', { extra: '<div class="notif"><div class="ic">↑</div><div><b>Floor 19 → 20</b><small>the stairs. again.</small></div></div>' }); }
-        if (t > 2.1) { h.st = 'back'; h.t = 0; UI.remove('scene'); }
+        if (t > 1.0) { // straight back to the start of the plank: try it again
+          h.st = 'cross'; h.t = 0; UI.remove('scene'); h.cz = HOLE.z0 + 0.55; h.cx = HOLE.x; h.b = 0; h.bv = 0; h.res = []; ui?.set(h.res); h.next = 0; h.i = 0; h.lurch = null; h.at = [];
+          let tt = 0.9 + Math.random() * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + Math.random() * 0.6; }
+          A.sfx('creak', 0.8, 0.8);
+        }
       } else if (h.st === 'back') {
         // in through the far stair door, past the hole you fell through, to 2004
         const t = h.t; walk = 1 - smooth(seg(t, 1.6, 2.0));

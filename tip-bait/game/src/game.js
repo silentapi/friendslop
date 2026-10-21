@@ -75,7 +75,7 @@ const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
 window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
 window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
-const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT) }); window.__EV = EV;
+const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT), tumble: (d) => tumble(d) }); window.__EV = EV;
 window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
@@ -143,7 +143,7 @@ function resetRun(atS = 0) {
   if (atS === 0) {
     G.base = Math.min(21, 15.2 + (G.order - 1) * 1.0);
     G.eta = Math.round(G.route.length / (G.base * 0.98) + 8); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
-    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.banked = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0;
+    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.banked = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0; G.tumbleT = 0;
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
     for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.on = false; o.teched = false; }
     for (const ic of G.lv.ice) ic.got = false;
@@ -365,9 +365,9 @@ function update(dt, t) {
   if (!G.dmDone.has('fast') && G.s / G.route.length > 0.5 && G.eta > G.etaTotal * 0.55) { G.dmDone.add('fast'); UI.dm(K.pickLine(K.FAST_TEXTS)); }
   // speed
   G.boostT = Math.max(0, G.boostT - sdt); G.slowT = Math.max(0, G.slowT - sdt); G.invT = Math.max(0, G.invT - sdt);
-  const target = G.base * (power('rocket') ? 2.0 : G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * EV.speedK * smooth(seg(G.runT, 0, 1.2));
+  const target = (G.tumbleT > 0 ? 0 : 1) * G.base * (power('rocket') ? 2.0 : G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * EV.speedK * smooth(seg(G.runT, 0, 1.2));
   G.runT += sdt;
-  G.v = damp(G.v, target, power('rocket') ? 9 : G.boostT > 0 ? 6 : 2.5, sdt);
+  G.v = damp(G.v, target, G.tumbleT > 0 ? 7 : power('rocket') ? 9 : G.boostT > 0 ? 6 : 2.5, sdt);
   const prevS = G.s;
   G.s = Math.min(L, G.s + G.v * sdt); G.dist += G.v * sdt; G.score += G.v * sdt;
   // lanes + jump + ramps
@@ -485,9 +485,16 @@ function update(dt, t) {
   const nh = tr && tr.kind === 'nohand' ? Math.sin(Math.PI * clamp(tr.e)) : 0;
   R.ride(G.dist, { lean: 0.42 + (G.boostT > 0 ? 0.12 : 0) - nh * 0.5, bank: clamp(-latV * 0.05 - curve * G.v * G.v * 0.012 + EV.bank(), -0.45, 0.45), stand: G.y > 0.3 ? 0.6 + nh * 0.4 : 0, look: G.y > 0.3 ? 0.15 + nh * 0.3 : 0 });
   EV.pose(R); updateRocket(dt);
-  R.root.visible = G.invT <= 0 || Math.floor(G.invT * 12) % 2 === 0;
+  if (G.tumbleT > 0) { // went down: skid off the bike, a beat on the ground, back on (costs time, never the run)
+    G.tumbleT -= sdt; const u = 1 - Math.max(0, G.tumbleT) / G.tumbleDur, down = smooth(seg(u, 0, 0.25)) * (1 - smooth(seg(u, 0.72, 1)));
+    R.bike.rotation.set(0, 0, down * 1.35);
+    if (u < 0.78) { R.walk(u < 0.5 ? 'falling' : 'defeated', u < 0.5 ? 0.3 + u * 2 : (u - 0.5) * 2.4, { offset: V(0.15 + down * 0.6, 0.15 * (1 - down), 0.4 * down), yaw: 0, loop: false }); R.C.root.rotation.x = down * 1.2 * (1 - smooth(seg(u, 0.5, 0.78))); }
+    if (G.tumbleT <= 0) { G.tumbleT = 0; R.bike.rotation.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0); G.invT = Math.max(G.invT, 0.6); G.runT = 0.3; }
+  }
+  R.root.visible = G.tumbleT > 0 || G.invT <= 0 || Math.floor(G.invT * 12) % 2 === 0;
 }
 // the rocket: everything you touch goes up in a fireball (short and capped: ~20 m more than riding)
+function tumble(d = 1.1) { if (G.tumbleT > 0) return; G.tumbleT = d; G.tumbleDur = d; G.invT = d + 0.6; Audio.sfx('crash', 0.8, 1.1); Audio.sfx('skid', 0.7); FX.burst(G.R.root.position.clone().setY(0.4), { color: 0xd8d2c6, n: 22, speed: 4, up: 1.5, life: 0.7, size: 0.5, grav: 3 }); navigator.vibrate?.(60); }
 function rocketSmash(o) {
   o.dead = true; G.smashes++;
   const at = G.route.world(o.s, o.lat, Math.min(1.2, o.h / 2));
@@ -791,7 +798,7 @@ function step(dt, draw) {
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
   FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes
   if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && (G.boostT > 0 || !!power('rocket')), cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
-  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: power('rocket') ? 1 : G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.22 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
+  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: power('rocket') ? 1 : G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.1 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);
   G.cos?.tick(T, { speed: G.state === 'run' ? G.v : 6 });
   // ambience follows where you are: the city while riding (louder + brighter with speed), then the building's rooms
