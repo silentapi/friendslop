@@ -461,6 +461,11 @@ async function buildBeam(F, scene) {
   const well = Sets.stairwell(null, 3); well.position.set(60, 0, 0); well.visible = false; scene.add(well);
   for (const o of well.children) if (o.isMesh && (Math.abs(o.position.x - 3.15) < 0.01 || (o.geometry?.type === 'PlaneGeometry' && o.position.x > 2.9))) o.visible = false;
   let nl = 0; well.traverse((o) => { if (o.isPointLight && nl++ % 3) o.visible = false; });
+  // renumber the stencilled floors so the trip reads 18 → 19 → 20
+  for (const o of well.children) if (o.isMesh && o.geometry?.type === 'PlaneGeometry' && o.geometry.parameters.width === 1.5) {
+    const f = Math.round((o.position.y - 1.9) / Sets.FH) + 18;
+    o.material = o.material.clone(); o.material.map = canvasTex('stflb' + f, 256, 256, (c, w, hh) => { c.clearRect(0, 0, w, hh); c.fillStyle = '#1d2a33'; c.font = '900 150px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(f), w / 2, hh / 2 + 8); });
+  }
   const bang = bangSprite('❗', '#ff2a1a'), dustS = bangSprite('💨', '#5a5048'); scene.add(bang, dustS);
   const h = { st: 'intro', t: 0, i: 0, res: [], pen: 0, slow: 1, shake: 0, cz: HC.c0, cx: 0.2, b: 0, bv: 0, lurch: null, next: 0, at: [], sumB: 0, nB: 0, fell: false, y: 0, vy: 0 };
   let ui = null, bar = null, q = null;
@@ -491,7 +496,7 @@ async function buildBeam(F, scene) {
       if (h.lurch) { q?.result('MISS', why); q = null; h.lurch = null; bang.visible = false; }
       while (h.res.length < 3) h.res.push(false); ui?.set(h.res);
       h.fell = true; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.3; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1;
-      h.pen += 6; G.ice = Math.max(0, G.ice - 10); G.combo = 0; G.mult = 1;
+      h.pen += 6; G.ice = Math.max(0, G.ice - 10); G.combo = 0; G.mult = 1; setTimeout(() => F.phase === 'hall' && UI.remove('evui'), 1100);
       UI.pop('AAAAAA', `${why} · +6s · ice −10`, { top: 24 }); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
     },
     hide() { set.g.visible = false; well.visible = false; bang.visible = dustS.visible = false; for (const m of F.hall.children) if (m.isMesh && m.geometry.type === 'PlaneGeometry' && m.geometry.parameters.height === 30) m.visible = true; },
@@ -597,12 +602,13 @@ async function buildBeam(F, scene) {
       let cp, cl, fov;
       const P = R.root.position;
       if (camK === 'follow') { cp = V(P.x - 0.55, 1.68, P.z + 2.0); cl = V(P.x + 0.1, 0.9, P.z - 3); fov = 56; }
-      else if (camK === 'reveal') { cp = V(1.0, 1.15, HOLE.z0 + 1.1); cl = V(-0.1, -1.4, (HOLE.z0 + HOLE.z1) / 2); fov = 52; }
+      else if (camK === 'reveal') { cp = V(-0.95, 1.65, HOLE.z1 - 0.9); cl = V(0.15, -0.5, (HOLE.z0 + HOLE.z1) / 2 + 0.6); fov = 54; }
       else if (camK === 'plank') { cp = V(P.x - 0.85, 1.55, P.z + 1.25); cl = V(P.x + 0.12, 0.15, P.z - 1.6); fov = 50; }
-      else if (camK === 'down') { cp = V(h.fallX - 0.6, 1.9, h.cz + 1.4); cl = V(P.x, P.y + 0.6, P.z); fov = 54; }
+      else if (camK === 'down') { cp = V(h.fallX + 0.55, 2.45, h.cz + 0.75); cl = V(P.x, P.y + 0.5, P.z - 0.2); fov = 58; }
       else if (camK === 'below') { cp = V(-0.9, HOLE.deep + 1.4, h.cz + 1.9); cl = V(h.fx, HOLE.deep + 0.3, h.cz); fov = 56; }
       else if (camK === 'well') { cp = V(60 + 9.5, P.y + 1.6, 0.2); cl = V(60 + 0.4, P.y + 0.7, 0); fov = 50; }
-      else { cp = V(-0.85, 1.6, DOOR_Z + (h.st === 'back' ? -1.3 : 1.9)); cl = V(0.3, 1.1, h.st === 'back' ? DOOR_Z - 2 : DOOR_Z + 0.2); fov = 54; }
+      else if (h.st === 'back') { cp = V(-0.85, 1.65, DOOR_Z + 1.7); cl = V(0.2, 1.0, DOOR_Z - 2.6); fov = 54; }
+      else { cp = V(-0.85, 1.6, DOOR_Z + 1.9); cl = V(0.3, 1.1, DOOR_Z + 0.2); fov = 54; }
       camera(F, cp, cl, fov, camK, rdt, h.shake);
     },
   };
