@@ -73,6 +73,8 @@ function addScore(pts) { G.score += pts * G.mult; }
 function breakCombo() { G.combo = 0; G.mult = 1; G.comboT = 0; }
 const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
+window.__sfx = (n, g, r) => Audio.sfx(n, g, r);
+const SHARE_URL = 'https://claude.ai/artifact/Gkp4oi7z7tQGeQAw57bFDX'; // where friends can play
 window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
 window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
 const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT), tumble: (d) => tumble(d) }); window.__EV = EV;
@@ -232,7 +234,7 @@ function startAkira() {
   const first = !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
   const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = QA ? mulberry(G.seed + 3) : Math.random;
   const seq = ['arrowdown']; for (let k = 1; k < (first ? 3 : 4); k++) { let n; do n = pool[Math.floor(rr() * 4)]; while (n === seq[k - 1]); seq.push(n); }
-  G.akira = { seq, idx: 0, t: 0, dur: first ? 3.6 : 2.7, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
+  G.akira = { seq, idx: 0, t: 0, dur: first ? 3.0 : 2.15, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
   const st = G.pop.stepper; if (st) { st.t = 0; st.c.root.visible = true; }
   Audio.sfx('skid', 1, 0.8); Audio.rate(0.7); UI.coach(null);
 }
@@ -257,7 +259,7 @@ function startTech(o) {
   const first = !TUT.tech; if (first) { TUT.tech = 1; store.set('tut', TUT); }
   let dir = Math.random() < 0.5 ? -1 : 1; if (G.lane + dir < 0 || G.lane + dir > 2) dir = -dir;
   const key = dir < 0 ? 'arrowleft' : 'arrowright';
-  G.tech = { o, dir, key, t: 0, dur: first ? 0.85 : 0.65, ui: UI.qte({ key, label: 'TECH IT!' }) };
+  G.tech = { o, dir, key, t: 0, dur: first ? 0.7 : 0.5, ui: UI.qte({ key, label: 'TECH IT!' }) };
   G.slowmo = 0.06; Audio.rate(0.6); Audio.sfx('skid', 0.9, 1.4); G.shake = 0.15;
 }
 function updateTech(dt) { const q = G.tech; q.t += dt; q.ui.set(1 - q.t / q.dur); if (q.t >= q.dur) endTech(false); }
@@ -279,7 +281,7 @@ function startQTE(kind) {
   const rr = QA ? mulberry(Math.floor(G.s * 7)) : Math.random, first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
   const n = (kind === 'rail' ? 2 : 3) + (G.order >= 4 ? 1 : 0), seq = []; for (let i = 0; i < n; i++) { let k; do k = QKEYS[Math.floor(rr() * 4)]; while (k === seq[i - 1]); seq.push(k); }
   const key = seq[n - 1];
-  G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.6 : 1.0) + n * 0.32, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
+  G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.35 : 0.75) + n * 0.25, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
   Audio.rate(0.7); Audio.sfx('whoosh', 0.8, 0.5); UI.coach(null);
 }
 function updateQTE(dt) { const q = G.qte; q.t += dt; q.ui.set(q.idx, 1 - q.t / q.dur); if (q.t >= q.dur) endQTE('MISS', 'too slow'); }
@@ -750,25 +752,30 @@ function showResults(line) {
   const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.hallT ?? G.fin?.dogT ?? 0));
   const run = Math.round(G.score), timeB = Math.round(timeLeft * 25), iceB = Math.round(G.ice * 8), cleanB = G.crashes ? 0 : 1000;
   const total = run + timeB + iceB + cleanB;
-  const per = total / G.route.length, grade = per >= 26 ? 'S' : per >= 18 ? 'A' : per >= 11 ? 'B' : per >= 6 ? 'C' : 'D';
   const newBest = total > (G.bestScore || 0); if (newBest) { G.bestScore = total; store.set('bestScore', total); }
-  G.lastTotal = total; G.lastGrade = grade;
+  G.lastTotal = total;
   Audio.music('chill');
   // per-section success bars + badges (same thresholds decide a perfect run, where Kyle keeps the tip)
   const rated = UI.rateAll({ ...(G.fin || {}), time: G.time, eta: G.etaTotal, timeLeft, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, coins: G.coins, coinsTotal: G.lv?.coins?.length ?? 0, tricks: G.tricks });
   const perfect = !!G.fin?.perfect; // decided by the finale (Finale.isPerfect); the bars use the same rate() thresholds
+  // the letter grade is pure gameplay: the average of the section ratings (route length, order and tip don't enter into it)
+  const secs = rated.rows.filter((x) => x.r), mean = secs.reduce((a, x) => a + x.r.pct, 0) / Math.max(1, secs.length);
+  const grade = perfect || mean >= 0.95 ? 'S' : mean >= 0.82 ? 'A' : mean >= 0.66 ? 'B' : mean >= 0.5 ? 'C' : 'D';
+  G.lastGrade = grade;
   UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line, rows: rated.rows,
     score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, perfect, tipPaid: G.fin?.tipPaid || 0, tipShare: G.fin?.tipShare || 0, fin: G.fin, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog, rival: G.fin?.rival, crane: G.fin?.crane },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
-    onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. ${perfect ? `PERFECT RUN. He actually tipped ${UI.money(G.tip)}. 🤯` : 'He tipped $0.00. Again. 🙄'} #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
+    onShare: () => { const paid = G.fin?.tipPaid || 0, txt = `🛵 TIP BAIT · ${total.toLocaleString('en-US')} pts (${grade}) delivering Kyle S his iced coffee to Citi Tower, floor 20. He promised ${UI.money(G.def.tip)}. ${perfect ? `PERFECT RUN — he actually tipped ${UI.money(G.tip)} 🤯` : paid > 0 ? `He tipped ${UI.money(paid)}. Progress.` : 'He tipped $0.00. Again. 🙄'}\nBeat my score 👉 ${SHARE_URL}`; UI.copyText(txt, 'Score copied — paste it anywhere. Go tag your Kyle.'); } });
   // tip-coins → wallet: what you picked up plus a grade bonus (a perfect run pays big)
   const bonus = ({ S: 200, A: 120, B: 70, C: 35, D: 15 }[grade] || 0) + (perfect ? 500 : 0), got = G.coins - (G.banked || 0), earned = bankCoins(bonus);
   const res = document.querySelector('#results .res');
   if (res) {
     const w = document.createElement('div'); w.className = 'walletline';
-    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} grade bonus → wallet</span><b>${store.get('wallet', 0).toLocaleString('en-US')}</b><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
+    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} grade bonus → wallet</span><button class="btn ghost shopbtn" id="tomenu">⌂ MAIN MENU</button><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
     (res.querySelector('.nextup') || res.lastElementChild).before(w);
-    w.querySelector('#toshop').onclick = () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); openStore(); };
+    const toMenu = (shop) => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); if (shop) openStore(); };
+    w.querySelector('#toshop').onclick = () => toMenu(true); w.querySelector('#tomenu').onclick = () => toMenu(false);
+    UI.pouchFly({ from: w.querySelector('span'), before: store.get('wallet', 0) - (got + bonus), after: store.get('wallet', 0), n: Math.min(40, 8 + Math.round((got + bonus) / 15)) });
   }
   void earned;
 }

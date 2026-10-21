@@ -132,6 +132,8 @@ if ((await G()).st === 'finale') {
   console.log('hall took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
   for (let k = 0; k < 90; k++) { await tick(6); if (await page.evaluate(() => !!document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');
+  await page.waitForTimeout(2600); await shot('fin_results_pouch');
+  await page.click('#share').catch(() => {}); await page.waitForTimeout(400); await shot('fin_results_share');
 }
 console.log('errors', errors.length, errors.slice(0, 5));
 await browser.close();

@@ -165,7 +165,7 @@ export function combo({ seq, label }) {
   const el = layer('combo', `<div class="cbox"><div class="clab">${label}</div><div class="ckeys">${seq.map((k, i) => `<div class="ck" id="ck${i}">${KEYCAP[k] || k}</div>`).join('')}</div><div class="ctime"><i id="ctf"></i></div></div>`);
   return {
     set(idx, u) { seq.forEach((_, i) => { const c = el.querySelector('#ck' + i); c.classList.toggle('done', i < idx); c.classList.toggle('now', i === idx); }); el.querySelector('#ctf').style.width = `${Math.max(0, u) * 100}%`; },
-    result(ok, sub = '') { el.querySelector('.cbox').classList.add(ok ? 'ok' : 'bad'); el.querySelector('.clab').innerHTML = `<b>${ok ? 'NAILED IT' : 'FUMBLED'}</b>${sub ? ' · ' + sub : ''}`; setTimeout(() => el.remove(), 900); },
+    result(ok, sub = '') { if (ok) el.querySelectorAll('.ck').forEach((c) => { c.classList.add('done'); c.classList.remove('now'); }); el.querySelector('.cbox').classList.add(ok ? 'ok' : 'bad'); el.querySelector('.clab').innerHTML = `<b>${ok ? 'NAILED IT' : 'FUMBLED'}</b>${sub ? ' · ' + sub : ''}`; setTimeout(() => el.remove(), 900); },
     remove() { el.remove(); },
   };
 }
@@ -276,6 +276,33 @@ export function evUI({ title, hint, pips = 0, keys = null }) {
     set(res) { el.querySelectorAll('.dpips i').forEach((p, i) => { p.className = res[i] === true ? 'ok' : res[i] === false ? 'bit' : res[i] === 'mid' ? 'mid' : ''; }); },
     done(g) { const t = el.querySelector('.dtitle'); t.textContent = g; el.querySelector('.dogui').classList.add('fin', /CLONK|FLAT|BULLI/.test(g) ? 'bad' : 'good'); },
   };
+}
+// after a run: coins stream from the results into a wallet pouch in the top-right corner, counting up as they land
+export function pouchFly({ from, before, after, n = 20 }) {
+  remove('pouch');
+  const p = h(`<div class="pouch" id="pouch"><i>👝</i><b>${before.toLocaleString('en-US')}</b></div>`); root().appendChild(p);
+  const val = p.querySelector('b'), r0 = from?.getBoundingClientRect?.() || { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  let landed = 0; const step = (after - before) / n;
+  for (let i = 0; i < n; i++) {
+    const c = h('<div class="flycoin">🪙</div>'); root().appendChild(c);
+    const x0 = r0.left + r0.width * (0.2 + Math.random() * 0.6), y0 = r0.top + r0.height / 2, pr = p.getBoundingClientRect(), x1 = pr.left + 18, y1 = pr.top + pr.height / 2;
+    c.style.left = x0 + 'px'; c.style.top = y0 + 'px';
+    const delay = 500 + i * 55, dur = 650 + Math.random() * 200, arc = -80 - Math.random() * 120;
+    c.animate([{ transform: 'translate(-50%,-50%) scale(.6)', opacity: 0 }, { transform: `translate(calc(-50% + ${(x1 - x0) * 0.45}px), calc(-50% + ${arc + (y1 - y0) * 0.3}px)) scale(1.15)`, opacity: 1, offset: 0.45 }, { transform: `translate(calc(-50% + ${x1 - x0}px), calc(-50% + ${y1 - y0}px)) scale(.7)`, opacity: 1 }], { duration: dur, delay, easing: 'cubic-bezier(.3,.1,.4,1)', fill: 'both' })
+      .onfinish = () => { c.remove(); landed++; val.textContent = Math.round(landed >= n ? after : before + step * landed).toLocaleString('en-US'); p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); try { window.__sfx?.('ice', 0.35, 1.5 + landed / n * 0.6); } catch {} };
+  }
+}
+// copy that works inside sandboxed iframes too: async clipboard → execCommand → a sheet with the text selected
+export function copyText(txt, ok = 'Copied!') {
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select();
+    let done = false; try { done = document.execCommand('copy'); } catch {} ta.remove();
+    if (done) { toast(ok); return; }
+    remove('copysheet');
+    const el = layer('copysheet', `<div class="copysheet"><b>Copy your score</b><textarea readonly>${txt.replace(/</g, '&lt;')}</textarea><button class="btn" id="cclose">DONE</button></div>`);
+    const t = el.querySelector('textarea'); t.focus(); t.select(); el.querySelector('#cclose').onclick = () => el.remove();
+  };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast(ok), fallback); else fallback();
 }
 export function say(who, text, ttl = 2200) {
   root().querySelectorAll('.say').forEach((p) => p.remove());

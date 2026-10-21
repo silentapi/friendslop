@@ -195,6 +195,13 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .say { position: absolute; right: calc(var(--sr) + 16px); top: calc(var(--st) + 200px); max-width: min(340px, 50vw); padding: 9px 14px; border-radius: 16px 16px 4px 16px; background: #ff5a1f; color: #fff; font: 800 17px/1.3 var(--body); box-shadow: 0 8px 22px rgba(0,0,0,.35); animation: dmIn .3s both; z-index: 3; }
 .tipchg.kept b { color: var(--gobbl); }
 .cap em.kept { color: var(--gobbl); }
+.copysheet { margin: auto; width: min(460px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 18px; background: #12151a; box-shadow: 0 0 0 2px var(--gobbl), 0 20px 50px rgba(0,0,0,.6); pointer-events: auto; }
+.copysheet textarea { height: 120px; resize: none; border-radius: 12px; border: 0; padding: 10px; font: 600 14px/1.4 var(--body); background: #1d2128; color: #fff; }
+#copysheet { z-index: 40; background: rgba(0,0,0,.55); }
+.pouch { position: absolute; right: calc(var(--sr) + 12px); top: calc(var(--st) + 12px); z-index: 30; display: flex; align-items: center; gap: 8px; padding: 8px 14px 8px 10px; border-radius: 999px; background: rgba(13,15,18,.85); box-shadow: 0 0 0 2px #ffcf3a, 0 8px 22px rgba(0,0,0,.45); font: 900 22px var(--display); color: #ffcf3a; font-variant-numeric: tabular-nums; pointer-events: none; }
+.pouch i { font-style: normal; font-size: 22px; }
+.pouch.bump { animation: bump .18s; }
+.flycoin { position: absolute; z-index: 31; font-size: 22px; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
 .say b { display: block; font: 800 11px var(--body); letter-spacing: .6px; opacity: .85; text-transform: uppercase; }
 .dhint { font: 700 14px/1.35 var(--body); color: #dfe5ea; text-wrap: balance; }
 .dhint b { color: #fff; }

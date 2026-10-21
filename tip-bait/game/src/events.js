@@ -214,13 +214,13 @@ export function createEvents(ctx) {
     if (ev.bi >= ev.beats.length) { rivalFinish(ev); return; }
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length;
     ev.st = 'gap'; ev.t = 0; ev.gap = (0.3 + Math.random() * 0.35) * (ev.bi === 0 ? 1.4 : 1);
-    ev.W = (ev.first && k === 0 ? 1.1 : [0.95, 0.88, 0.8][Math.min(2, k)]) * (1 - d * 0.1);
+    ev.W = (ev.first && k === 0 ? 0.9 : [0.75, 0.68, 0.6][Math.min(2, k)]) * (1 - d * 0.1);
     ev.pressed = null;
   }
   // his moves: a shove (counter TOWARD him), a grab at your bag (↓ yank it back), a kick at your front wheel (↑ hop)
   const HITS = { shove: { label: 'SHOVE', ok: 'countered' }, grab: { label: 'GRAB', ok: 'bag saved' }, kick: { label: 'KICK', ok: 'hopped it' } };
   function startCombo(ev) {
-    const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(3, 2 + (k >= 1 ? 1 : 0)) + (d > 0.8 && k >= 2 ? 1 : 0);
+    const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(4, 2 + k + (d > 0.6 && k >= 2 ? 1 : 0));
     ev.combo = [{ type: 'shove' }]; for (let i = 1; i < n; i++) { const opts = ['shove', 'grab', 'kick'].filter((t) => t !== ev.combo[i - 1].type); ev.combo.push({ type: opts[Math.floor(Math.random() * opts.length)] }); }
     for (const h of ev.combo) h.key = h.type === 'shove' ? ev.toward : h.type === 'grab' ? 'arrowdown' : 'arrowup';
     ev.hit = 0; ev.late = 0; ev.W0 = ev.W; nextHit(ev, true);
@@ -296,8 +296,8 @@ export function createEvents(ctx) {
       case 'gap': E.slow = null; lean = Math.sin(ev.t * 3) * 0.05;
         if (ev.t > ev.gap) { ev.st = 'tell'; ev.t = 0; ev.real = ev.beats[ev.bi] === 'real'; Audio.sfx('skid', 0.4, 1.8); } break;
       case 'tell': // the wind-up looks the same for real and fake: lean away, eyes on you
-        tell = smooth(clamp(ev.t / 0.35)); lean = -0.22 * tell; E.slow = 0.85;
-        if (ev.t > 0.35) {
+        tell = smooth(clamp(ev.t / 0.28)); lean = -0.22 * tell; E.slow = 0.85;
+        if (ev.t > 0.28) {
           if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.75; startCombo(ev); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
           else { ev.st = 'feint'; ev.t = 0; }
         } break;
