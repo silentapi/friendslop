@@ -36,16 +36,16 @@ await page.click('#accept');
 await page.waitForTimeout(600); await shot('02_count');
 for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 if (mode === 'ramp') {
-  await page.evaluate(() => { const g = window.__G; g.s = g.rail.s - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; });
+  await page.evaluate((mega) => { const g = window.__G; g.refS = mega ? g.lv.ramps.find((r) => r.mega).s + 8 : g.rail.s; g.s = g.refS - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; for (const o of g.lv.obs) if (o.s > g.s && o.s < g.refS - 10 && o.kind !== 'bus') o.dead = true; }, !!process.env.MEGA);
   for (let k = 0; k < 70; k++) {
     await tick(2);
-    const r = await page.evaluate(() => { const g = window.__G; return { st: g.state, ds: +(g.s - g.rail.s).toFixed(1), y: +g.y.toFixed(2), v: +g.v.toFixed(1), cab: g.trainCab == null ? null : +g.trainCab.toFixed(1), slow: +g.slowmo.toFixed(2), kind: g.crashKind }; });
+    const r = await page.evaluate(() => { const g = window.__G; return { st: g.state, tum: +(g.tumbleT || 0).toFixed(2), ds: +(g.s - g.refS).toFixed(1), y: +g.y.toFixed(2), v: +g.v.toFixed(1), cab: g.trainCab == null ? null : +g.trainCab.toFixed(1), slow: +g.slowmo.toFixed(2), kind: g.crashKind }; });
     if (k % 3 === 0 || r.st !== 'run') console.log(JSON.stringify(r));
-    if (process.env.FAIL_RAIL) { const q = await page.evaluate(() => window.__G.qte); if (q && q.idx === 1 && q.t > 0.2) await key(q.seq[1] === 'arrowup' ? 'ArrowDown' : 'ArrowUp'); else if (q && q.idx === 0 && q.t > 0.12) await key('Arrow' + q.seq[0].slice(5, 6).toUpperCase() + q.seq[0].slice(6)); }
+    if (process.env.FAIL_RAIL || process.env.FAIL_MEGA) { const q = await page.evaluate(() => window.__G.qte); if (q && q.idx === 1 && q.t > 0.2) await key(q.seq[1] === 'arrowup' ? 'ArrowDown' : 'ArrowUp'); else if (q && q.idx === 0 && q.t > 0.12) await key('Arrow' + q.seq[0].slice(5, 6).toUpperCase() + q.seq[0].slice(6)); }
     else { const q = await page.evaluate(() => window.__G.qte); if (q && q.t > 0.12 + q.idx * 0.1) await key('Arrow' + q.seq[q.idx].slice(5, 6).toUpperCase() + q.seq[q.idx].slice(6)); }
     if (process.env.FRAMES ? k % 1 === 0 && k >= 8 : [12, 18, 22, 26, 30].includes(k)) await shot(`ramp_${String(k).padStart(3, '0')}`);
     if (r.st === 'crashing') { for (let f = 0; f < 40; f++) { await tick(2); await shot(`clip_${String(f).padStart(3, '0')}`); if ((await page.evaluate(() => window.__G.state)) !== 'crashing') break; } await tick(4); await shot('clip_ui'); const t0 = await page.evaluate(() => window.__G.time); await page.click('#watchad'); for (let w = 0; w < 80 && (await page.evaluate(() => window.__G.state)) !== 'run'; w++) await page.waitForTimeout(150); for (let w = 0; w < 6; w++) { await page.waitForTimeout(150); console.log('chips', await page.evaluate(() => [...document.querySelectorAll('.tcost')].map((e) => e.textContent + ' ' + JSON.stringify(e.getBoundingClientRect())).join('|'))); } await shot('clip_continue'); await page.waitForTimeout(700); await shot('clip_continue2'); console.log('time cost', (await page.evaluate(() => window.__G.time)) - t0); break; }
-    if (r.st !== 'run' || r.ds > 30) break;
+    if (r.st !== 'run' || r.ds > (process.env.MEGA ? 45 : 30)) break;
   }
   await browser.close(); process.exit(0);
 }

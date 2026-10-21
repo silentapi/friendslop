@@ -681,7 +681,6 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .chip b { color: var(--fg); font-weight: 700; }
 .chips { gap: 8px; }
 .small { font: 600 var(--t2)/1.4 var(--body); color: var(--fg3); letter-spacing: 0; }
-.pill, .coins, .mult, .place, .thought, .coach, .dogui, .say, .bstat, .skipchip, .mute, .pouch, .toast, .nextup, .menu-stats, .walletline, .xpline, .pity, .tcost { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 /* loading + menu */
 .logo { letter-spacing: -1px; }
 .tagline { font: 600 var(--t3)/1.4 var(--body); color: var(--fg2); }
@@ -747,7 +746,7 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 @keyframes bglow { to { box-shadow: inset 0 0 130px 30px rgba(46,230,111,.2); } }
 /* Kyle's texts: dark glass notifications, amber = Kyle. Full-width on phones so they never wrap one word a line */
 .dms { width: clamp(260px, 32vw, 340px); top: calc(var(--st) + 112px); gap: 8px; }
-.dm { gap: 10px; padding: 10px 12px; border-radius: var(--r3); background: var(--glass-hi); color: var(--fg); box-shadow: var(--lift), inset 0 0 0 1px var(--line); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); animation: toastIn .28s var(--ease) both; }
+.dm { gap: 10px; padding: 10px 12px; border-radius: var(--r3); background: var(--glass-hi); color: var(--fg); box-shadow: var(--lift), inset 0 0 0 1px var(--line); animation: toastIn .28s var(--ease) both; }
 .dm .av { width: 32px; height: 32px; font-size: var(--t3); }
 .dm .bub { flex: 1; font: 600 var(--t3)/1.35 var(--body); overflow-wrap: break-word; }
 .dm .bub small { font: 600 var(--t1) var(--body); color: var(--fg3); margin-bottom: 2px; }
@@ -809,14 +808,14 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 #ad .adtop span { font: 700 var(--t2) var(--body); padding: 6px 12px; background: var(--tint2); }
 #ad .adtop .rw { background: var(--warn); }
 .adbig { font-size: 72px; } .adlogo { font-size: 52px; } .adh { font: 800 var(--t5) var(--display); } .adq { font: italic 600 var(--t4)/1.35 var(--body); } .adp { font-size: var(--t6); } .adfine { font: 500 var(--t1) var(--body); color: #8f88aa; }
-#pause { background: rgba(8,10,12,.78); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+#pause { background: rgba(8,10,12,.78); }
 .pausebox { gap: 8px; max-width: 320px; }
 .ptitle { font: 900 var(--t6) var(--display); margin-bottom: 8px; }
 /* finale: captions are subtitles, not posters */
 #scene { gap: 12px; padding-bottom: calc(var(--sb) + 24px); }
 .cap { font: 800 var(--t5)/1.15 var(--display); font-stretch: 104%; -webkit-text-stroke: 0; text-shadow: var(--outline); max-width: 520px; }
 .tapc { font: 600 var(--t2) var(--body); color: var(--fg2); animation: none; opacity: .8; }
-.notif { max-width: 360px; gap: 10px; padding: 10px 12px; border-radius: var(--r3); background: var(--glass-hi); color: var(--fg); box-shadow: var(--lift), inset 0 0 0 1px var(--line); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.notif { max-width: 360px; gap: 10px; padding: 10px 12px; border-radius: var(--r3); background: var(--glass-hi); color: var(--fg); box-shadow: var(--lift), inset 0 0 0 1px var(--line); }
 .notif .ic { width: 34px; height: 34px; border-radius: var(--r1); background: var(--good); color: #04170b; font-size: var(--t4); }
 .notif b { font: 700 var(--t3) var(--body); }
 .notif small { font: 500 var(--t2) var(--body); color: var(--fg2); }
