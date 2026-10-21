@@ -368,7 +368,7 @@ function update(dt, t) {
   G.coachK = damp(G.coachK ?? 1, G.coachSlow > 0 ? 0.45 : 1, 6, dt); // tutorial slow-mo eases in and out
   const sdt = dt * G.slowmo * G.coachK;
   G.time += dt; G.eta -= dt;
-  if (!power('cool')) G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 1.25 : 1.5));
+  if (!power('cool')) G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 0.85 : 1.0));
   for (const p of G.powers) p.t -= sdt;
   G.powers = G.powers.filter((p) => p.t > 0);
   if (G.comboT > 0) { G.comboT -= sdt; if (G.comboT <= 0 && G.mult > 1) { G.mult--; G.combo = (G.mult - 1) * MULT_STEP; G.comboT = 2.5; } }

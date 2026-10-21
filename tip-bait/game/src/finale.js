@@ -574,9 +574,15 @@ export class Finale {
     const mean = rows.reduce((a, x) => a + x.r.pct, 0) / rows.length;
     return Math.max(0.1, Math.min(0.85, (mean - 0.5) / 0.5 * 0.85)); // the full tip is reserved for a perfect run
   }
+  // literally everything PERFECT: every row the results screen will show (ride, set pieces, desk, stairs, hall, time, ice)
+  allRowsPerfect() {
+    const G = this.G, f = G.fin || {}, timeLeft = Math.max(0, G.etaTotal - G.time - (f.doorT || 0) - (f.stairT || 0) * 0.5 - (f.akiraT || 0) - (f.hallT ?? f.dogT ?? 0));
+    const rows = this.UI.rateAll({ ...f, time: G.time, eta: G.etaTotal, timeLeft, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, coins: G.coins, coinsTotal: G.lv?.coins?.length ?? 0, tricks: G.tricks }).rows.filter((x) => x.r);
+    return rows.length >= 6 && rows.every((x) => x.r.badge === 'PERFECT');
+  }
   updateDoor(dt) {
     if (this.perfect == null) {
-      this.perfect = this.isPerfect(); const share = this.perfect ? 1 : this.tipShare(), paid = Math.round(this.G.tip * share * 4) / 4;
+      this.perfect = this.isPerfect() && this.allRowsPerfect(); const share = this.perfect ? 1 : this.tipShare(), paid = Math.round(this.G.tip * share * 4) / 4;
       this.paid = paid; this.G.fin = { ...(this.G.fin || {}), perfect: this.perfect, tipShare: share, tipPaid: paid };
       if (this.perfect) this.line = 'ok… that was actually insane. respect 🫡';
       else if (paid > 0) this.line = ['fine. it was… acceptable', 'ok it’s mostly cold. mostly', 'decent. don’t let it go to ur head'][Math.floor(Math.random() * 3)];

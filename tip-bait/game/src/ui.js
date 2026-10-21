@@ -379,7 +379,7 @@ export function rate(section, d = {}) {
     label = `${fmtTime(d.time)} · ${d.time <= d.eta ? 'on time' : `${fmtTime(d.time - d.eta)} late`}`;
   } else if (section === 'ice') {
     if (d.ice == null) return null;
-    pct = c01(d.ice / 60); label = `${Math.round(d.ice)}% left`;
+    pct = c01(d.ice / 45); label = `${Math.round(d.ice)}% left`; // par: a clean ride keeps ~45%
   } else {
     const g = section === 'hall' ? (d.hall ?? d.dog) : d[section];
     if (!g) return null;
