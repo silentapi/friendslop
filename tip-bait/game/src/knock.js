@@ -265,8 +265,8 @@ export class Knock {
     else { cam.position.copy(p); cam.lookAt(l); cam.fov = fov; }
     cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   }
-  pose(dt) { // the courier waits just behind the knock camera (the door stays a clean playfield), then steps up as it opens
-    const F = this.F, R = F.G.R, A = V(-0.95, 0, Sets.DOOR_Z + 0.05), B = V(0.15, 0, Sets.DOOR_Z - 0.15);
+  pose(dt) { // the courier waits just off the knock camera's left (the door stays a clean playfield), then steps up as it opens
+    const F = this.F, R = F.G.R, A = V(-0.6, 0, Sets.DOOR_Z - 0.8), B = V(0.15, 0, Sets.DOOR_Z - 0.15);
     if (this.st === 'out') {
       const u = smooth(clamp(this.ot / 0.85)); R.root.position.copy(A).lerp(B, u); R.root.rotation.set(0, Math.PI / 2, 0);
       R.walk(u < 0.97 ? 'walk' : 'idle', this.ot * 1.3, { offset: V(0, 0, 0), yaw: 0 });
@@ -299,7 +299,7 @@ export class Knock {
     const s = this.spin;
     if (t >= s.t && t <= s.tEnd && (this.down || this.keys.size) && this.cur.on) {
       const a = Math.atan2(this.cur.y - this.cy0, this.cur.x - this.cx0);
-      if (this.sa != null) { let d = a - this.sa; d -= Math.round(d / TAU) * TAU; if (Math.abs(d) < 1.2) this.spinAdd(Math.abs(d) / TAU); }
+      if (this.sa != null) { let d = a - this.sa; d -= Math.round(d / TAU) * TAU; if (Math.abs(d) < 2.0) this.spinAdd(Math.abs(d) / TAU); }
       this.sa = a;
     } else this.sa = null;
     // HP drains while notes are live (not over the count-in, the tutorial or the spinner)

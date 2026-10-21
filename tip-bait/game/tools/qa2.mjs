@@ -38,7 +38,7 @@ await page.click('#accept');
 await page.waitForTimeout(600); await shot('02_count');
 for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 if (mode === 'ramp') {
-  await page.evaluate((mega) => { const g = window.__G; g.refS = globalThis.__crane ? (g.lv.events || []).find((e) => e.kind === 'crane').s + 30 : mega ? g.lv.ramps.find((r) => r.mega).s + 8 : g.rail.s; g.s = g.refS - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; for (const o of g.lv.obs) if (o.s > g.s && o.s < g.refS - 10 && o.kind !== 'bus') o.dead = true; }, !!process.env.MEGA);
+  await page.evaluate((mega) => { const g = window.__G; g.refS = globalThis.__crane ? (g.lv.events || []).find((e) => e.kind === 'crane').s + 30 : mega || !g.rail ? g.lv.ramps.find((r) => r.mega).s + 8 : g.rail.s; g.s = g.refS - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; for (const o of g.lv.obs) if (o.s > g.s && o.s < g.refS - 10 && o.kind !== 'bus') o.dead = true; }, !!process.env.MEGA);
   if (process.env.TECH) { await tick(30); await page.evaluate(() => { const g = window.__G; const o = g.lv.obs.find((o) => o.kind === 'car' && !o.parked && !o.dead && o.s > g.s + 20); g.lane = g.LANES.indexOf(g.LANES.reduce((a, b) => Math.abs(b - o.lat) < Math.abs(a - o.lat) ? b : a)); g.lat = o.lat; g.s = o.s - 1.2; g.y = o.h + 0.5; g.vy = -1; g.rampT = g.time; g.refS = o.s + 40; }); }
   for (let k = 0; k < 120; k++) {
     await tick(2);
@@ -166,7 +166,7 @@ if ((await G()).st === 'finale') {
         if (hold && ks.t > hold.end + 0.02) { if (hold.key) await kev('keyup', hold.key); else await ptr('pointerup', 0, 0); hold = null; }
         const [s0, s1] = ks.spin;
         if (ks.t > s0 && ks.t < s1) { // spin: circle the pointer on desktop/touch (held), Z/X mash every other frame as well
-          spinA += 1.5; const R = 110, x = ks.cx + Math.cos(spinA) * R, y = ks.cy + Math.sin(spinA) * R;
+          spinA += 0.9; const R = 110, x = ks.cx + Math.cos(spinA) * R, y = ks.cy + Math.sin(spinA) * R;
           if (!globalThis.__spun) { globalThis.__spun = 1; await ptr('pointermove', x, y); await ptr('pointerdown', x, y); } else await ptr('pointermove', x, y);
         } else if (globalThis.__spun === 1 && ks.t >= s1) { globalThis.__spun = 2; await ptr('pointerup', 0, 0); }
       }
