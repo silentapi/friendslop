@@ -803,7 +803,7 @@ function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {})
 function runCamera(dt) {
   let shot = chaseShot();
   G.akK = damp(G.akK || 0, G.akira ? 1 : 0, 3, dt);
-  if (G.akK > 0.002) { const h = halfAt(G.s); shot = orbitMix(shot, { ds: 7, lat: -(h - 1.2), y: 0.9, lds: 1, llat: G.lat + 0.8, ly: 1.0, fov: baseFov() - 2 }, smooth(clamp(G.akK)), 5); }
+  if (G.akK > 0.002) { const h = halfAt(G.s), port = camera.aspect < 1; shot = orbitMix(shot, { ds: port ? 8 : 7, lat: -(h - 1.2), y: 0.9, lds: 1, llat: G.lat + (port ? -0.2 : 0.8), ly: 1.0, fov: baseFov() + (port ? 4 : -2) }, smooth(clamp(G.akK)), 5); } // phones: aim at the rider (a narrow frame has no room for the lead)
   if (G.camK > 0.002) { G.lastAir = G.airKind || G.lastAir; shot = orbitMix(shot, jumpShot(), smooth(clamp(G.camK)), 4.5); }
   G.barsK = damp(G.barsK || 0, G.tumbleT > 0 && G.tumbleKind === 'bars' ? 1 : 0, 4, dt); if (G.barsK > 0.01) shot = { ...shot, lds: shot.lds + 2.4 * G.barsK, ly: shot.ly - 0.4 * G.barsK, ds: shot.ds + (shot.ds > 0 ? 2.4 : -1) * G.barsK }; // keep the thrown rider in frame, not just the bike
   const ec = EV.camera(); if (ec.shot) G.evShot = ec.shot; G.evK = damp(G.evK || 0, ec.w, 2.4, dt);

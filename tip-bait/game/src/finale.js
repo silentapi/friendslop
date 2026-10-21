@@ -790,7 +790,7 @@ export class Finale {
     const side = bf.clone(); if (side.dot(toCentre) < -0.5) side.negate();
     const dir = side.multiplyScalar(0.8).addScaledVector(tf, 0.65).normalize();
     const camP = R.root.position.clone().addScaledVector(dir, ok ? 3.6 : 6.8).setY(ok ? 0.5 : 1.3), lookP = R.root.position.clone().add(V(0, 0.6, 0));
-    if (!S.camInit) { S.camInit = true; S.cp = cam.position.clone(); S.lk = lookP.clone(); }
+    if (!S.camInit) { S.camInit = true; S.cp = cam.position.clone(); S.lk = cam.position.clone().add(V(0, 0, -1).applyQuaternion(cam.quaternion).multiplyScalar(cam.position.distanceTo(lookP))); } // ease the aim in from where the ride cam was looking (no first-frame snap)
     S.cp.lerp(camP, 1 - Math.exp(-4 * dt)); S.lk.lerp(lookP, 1 - Math.exp(-8 * dt)); cam.position.copy(S.cp); cam.lookAt(S.lk);
     S.dutch = damp(S.dutch || 0, ok && t > 0.4 ? 0.12 : 0, 4, dt); cam.rotateZ(S.dutch);
     if (ok && slow < 1) { cam.position.y += Math.sin(t * 61) * 0.01; } // tyre chatter

@@ -1180,6 +1180,7 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   #ui:has(#hud) .dogui.run { top: calc(var(--st) + 132px); } /* below the score row, not over it */
   .dms { top: calc(var(--st) + 132px); }
   .place { top: calc(var(--st) + 214px); } /* street chip below Kyle's texts, not under them */
+  #combo { padding-bottom: calc(var(--sb) + 124px); } /* trick / parking-slide keys sit above BOOST, not under it */
 }
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) { /* landscape phones: keep combo keys low, off the rider */
   #combo { padding-bottom: calc(var(--sb) + 10px); }
@@ -1190,7 +1191,8 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 #ui:has(#hud):has(#evui) #qte .qbox { margin-top: 0; }
 @media (min-height: 501px) and (min-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { align-items: flex-end; padding-right: max(calc(var(--sr) + 150px), 18vw); } } /* beside the two riders, not on them or the banner */
 @media (max-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { justify-content: flex-end; padding-bottom: calc(var(--sb) + 150px); } } /* below them, by your thumbs */
-@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { align-items: flex-end; padding-right: calc(var(--sr) + 190px); padding-bottom: 70px; } } /* beside them, clear of BOOST */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { align-items: flex-end; padding-right: calc(var(--sr) + 96px); padding-bottom: 90px; } } /* beside them, right of the banner, above BOOST */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#hud) .dogui.run .dhint { display: none; } } /* short screens: title + pips only, so the rival's "!" tell over his head stays visible (each prompt names its key) */
 /* ---- /polish A ---- */
 
 /* ---- polish B ---- */
