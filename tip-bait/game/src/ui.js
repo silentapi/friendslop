@@ -424,11 +424,7 @@ export function timeCost(sec, label = '') {
   const el = h(`<div class="tcost"><b>−${sec.toFixed(1)} s</b>${label ? `<span>${label}</span>` : ''}</div>`); root().appendChild(el);
   const eta = document.getElementById('eta')?.getBoundingClientRect(), r = el.getBoundingClientRect();
   const tgt = eta && eta.width ? { x: eta.left + eta.width / 2 - (r.left + r.width / 2), y: eta.top + eta.height / 2 - (r.top + r.height / 2) } : { x: 0, y: -60 };
-  const a = el.animate([
-    { transform: 'translate(-50%,0) scale(.6)', opacity: 0 },
-    { transform: 'translate(-50%,0) scale(1.12)', opacity: 1, offset: 0.12 },
-    { transform: 'translate(-50%,0) scale(1)', opacity: 1, offset: 0.62 },
-    { transform: `translate(calc(-50% + ${tgt.x}px), ${tgt.y}px) scale(.45)`, opacity: eta ? 0.85 : 0 },
-  ], { duration: 1700, easing: 'cubic-bezier(.5,0,.75,1)' });
-  a.onfinish = () => { el.remove(); const p = document.getElementById('eta'); p?.animate([{ background: 'var(--danger)' }, { background: '' }], { duration: 420 }); };
+  el.style.setProperty('--tx', `${tgt.x}px`); el.style.setProperty('--ty', `${tgt.y}px`); el.style.setProperty('--to', eta ? 0.85 : 0);
+  el.addEventListener('animationend', () => { el.remove(); document.getElementById('eta')?.classList.add('hit'); setTimeout(() => document.getElementById('eta')?.classList.remove('hit'), 420); });
+  setTimeout(() => el.remove(), 2200); // never strand a chip
 }

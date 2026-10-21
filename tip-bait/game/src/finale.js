@@ -519,7 +519,7 @@ export class Finale {
         const sh = R.C.boneWorld('RightLeg').lerp(R.C.boneWorld('RightFoot'), 0.35);
         for (const [s, side] of [[1, 'Left'], [-1, 'Right']]) ik2(R.C.bone(side + 'Arm'), R.C.bone(side + 'ForeArm'), R.C.bone(side + 'Hand'), sh.clone().add(R.root.localToWorld(V(s * 0.07, 0, 0)).sub(R.root.position)), R.root.localToWorld(V(s * 0.6, 0.6, -0.3)));
       }
-      R.root.rotateX(-rock - 0.08 * sit);
+      R.root.rotateX(-rock - 0.3 * sit); R.root.rotateZ(Math.sin(dT * 23) * 0.025 * sit); // rocked back, shaking
       if (dT > 0.6 && !h.ow) { h.ow = 1; this.UI.thought(['OW. ow ow ow.', 'my LEG', 'he got the bone. the BONE.'][Math.floor(Math.random() * 3)], 1800); A.sfx('growl', 0.4, 1.4); }
       if (dT > DOWN_T - 0.9 && h.ow === 1) { h.ow = 2; A.sfx('step', 0.8, 0.6); }
     } else if (cWalk > 0.05) R.walk(h.st === 'pass' ? (h.limp ? 'walk' : 'jog') : 'walk', this.t * (h.st === 'pass' ? (h.limp ? 0.8 : 1.05) : 1.0), { offset: V(0, 0, 0), yaw: 0 });
@@ -554,11 +554,13 @@ export class Finale {
     this.zoneM.material.opacity = tele ? 0.38 + 0.22 * Math.sin(this.t * 40) : damp(this.zoneM.material.opacity, 0, 10, rdt);
     this.bang.visible = h.st === 'tele'; if (this.bang.visible) { this.bang.position.copy(D.head.getWorldPosition(V())).add(V(0, 0.42, 0)); const p = 0.32 * (1 + 0.15 * Math.sin(this.t * 30)); this.bang.scale.set(p, p, 1); }
     // ---- camera
+    if (h.downT != null && h.downT > 0.15) camK = 'down';
     const sh = h.shake * h.shake * 0.05, jit = V(Math.sin(this.t * 71) * sh, Math.sin(this.t * 53) * sh, 0);
     let cp, cl, fov;
     if (camK === 'follow') { cp = pos.clone().add(V(-0.55, 1.68, 2.0)); cl = pos.clone().add(V(0.15, 1.05, -3)); fov = 56; }
     else if (camK === 'dogcu') { const hd = D.head.getWorldPosition(V()); cp = V(h.dx + 0.42, 0.52, h.dz + 1.3); cl = hd.add(V(0, -0.1, -0.12)); fov = 44; }
     else if (camK === 'two') { cp = V(0.95, 1.3, (h.dz + h.cz) / 2 + 0.5); cl = V(-0.45, 0.7, h.dz - 0.3); fov = 52; }
+    else if (camK === 'down') { cp = V(h.cx + 0.95, 0.95, h.cz - 1.55); cl = V(h.cx - 0.05, 0.38, h.cz + 0.1); fov = 50; } // low, from in front: you on the floor holding your leg
     else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, Sets.DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, Sets.DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
     else { const push = h.st === 'lunge' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; this.camPush = damp(this.camPush || 0, push, 10, rdt); cp = V(-0.95, 1.78 - this.camPush * 0.1, HALL.c + 2.35 - this.camPush * 0.35); cl = V(-0.1, 0.62, HALL.c - 1.35); fov = 54 - this.camPush * 4; }
     if (camK !== this.camK) { this.camK = camK; cam.position.copy(cp); } // hard cuts between shots, smooth within

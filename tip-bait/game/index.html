@@ -982,6 +982,9 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .tcost { position: absolute; left: 50%; top: calc(var(--st) + 30%); z-index: 40; pointer-events: none; display: flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--ink); border: 1.5px solid var(--danger); white-space: nowrap; }
 .tcost b { font: 900 17px var(--display); color: var(--danger); font-variant-numeric: tabular-nums; }
 .tcost span { font: 700 11px var(--body); color: var(--paper); text-transform: lowercase; letter-spacing: .02em; }
+.tcost { transform: translate(-50%, 0); animation: tcostA 1.7s cubic-bezier(.5,0,.75,1) forwards; }
+@keyframes tcostA { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.12); opacity: 1; } 62% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--tx, 0px)), var(--ty, -60px)) scale(.45); opacity: var(--to, 0); } }
+#eta.hit { background: var(--danger); transition: background .1s; }
 /* ---- end penalty chip ---- */
 /* ---- osu knock ---- */
 #knock { padding: 0; pointer-events: auto; cursor: none; touch-action: none; z-index: 6; }
@@ -1001,7 +1004,7 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 #knock .kn-pie { width: 15px; height: 15px; border-radius: 50%; background: conic-gradient(var(--paper) var(--p, 0%), rgba(255,255,255,.18) 0); box-shadow: 0 0 0 1.5px rgba(255,255,255,.6); }
 #knock .kn-combo { position: absolute; left: var(--sl); bottom: calc(var(--sb) + 14px); pointer-events: none; }
 #knock .kn-combo b { display: block; font: 900 54px/1 var(--display); font-stretch: 115%; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.4); transform-origin: left bottom; }
-#knock .kn-combo b.pop { animation: knPop .18s ease-out; }
+#knock .kn-combo b.kn-bump { animation: knPop .18s ease-out; }
 @keyframes knPop { from { transform: scale(1.22); } }
 #knock .kn-keys { position: absolute; right: var(--sr); top: 50%; transform: translateY(-50%); display: grid; gap: 6px; pointer-events: none; }
 #knock .kn-keys.off { display: none; }

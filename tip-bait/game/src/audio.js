@@ -265,10 +265,12 @@ export const KNOCK_BPM = 128, KNOCK_OFFSET = 0.1, KNOCK_INTRO = 2, KNOCK_BARS = 
 const KB = 60 / KNOCK_BPM, KS = KB / 4;
 export const knockBeat = (b) => KNOCK_OFFSET + b * KB; // song time (s) of beat b (beat 0 = first count-in downbeat)
 const KBASS = [[0, 42, 1.5], [1.5, 42, 0.5], [2, 45, 1], [3, 40, 1, 42], [4, 42, 1.5], [5.5, 42, 0.5], [6, 47, 1], [7, 45, 0.75, 40]];
+const knockOnsets = []; // QA: every scheduled hit in the song (s), for the offline beat-alignment check
 function* knockG() {
+  knockOnsets.length = 0;
   const bars = KNOCK_INTRO + KNOCK_BARS + KNOCK_OUTRO, n = Math.ceil((knockBeat(bars * 4) + 2.2) * SR), L = new Float32Array(n), R = new Float32Array(n);
   const c = new Map(), m = (k, f) => { if (!c.has(k)) c.set(k, f()); return c.get(k); };
-  const put = (t, b, g, pan = 0) => { oAdd(L, t, b, g * (1 - pan)); oAdd(R, t, b, g * (1 + pan)); };
+  const put = (t, b, g, pan = 0) => { oAdd(L, t, b, g * (1 - pan)); oAdd(R, t, b, g * (1 + pan)); knockOnsets.push(t); };
   const rim = () => { const b = oBuf(0.07); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = (Math.sin(TAU * 1700 * t) * 0.5 + Math.sin(TAU * 820 * t) * 0.5) * Math.exp(-t * 80) * 0.5; } return b; };
   const cym = () => oEnv(oHp(oNoise(2.2), 3800), 0.002, 1.6).map((v) => v * 0.5);
   const roll = () => oEnv(oHp(oLp(oNoise(0.12), 7000), 1200), 0.001, 30).map((v) => v * 0.7);
@@ -295,7 +297,7 @@ function* knockG() {
       const rb = bar - KNOCK_INTRO;
       if (on || (sec === 'C' && s === 10 && rb % 2)) put(t, m('k', oKick), 0.95);
       if (s === 4 || s === 12) put(t, m('cl', oClap), 0.8);
-      if (sec === 'A' ? s % 2 === 0 : sec === 'B' ? true : s % 2 === 0) put(t, m('h', () => oHat()), (s % 4 === 2 ? 0.55 : 0.35) * (sec === 'B' && s % 2 ? 0.6 : 1), 0.3);
+      if (sec !== 'A' || s % 2 === 0) put(t, m('h', () => oHat()), (s % 4 === 2 ? 0.55 : 0.35) * (s % 2 ? 0.6 : 1), 0.3);
       if (sec === 'C' && s % 4 === 2) put(t, m('ho', () => oHat(true)), 0.35, -0.25);
       const ri = ((rb % 2) * 16 + s), nt = ORIFF[ri];
       if (nt != null && (sec !== 'A' || rb >= 2)) put(t, m('c' + nt, () => oCowbell(oNote(nt))), sec === 'A' ? 0.5 : 0.75, -0.15);
@@ -431,7 +433,7 @@ const SHOTS = {
 const AMB_LAYERS = { city: ['city', 'cityTraffic'], lobby: ['lobby'], stair: ['stair'], hall: ['hall'] };
 
 // QA hook: pure renders (no AudioContext needed)
-export const __renderForTest = { music: renderMusic, knock: () => run(knockG()), amb: renderAmb, shot: renderShot, musicG: renderMusicG, ambG: renderAmbG, SR };
+export const __renderForTest = { music: renderMusic, knock: () => run(knockG()), knockOnsets, amb: renderAmb, shot: renderShot, musicG: renderMusicG, ambG: renderAmbG, SR };
 
 // ---------------------------------------------------------------- SFX
 const SFX = {

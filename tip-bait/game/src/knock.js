@@ -414,7 +414,7 @@ export class Knock {
     const sc = String(this.pts || 0).padStart(8, '0'); if (this.scEl.textContent !== sc) this.scEl.textContent = sc;
     const ac = (acc * 100).toFixed(2) + '%'; if (this.accEl.textContent !== ac) this.accEl.textContent = ac;
     const t = live ? this.songT() : 0, p = clamp((t - knockBeat(A0)) / (knockBeat(END_B) - knockBeat(A0))); this.pieEl.style.setProperty('--p', (p * 100).toFixed(1) + '%');
-    const cb = this.combo + 'x'; if (this.comboEl.textContent !== cb) { this.comboEl.textContent = cb; this.comboEl.classList.remove('pop'); void this.comboEl.offsetWidth; this.comboEl.classList.add('pop'); }
+    const cb = this.combo + 'x'; if (this.comboEl.textContent !== cb) { this.comboEl.textContent = cb; this.comboEl.classList.remove('kn-bump'); void this.comboEl.offsetWidth; this.comboEl.classList.add('kn-bump'); }
   }
 }
 export const KNOCK_INFO = { bpm: KNOCK_BPM, beats: (END_B - A0) };

@@ -639,7 +639,7 @@ function continueRun() {
   const lost = G.crashKind === 'train' ? 6 : 4; G.time += lost; G.eta -= lost;
   G.invT = 2.0; G.runT = 0.6; G.v = G.base * 0.6;
   G.state = 'run'; Audio.music('full'); loseTip(0.1, K.pickLine(K.CRASH_TEXTS));
-  UI.pop('CONTINUE ▶', 'from right here'); setTimeout(() => UI.timeCost(lost, G.crashKind === 'train' ? 'hit by the train' : 'wiped out'), 350);
+  UI.pop('CONTINUE ▶', 'from right here'); setTimeout(() => UI.timeCost(lost, G.crashKind === 'train' ? 'clipped by the train' : 'wiped out'), 350);
 }
 
 // ---------------------------------------------------------------- per-frame visuals of the level
