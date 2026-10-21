@@ -870,7 +870,7 @@ function openPass() {
   G.pass = openBattlePass({ store, cos: G.cos, sfx: (n, g, r) => Audio.sfx(n, g, r), onClose: () => { G.pass = null; viewOffset(false); showTitle(); } });
   viewOffset(true, 'bp');
 }
-window.__openPass = openPass;
+window.__openPass = openPass; window.__xpWidget = xpWidget; // QA
 function viewOffset(on, kind = 'shop') { // in the store, slide the picture so the courier stands clear of the panel
   const w = innerWidth, h = innerHeight;
   if (!on) { camera.clearViewOffset(); return; }

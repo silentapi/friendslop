@@ -8,7 +8,7 @@
 //  - cream rounded corner mass above the entrance, then rounded corner balconies with glass rails up the tower
 //  - 11 four-storey geometric aluminium art panels (Israel Guevara) on the garage podium; rooftop pool deck
 // Local frame = world (origin at the OSM centroid of the footprint ≈ (-3.2, -6.3)); x east, z south.
-import { THREE, V, mat, emissive, mesh, box, cyl, canvasTex, mulberry, loadJSON } from './core.js';
+import { THREE, V, mat, emissive, mesh, box, cyl, canvasTex, mulberry, loadJSON , mergeStatic } from './core.js';
 import { palm } from './props.js';
 // game port: physical → standard materials, no texture maps for plaster/brick, no extra dynamic lights
 const pbr = (id, o = {}) => mat(o.color ?? 0xcccccc, { roughness: o.rough ?? 0.85 });
@@ -189,5 +189,6 @@ export async function citiTower(scene, { night = 0 } = {}) {
   for (let i = 0; i < 5; i++) { const ring = mesh(new THREE.TorusGeometry(0.38, 0.03, 6, 18, Math.PI * 1.6), steel); ring.position.set(cx + 4 + i * 0.9, 0.38, cz + 3.5); g.add(ring); }
 
   g.userData = { corner: V(cx, 0, cz), door: V(gx, 0, doorZ), signMid, top: V(tcx0, C.H, tcz1), doorZ };
+  const merged = mergeStatic(g); if (typeof window !== 'undefined' && window.__qaLevel) console.log('[citi] merged', merged.before, '→', merged.after);
   return g;
 }

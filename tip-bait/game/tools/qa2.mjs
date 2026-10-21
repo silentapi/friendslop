@@ -133,6 +133,7 @@ if ((await G()).st === 'finale') {
   console.log('hall took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
   for (let k = 0; k < 90; k++) { await tick(6); if (await page.evaluate(() => !!document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');
+  if (process.env.BP) for (let k = 0; k < 8; k++) { await page.waitForTimeout(250); await page.screenshot({ path: `${out}/fin_xp_${k}.jpg`, type: 'jpeg', quality: 82 }); } // battle pass XP count-up + tier pops (DOM timers, real time)
   await page.waitForTimeout(2600); await shot('fin_results_pouch');
   await page.click('#share').catch(() => {}); await page.waitForTimeout(400); await shot('fin_results_share');
 }

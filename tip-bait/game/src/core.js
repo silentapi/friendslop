@@ -87,3 +87,30 @@ export function plane(t, w, h, { emit = 0, transparent = true, side = THREE.Fron
 export function signTex(key, text, { w = 1024, h = 256, font = '800 150px Inter, system-ui, sans-serif', color = '#fff', bg = null } = {}) {
   return canvasTex('sign:' + key, w, h, (c) => { if (bg) { c.fillStyle = bg; c.fillRect(0, 0, w, h); } c.fillStyle = color; c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, w / 2, h / 2 + 6); });
 }
+
+// Merge every static mesh under `root` into one mesh per material (world-baked relative to root). Cuts draw calls
+// for hand-built sets made of hundreds of small primitives. Meshes flagged userData.dynamic are left alone.
+export function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), groups = new Map(), drop = [];
+  root.traverse((o) => {
+    if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || Array.isArray(o.material) || o.userData.dynamic) return;
+    for (let p = o; p && p !== root; p = p.parent) if (!p.visible || p.userData.dynamic) return;
+    let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    g.morphAttributes = {}; g.clearGroups();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    const key = o.material.uuid + (o.castShadow ? 's' : '') + (o.receiveShadow ? 'r' : '') + ':' + o.renderOrder;
+    if (!groups.has(key)) groups.set(key, { mat: o.material, cast: o.castShadow, recv: o.receiveShadow, ro: o.renderOrder, geos: [] });
+    groups.get(key).geos.push(g); drop.push(o);
+  });
+  for (const o of drop) o.removeFromParent();
+  let n = 0;
+  for (const { mat, cast, recv, ro, geos } of groups.values()) {
+    const merged = BGU.mergeGeometries(geos, false); if (!merged) continue;
+    merged.computeBoundingSphere(); const m = new THREE.Mesh(merged, mat); m.castShadow = cast; m.receiveShadow = recv; m.renderOrder = ro; root.add(m); n++;
+  }
+  return { before: drop.length, after: n };
+}

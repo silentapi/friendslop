@@ -192,7 +192,7 @@ export function xpWidget(host, { before, after, gained, parts, sfx = () => {}, o
   host.appendChild(w);
   w.querySelector('#tobp').onclick = onOpen;
   const bar = w.querySelector('.xpbar i'), tierEl = w.querySelector('.xptier b'), gain = w.querySelector('.xpgain');
-  const dur = Math.min(2.6, 1.0 + (after - before) / 2500), t0 = performance.now() + 450;
+  const dur = Math.min(2.6, 1.0 + (after - before) / 2500), t0 = performance.now() + 1500; // after the section bars have filled
   let shown = lb.tier;
   bar.style.width = `${lb.max ? 100 : (lb.into / lb.need) * 100}%`;
   const step = (now) => {
