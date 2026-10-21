@@ -93,7 +93,7 @@ function ribbon(pts, w, y, uvScale = 0) {
   g.setIndex(idx);
   return g;
 }
-const asphaltM = () => { const t = tex('tex/asphalt.jpg'); return new THREE.MeshLambertMaterial({ color: 0x8a8a8c, map: t }); };
+const asphaltM = () => { const t = tex('tex/asphalt.jpg'); return new THREE.MeshLambertMaterial({ color: 0xb4b4b6, map: t }); };
 const brickM = () => { const t = tex('tex/brick.jpg'); return new THREE.MeshLambertMaterial({ color: 0xd2b8ad, map: t }); };
 export function streets(scene, city, route) {
   const asph = [], brick = [];
@@ -142,7 +142,7 @@ export function streets(scene, city, route) {
 
 export function ground(scene, center) {
   const t = tex('tex/concrete.jpg'); t.repeat.set(600, 600);
-  const g = mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: 0xbab4aa, map: t }), { cast: false });
+  const g = mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: 0xd2ccc2, map: t }), { cast: false });
   g.rotation.x = -Math.PI / 2; g.position.set(center.x, 0, center.z); scene.add(g);
   return g;
 }

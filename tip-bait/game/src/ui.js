@@ -47,9 +47,10 @@ export function orderCard({ tip, note, pickup, dropoff, eta, onAccept }) {
     </div>`);
   const b = el.querySelector('#hold'), fill = b.querySelector('.fill');
   let t0 = 0, raf = 0, done = false;
-  const tick = () => { const k = Math.min(1, (performance.now() - t0) / 650); fill.style.width = `${k * 100}%`; if (k >= 1 && !done) { done = true; b.querySelector('span').textContent = 'ACCEPTED ✓'; setTimeout(onAccept, 250); return; } raf = requestAnimationFrame(tick); };
+  const tick = () => { const k = Math.min(1, (performance.now() - t0) / 650); fill.style.width = `${k * 100}%`; if (k >= 1 && !done) return accept(); raf = requestAnimationFrame(tick); };
   const down = (e) => { e.preventDefault(); if (done) return; t0 = performance.now(); raf = requestAnimationFrame(tick); };
-  const up = () => { if (done) return; cancelAnimationFrame(raf); fill.style.width = '0'; };
+  const accept = () => { if (done) return; done = true; fill.style.width = '100%'; b.querySelector('span').textContent = 'ACCEPTED ✓'; setTimeout(onAccept, 250); };
+  const up = () => { if (done || !t0) return; cancelAnimationFrame(raf); if (performance.now() - t0 >= 650) return accept(); t0 = 0; fill.style.width = '0'; };
   b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
   const kd = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); down(e); } };
   const ku = (e) => { if (e.key === 'Enter' || e.key === ' ') up(); };

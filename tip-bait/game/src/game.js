@@ -33,7 +33,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, 1, 0.15, 1600);
-const hemi = new THREE.HemisphereLight(0xe2ecff, 0x8f7c66, 1.05); scene.add(hemi);
+const hemi = new THREE.HemisphereLight(0xe2ecff, 0xa08c74, 1.7); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffe2bc, 2.6);
 sun.castShadow = true; sun.shadow.mapSize.set(TOUCH_EARLY() ? 1024 : 2048, TOUCH_EARLY() ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 1, far: 400 });
@@ -58,7 +58,8 @@ const G = {
   s: 0, lat: 0, lane: 1, y: 0, vy: 0, v: 0, boostT: 0, boostCharge: 0, slowT: 0, invT: 0, eta: 0, time: 0, ice: 100,
   crashes: 0, nearMiss: 0, dist: 0, tip: 50, def: null, dmDone: new Set(), crashT: 0, crashAt: null, slowmo: 1, cine: 0,
 };
-window.__G = G; // debug / QA hook
+window.__G = G; G.LANES = LANES; // debug / QA hook
+window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
 async function initSky() {
@@ -95,7 +96,7 @@ async function buildWorld(n) {
 }
 function setWeather(storm) {
   scene.backgroundIntensity = storm ? 0.45 : 0.95; scene.environmentIntensity = storm ? 0.35 : 0.55;
-  sun.intensity = storm ? 0.5 : 2.6; hemi.intensity = storm ? 0.75 : 1.05;
+  sun.intensity = storm ? 0.5 : 2.8; hemi.intensity = storm ? 1.0 : 1.7;
   scene.fog.color.set(storm ? 0x6d757e : 0xcdbba6); scene.fog.near = storm ? 40 : 160; scene.fog.far = storm ? 320 : 700;
   rain.visible = storm;
 }
@@ -129,7 +130,6 @@ function resetRun(atS = 0) {
 const input = { x0: 0, y0: 0, t0: 0, active: false };
 function onSwipe(dir) {
   if (G.state !== 'run') return;
-  UI.toastHide?.();
   if (dir === 'L') G.lane = Math.max(0, G.lane - 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'R') G.lane = Math.min(2, G.lane + 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'U' && G.y <= 0.02) { G.vy = 7.2; Audio.sfx('pop', 0.6, 0.7); }
@@ -385,11 +385,20 @@ function titleCamera(t) {
 
 // ---------------------------------------------------------------- main loop
 let last = performance.now(), T = 0;
+const QA = new URLSearchParams(location.search).has('qa');
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
-  frameMs = frameMs * 0.95 + (dt * 1000) * 0.05;
-  if (now - lastQ > 2500 && G.state === 'run') { lastQ = now; const nq = frameMs > 24 ? Math.max(0.55, quality - 0.15) : frameMs < 15 && quality < 1 ? Math.min(1, quality + 0.1) : quality; if (nq !== quality) { quality = nq; resize(); } }
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (QA) return;
+  step(dt, true);
+}
+// QA hook: advance the game deterministically (n steps of dt), render only the last one
+window.__tick = (n = 1, dt = 1 / 30, draw = true) => { for (let i = 0; i < n; i++) step(dt, draw && i === n - 1); return { st: G.state, s: +G.s.toFixed(1) }; };
+function step(dt, draw) {
+  T += dt;
+  const now = performance.now();
+  if (!QA) frameMs = frameMs * 0.95 + (dt * 1000) * 0.05;
+  if (!QA && now - lastQ > 2500 && G.state === 'run') { lastQ = now; const nq = frameMs > 24 ? Math.max(0.55, quality - 0.15) : frameMs < 15 && quality < 1 ? Math.min(1, quality + 0.1) : quality; if (nq !== quality) { quality = nq; resize(); } }
   if (G.state === 'title' || G.state === 'order') titleCamera(T);
   else if (G.state === 'count') { titleCamera(T); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
@@ -397,7 +406,7 @@ function frame(now) {
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   if (G.state === 'run' && hud) hud.update({ eta: G.eta, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, G.boostT * 2) : 0 });
   if (G.world) updateRain(T);
-  if (G.state !== 'loading') (finale?.active ? finale.render() : renderer.render(scene, camera));
+  if (draw && G.state !== 'loading') (finale?.active ? finale.render() : renderer.render(scene, camera));
 }
 
 // ---------------------------------------------------------------- boot

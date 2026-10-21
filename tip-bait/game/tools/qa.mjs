@@ -31,10 +31,10 @@ await wait(1500); await shot('01_title');
 await page.click('#play'); await wait(400);
 await page.waitForSelector('#hold', { timeout: 240000 }); await wait(800); await shot('02_order');
 const hb = await page.locator('#hold').boundingBox();
-await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await wait(900); await page.mouse.up();
+await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await wait(1200); await page.mouse.up();
 await wait(700); await shot('03_count');
 await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 20000 });
-console.log('run', JSON.stringify(await state()));
+console.log('run', JSON.stringify(await state()), 'frameMs', await page.evaluate(() => window.__frameMs?.()));
 if (script === 'smoke') { await wait(1500); await shot('04_run'); }
 if (script === 'run' || script === 'crash') {
   const moves = [[-90, 0], [0, -90], [90, 0], [90, 0], [0, -90], [-90, 0], [0, 90]];

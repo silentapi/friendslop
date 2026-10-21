@@ -3,7 +3,7 @@
 import { THREE, BGU, V, mat, lam, mesh, box, cyl, mulberry, loadGLB, canvasTex, clamp } from './core.js';
 import { character } from './chars.js';
 
-export const LANES = [-2.6, 0, 2.6];
+export const LANES = [-2.4, 0, 2.4];
 const CAR_PAINT = [0xb8152a, 0xf2f2f0, 0x1b1d22, 0x2a4f8a, 0x8a8f96, 0x0e5c4a, 0xd9a21b];
 
 // Build per-part InstancedMeshes from a glTF scene so N copies cost one draw call per part.
