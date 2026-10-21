@@ -57,7 +57,7 @@ export const BIKES = {
       tube(V(-0.62, 0.86, 0), V(-0.6, 1.02, 0), 0.016, fr, b); tube(V(-0.6, 1.02, -0.18), V(-0.6, 1.02, 0.18), 0.014, dark, b); // stoker bars
       // the stoker: a cardboard Kyle, along for the ride (still won't pedal)
       const cut = canvasTex('bike_kylecard', 256, 384, (x, w, h) => { x.fillStyle = '#c8a070'; x.fillRect(0, 0, w, h); x.fillStyle = '#7a4a2e'; x.beginPath(); x.ellipse(w / 2, 110, 78, 92, 0, 0, 7); x.fill(); x.fillStyle = '#1a0f0a'; for (let i = 0; i < 8; i++) x.fillRect(66 + i * 16, 18, 8, 40); x.fillStyle = '#fff'; x.fillRect(90, 100, 26, 10); x.fillRect(140, 100, 26, 10); x.fillStyle = '#1a0f0a'; x.fillRect(98, 100, 10, 10); x.fillRect(148, 100, 10, 10); x.fillRect(84, 88, 34, 6); x.fillRect(138, 84, 34, 6); x.strokeStyle = '#3a1f12'; x.lineWidth = 6; x.beginPath(); x.moveTo(102, 150); x.quadraticCurveTo(128, 160, 152, 144); x.stroke(); x.fillStyle = '#111'; x.fillRect(40, 200, 176, 184); x.fillStyle = '#fff'; x.font = '900 30px system-ui'; x.textAlign = 'center'; x.fillText('KYLE S', w / 2, 270); x.font = '700 18px system-ui'; x.fillText('(cardboard)', w / 2, 300); });
-      const k = M(new THREE.PlaneGeometry(0.42, 0.63), new THREE.MeshStandardMaterial({ map: cut, roughness: 0.9, side: THREE.DoubleSide }), -0.95, 1.28, 0, b); k.rotation.y = -Math.PI / 2;
+      const k = M(new THREE.PlaneGeometry(0.36, 0.54), new THREE.MeshStandardMaterial({ map: cut, roughness: 0.9, side: THREE.DoubleSide }), -0.95, 1.22, 0, b); k.rotation.y = 0.25; /* side-on standee: reads in profile, edge-on to the chase cam */
     },
   },
   bike_ebike: {
@@ -67,7 +67,7 @@ export const BIKES = {
       const bar = M(B(0.2, 0.02, 0.092), glow(0x46ff8f, 1.8), 0.12, 0.5, 0, b); bar.rotation.z = -0.62;
       const lcd = M(B(0.08, 0.05, 0.03), glow(0x9fe6ff, 1.2), 0.3, 1.05, 0, b); void lcd;
       const lamp = M(new THREE.CylinderGeometry(0.035, 0.045, 0.06, 14), glow(0xfff6d8, 2.6), 0.5, 0.9, 0, b); lamp.rotation.z = Math.PI / 2;
-      const beam = M(new THREE.ConeGeometry(0.22, 0.9, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }), 0.98, 0.78, 0, b); beam.rotation.z = Math.PI / 2 + 0.12; beam.castShadow = false;
+      const beam = M(new THREE.ConeGeometry(0.22, 0.9, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.05, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending }), 0.98, 0.78, 0, b); beam.rotation.z = Math.PI / 2 + 0.12; beam.castShadow = false;
       for (const p of [pv.front, pv.back]) M(new THREE.CylinderGeometry(0.075, 0.075, 0.07, 20), std(0x2a2f36, { metalness: 0.8, roughness: 0.3 }), 0, 0, 0, p).rotation.x = Math.PI / 2;
       const hubs = [rim(pv.front, 0x46ff8f, 1.6, 0.08, 0.008), rim(pv.back, 0x46ff8f, 1.6, 0.08, 0.008)];
       A.push((t) => { bar.scale.x = 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(t * 0.7)); hubs.forEach((h) => { h.material.emissiveIntensity = 1.2 + Math.sin(t * 5) * 0.5; }); });

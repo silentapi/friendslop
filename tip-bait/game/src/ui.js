@@ -14,7 +14,7 @@ export function loading() {
   return { set(p) { el.querySelector('.bar i').style.width = `${Math.round(p * 100)}%`; } };
 }
 
-export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMute, onShop }) {
+export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMute, onShop, onBP, bpTier = 0, bpReady = 0 }) {
   const el = layer('title', `
     <div class="top">
       <div class="logo">Tip<b>Bait</b></div>
@@ -28,12 +28,13 @@ export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMu
         <div><small>DELIVERED</small><b>${orders || 0}</b></div>
       </div>
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
-      <button class="btn ghost menu-shop" id="shop">🛒 gobbl STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button>
+      <div class="menu-row"><button class="btn ghost menu-shop" id="shop">🛒 STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button><button class="btn ghost menu-shop menu-bp" id="bpbtn"><span class="bpb">${bpTier}</span>🎟 BATTLE PASS${bpReady ? `<em>${bpReady}</em>` : ''}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">B</small>'}</button></div>
       <div class="small">${TOUCH ? 'Swipe to dodge · swipe up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'} · best time ${best || '—'}</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
   el.querySelector('#play').onclick = onPlay;
   el.querySelector('#shop').onclick = (e) => { e.stopPropagation(); onShop?.(); };
+  el.querySelector('#bpbtn').onclick = (e) => { e.stopPropagation(); onBP?.(); };
   el.querySelector('#mute').onclick = (e) => { e.stopPropagation(); const m = onMute(); e.currentTarget.textContent = m ? '🔇' : '🔊'; };
   return el;
 }

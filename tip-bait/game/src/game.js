@@ -15,6 +15,7 @@ import { createFX } from './fx.js';
 import { createEvents } from './events.js';
 import { createCosmetics } from './cosmetics.js';
 import { openShop } from './shop.js';
+import { openBattlePass, runXP, award as awardXP, xpWidget, levelOf, state as bpState } from './battlepass.js';
 
 // ---------------------------------------------------------------- persistent state
 const store = {
@@ -189,6 +190,7 @@ window.addEventListener('keydown', (e) => {
   if (G.state === 'crashed' && k === 'enter') { document.getElementById('watchad')?.click(); return; }
   if (G.state === 'crashed' && k === 'r') { document.getElementById('rs')?.click(); return; }
   if (G.state === 'title' && k === 's') { e.preventDefault(); openStore(); return; }
+  if (G.state === 'title' && k === 'b') { e.preventDefault(); openPass(); return; }
   if (G.state === 'results' && k === 'enter') { document.getElementById('next')?.click(); return; }
   if (k === 'm') { Audio.unlock(); Audio.setMuted(!Audio.muted); UI.toast(Audio.muted ? 'Sound off' : 'Sound on', 900); return; }
   if ((k === 'escape' || k === 'p') && (G.state === 'run' || G.state === 'paused')) { G.state === 'run' ? pause() : resume(); return; }
@@ -206,7 +208,7 @@ window.addEventListener('keydown', (e) => {
 function pause() {
   if (G.state !== 'run') return;
   G.state = 'paused'; Audio.music(null);
-  UI.pauseMenu({ onResume: resume, onRestart: () => { bankCoins(); resume(); startOrder(true); }, onQuit: () => { bankCoins(); UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
+  UI.pauseMenu({ onResume: resume, onRestart: () => { bankCoins(); partialXP(); resume(); startOrder(true); }, onQuit: () => { bankCoins(); partialXP(); UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
 }
 function resume() { if (G.state !== 'paused') return; UI.remove('pause'); G.state = 'run'; Audio.music('full'); }
 window.addEventListener('blur', pause);
@@ -549,7 +551,7 @@ function updateCrash(dt) {
   R.C.root.rotation.x = uu * Math.PI * 2.5;
   if (G.crashT > 1.0 && G.state === 'crashing') {
     G.state = 'crashed';
-    UI.crash({ tip: G.tip, onAd: () => { UI.remove('crash'); G.state = 'ad'; Audio.sfx('jingle', 0.9); UI.ad({ seconds: 4, onDone: continueRun }); }, onRestart: () => { bankCoins(); UI.remove('crash'); startOrder(true); } });
+    UI.crash({ tip: G.tip, onAd: () => { UI.remove('crash'); G.state = 'ad'; Audio.sfx('jingle', 0.9); UI.ad({ seconds: 4, onDone: continueRun }); }, onRestart: () => { bankCoins(); partialXP(); UI.remove('crash'); startOrder(true); } });
   }
 }
 function continueRun() {
@@ -660,6 +662,7 @@ function jumpShot() { // big jumps: a low side angle inside the street (SunRail:
 }
 function titleShot(t) { // front three-quarter on the rider at the start, drifting gently across the street
   if (G.state === 'shop' && window.__shopShot) return { fov: baseFov(), ...window.__shopShot }; // QA: frame cosmetics from any shot
+  if (G.state === 'shop' && G.pass) { const port = camera.aspect < 1, a = window.__shopAngle ?? t * 0.45, r = port ? 5.6 : 5.4; return { ds: r * Math.cos(a), lat: r * Math.sin(a), y: 1.75, lds: 0, llat: 0, ly: 1.0, fov: port ? 54 : 42 }; } // the pass: wider, so whole bikes fit above the track
   if (G.state === 'shop') { const port = camera.aspect < 1, a = window.__shopAngle ?? t * 0.45, r = port ? 4.4 : 3.0; return { ds: r * Math.cos(a), lat: r * Math.sin(a), y: port ? 1.8 : 1.62, lds: 0, llat: 0, ly: port ? 1.15 : 1.22, fov: port ? 54 : 42 }; } // the store's turntable (tall enough for balloons and UFOs)
   return { ds: 6.2, lat: 2.6 * Math.sin(t * 0.18 + 0.6), y: 1.7 + 0.25 * Math.sin(t * 0.11), lds: 0, llat: 0, ly: 1.15, fov: baseFov() - 4 };
 }
@@ -775,6 +778,9 @@ function showResults(line) {
     (res.querySelector('.nextup') || res.lastElementChild).before(w);
     const toMenu = (shop) => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); if (shop) openStore(); };
     w.querySelector('#toshop').onclick = () => toMenu(true); w.querySelector('#tomenu').onclick = () => toMenu(false);
+    const xp = runXP({ rows: rated.rows, grade, perfect, coins: G.coins, dist: G.dist }), aw = awardXP(store, xp.total);
+    const xw = xpWidget(document.createElement('div'), { before: aw.before, after: aw.after, gained: aw.after - aw.before, parts: xp.parts, sfx: (n, g, r) => Audio.sfx(n, g, r), onOpen: () => { toMenu(false); openPass(); } });
+    w.after(xw);
     UI.pouchFly({ from: w.querySelector('span'), before: store.get('wallet', 0) - (got + bonus), after: store.get('wallet', 0), n: Math.min(40, 8 + Math.round((got + bonus) / 15)) });
   }
   void earned;
@@ -856,9 +862,22 @@ function bankCoins(bonus = 0) {
   if (n) store.set('wallet', store.get('wallet', 0) + n);
   return n;
 }
-function viewOffset(on) { // in the store, slide the picture so the courier stands clear of the panel
+// battle pass XP: a crashed-out / quit run still earns a little (40%, no section ratings)
+function partialXP() { const x = runXP({ coins: G.coins || 0, dist: G.dist || 0, partial: true }); if (x.total > 0 && (G.dist || 0) > 20) { awardXP(store, x.total); UI.toast(`+${x.total.toLocaleString('en-US')} XP · battle pass`, 1600); } }
+function openPass() {
+  if (G.state !== 'title') return;
+  Audio.unlock(); UI.remove('title'); G.state = 'shop'; Audio.sfx('pop', 0.7, 1.1);
+  G.pass = openBattlePass({ store, cos: G.cos, sfx: (n, g, r) => Audio.sfx(n, g, r), onClose: () => { G.pass = null; viewOffset(false); showTitle(); } });
+  viewOffset(true, 'bp');
+}
+window.__openPass = openPass;
+function viewOffset(on, kind = 'shop') { // in the store, slide the picture so the courier stands clear of the panel
   const w = innerWidth, h = innerHeight;
   if (!on) { camera.clearViewOffset(); return; }
+  if (kind === 'bp') { // the pass track fills the bottom: centre the courier in the gap between the header and the track
+    const hd = document.querySelector('.bp-hd')?.getBoundingClientRect(), tr = document.querySelector('.bp-rows')?.getBoundingClientRect();
+    camera.setViewOffset(w, h, 0, hd && tr ? h / 2 - (hd.bottom + tr.top) / 2 : h * 0.2, w, h); return;
+  }
   if (w >= h) camera.setViewOffset(w, h, w * 0.2, 0, w, h); else camera.setViewOffset(w, h, 0, h * 0.27, w, h);
 }
 function openStore() {
@@ -868,9 +887,10 @@ function openStore() {
   G.shop = openShop({ store, cos: G.cos, sfx: (n, g, r) => Audio.sfx(n, g, r), onClose: close });
 }
 window.__openStore = openStore;
+function bpReadyCount() { const s = bpState(store), lv = levelOf(s.xp).tier; let n = 0; for (let t = 1; t <= lv; t++) { if (!s.claimed.free.includes(t)) n++; if (s.premium && !s.claimed.prem.includes(t)) n++; } return n; }
 function showTitle() {
   G.state = 'title';
-  UI.title({ wallet: store.get('wallet', 0), onShop: openStore, bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
+  UI.title({ wallet: store.get('wallet', 0), onShop: openStore, onBP: openPass, bpTier: levelOf(bpState(store).xp).tier, bpReady: bpReadyCount(), bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
 }
 requestAnimationFrame(frame);
 boot();

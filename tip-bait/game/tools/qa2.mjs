@@ -12,6 +12,7 @@ await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', 
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
 if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFail = true; });
 if (process.env.EQUIP) await ctx.addInitScript((eq) => { try { localStorage.setItem('tipbait:equipped', eq); } catch {} }, process.env.EQUIP); // e.g. EQUIP='{"bag":"bag_ufo","outfit":"fit_ceo","head":"head_fire"}'
+if (process.env.BP) await ctx.addInitScript((bp) => { try { localStorage.setItem('tipbait:bp', bp); } catch {} }, process.env.BP); // e.g. BP='{"xp":700,"premium":true,"claimed":{"free":[],"prem":[]}}'
 if (process.env.HALL_KIND) await ctx.addInitScript((k) => { globalThis.__hallKind = k; }, process.env.HALL_KIND);
 if (process.env.RIVAL) await ctx.addInitScript((m) => { globalThis.__rivalMode = m; }, process.env.RIVAL);
 const page = await ctx.newPage();

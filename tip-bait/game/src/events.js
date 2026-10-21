@@ -178,7 +178,8 @@ export function createEvents(ctx) {
   let props = [];
   E.bind = (p) => { props = p || []; E.reset(); };
   E.reset = (atS = 0) => {
-    E.locked = false; E.slow = null; E.shot = null; E.cur = null; UI.remove('evui');
+    E.locked = false; E.slow = null; E.shot = null; E.cur = null; UI.remove('evui'); UI.remove('qte'); UI.remove('say');
+    for (const p of props) { p.ev.q?.remove?.(); p.ev.q = null; }
     for (const p of props) {
       const ev = p.ev;
       if (atS > 0 && ev.s < atS - 10) { ev.st = 'done'; continue; } // a continue past it: it's over
@@ -439,6 +440,8 @@ export function createEvents(ctx) {
     for (const p of props) {
       const ev = p.ev;
       if (ev.st === 'idle' && G.s > (ev.kind === 'rival' ? ev.s + 25 : ev.drops[0].s - 4)) { ev.st = 'done'; continue; } // came in past it (continue / debug skip): don't start late
+      // failsafe: a duel never outlives its stretch of road (it would lock your lanes and block the next set piece)
+      if (ev.kind === 'rival' && ev.st !== 'idle' && ev.st !== 'done' && ev.st !== 'finish' && G.s > ev.s + ev.len + 60) { ev.q?.remove?.(); ev.q = null; UI.remove('qte'); rivalFinish(ev); }
       if (ev.kind === 'rival') { if (ev.st === 'idle' && G.s >= ev.s && !E.cur) rivalStart(ev); if (ev.st !== 'idle' && ev.st !== 'done') rivalUpdate(ev, dt, sdt); }
       if (ev.kind === 'crane') { if (ev.st === 'idle' && G.s >= ev.s - 2 && !E.cur) craneStart(ev); if (ev.st !== 'done') craneUpdate(ev, dt, sdt); }
     }
