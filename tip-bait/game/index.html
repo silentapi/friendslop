@@ -421,6 +421,138 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   .card2 .nm { font-size: 12px; }
   .shp-act { min-width: 140px; font-size: 15px; padding: 14px; }
 }
+/* ---- crates, collection, coin sheet ---- */
+.shp-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.shp-tabs button small { display: block; font: 800 10px var(--body); opacity: .75; margin-top: 2px; }
+.shp-tabs.top button { font-size: 15px; padding: 12px 6px; }
+.buycoins { border: 0; border-radius: 12px; padding: 9px 11px; background: linear-gradient(#ffd96a, #f0a91a); color: #3a2600; font: 900 13px var(--body); cursor: pointer; white-space: nowrap; box-shadow: 0 0 0 2px rgba(255,255,255,.6); }
+.crates { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.crate { display: grid; grid-template-columns: 96px 1fr; grid-template-rows: auto auto; gap: 6px 12px; padding: 10px; border-radius: 16px; background: rgba(255,255,255,.06); cursor: pointer; }
+.crate.sel { box-shadow: 0 0 0 3px var(--gobbl); background: rgba(46,230,111,.08); }
+.crate .cart { grid-row: span 2; display: grid; place-items: center; }
+.cinfo b { display: block; font: 900 20px var(--display); color: #fff; }
+.cinfo small { display: block; font: 600 12px var(--body); color: #b9c1c8; margin-bottom: 6px; }
+.odds { display: flex; flex-wrap: wrap; gap: 4px; }
+.odds span { font: 900 12px var(--display); color: #fff; background: color-mix(in srgb, var(--rc) 22%, transparent); border: 1px solid var(--rc); border-radius: 7px; padding: 2px 6px; }
+.odds em { font-style: normal; font: 800 9px var(--body); letter-spacing: .6px; color: var(--rc); margin-right: 4px; }
+.copen { grid-column: 2; justify-self: start; font-size: 16px; padding: 11px 16px; }
+.copen.poor { background: rgba(255,255,255,.1); color: #9aa0a6; box-shadow: none; font-size: 13px; }
+.copen.shake { animation: shake .35s; }
+.pity { padding: 10px 12px; border-radius: 14px; background: rgba(255,182,39,.08); color: #e8dcb8; font: 700 12px var(--body); display: flex; flex-direction: column; gap: 6px; }
+.pity b { color: #ffb627; letter-spacing: .6px; }
+.pity span { height: 8px; border-radius: 4px; background: rgba(255,255,255,.1); overflow: hidden; }
+.pity span i { display: block; height: 100%; background: linear-gradient(90deg, #a23bff, #ffb627); }
+.pity small em { font-style: normal; font-weight: 900; }
+/* crate art (pure CSS: lid, body, glowing seam) */
+.crateart { --c1: #1d2228; --c2: #2ee66f; --glow: #ffffff; position: relative; width: 84px; height: 70px; }
+.crateart.look-prem { --c1: #15121a; --c2: #ffb627; }
+.crateart.look-multi { --c1: #1a1030; --c2: #c77dff; }
+.crateart .cbody { position: absolute; inset: 22% 0 0; border-radius: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--c1) 70%, #fff 8%), var(--c1)); box-shadow: inset 0 0 0 3px var(--c2), inset 0 -10px 18px rgba(0,0,0,.5), 0 8px 18px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.crateart .cbody b { font: 900 18px var(--display); color: var(--c2); line-height: 1; }
+.crateart .cbody i { font: 900 8px var(--body); letter-spacing: 1.6px; color: #fff; opacity: .8; font-style: normal; }
+.crateart .clid { position: absolute; left: -4%; right: -4%; top: 6%; height: 22%; border-radius: 6px; background: linear-gradient(180deg, color-mix(in srgb, var(--c1) 60%, #fff 14%), var(--c1)); box-shadow: inset 0 0 0 3px var(--c2), 0 4px 10px rgba(0,0,0,.4); transform-origin: 10% 100%; z-index: 2; }
+.crateart .cseam { position: absolute; left: 2%; right: 2%; top: 26%; height: 3px; border-radius: 3px; background: var(--glow); opacity: 0; box-shadow: 0 0 10px 3px var(--glow), 0 0 40px 10px var(--glow); z-index: 3; }
+.crateart.big { width: min(300px, 62vw); height: min(250px, 52vw); }
+.crateart.big .cbody b { font-size: min(64px, 13vw); }
+.crateart.big .cbody i { font-size: 16px; }
+.crateart.big .cseam { height: 6px; opacity: .9; transition: background .2s, box-shadow .2s; }
+/* the opening */
+#crateopen { pointer-events: auto; padding: 0; z-index: 30; background: radial-gradient(circle at 50% 46%, rgba(20,22,30,.82), rgba(4,5,8,.97) 70%); transition: background .6s; overflow: hidden; }
+#crateopen .cfx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 6; }
+#crateopen .cstage { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); z-index: 3; animation: cdrop .55s cubic-bezier(.3,1.5,.5,1) both; filter: drop-shadow(0 0 30px color-mix(in srgb, var(--glow) 60%, transparent)); }
+@keyframes cdrop { from { transform: translate(-50%, -160%) scale(.7); opacity: 0; } }
+#crateopen .cstage.punch { animation: cpunch .45s ease-out both; }
+@keyframes cpunch { 0% { transform: translate(-50%, -50%) scale(1.15); } 100% { transform: translate(-50%, -50%) scale(1); } }
+#crateopen.popped .clid { animation: lidoff .7s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes lidoff { to { transform: translate(40%, -260%) rotate(-58deg); opacity: 0; } }
+#crateopen.popped .cstage { opacity: .0; transition: opacity .5s .35s; }
+#crateopen .crays { position: absolute; left: 50%; top: 46%; width: 220vmax; height: 220vmax; transform: translate(-50%, -50%); z-index: 1; opacity: 0; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--glow) 55%, transparent) 0 6deg, transparent 6deg 18deg); -webkit-mask: radial-gradient(circle, #000 0, transparent 45%); mask: radial-gradient(circle, #000 0, transparent 45%); transition: opacity .4s; animation: rays 14s linear infinite; }
+#crateopen.popped .crays { opacity: .7; }
+#crateopen.mythic .crays { background: repeating-conic-gradient(from 0deg, rgba(255,60,80,.6) 0 6deg, transparent 6deg 12deg, rgba(255,210,60,.55) 12deg 18deg, transparent 18deg 24deg, rgba(80,170,255,.55) 24deg 30deg, transparent 30deg 36deg); }
+@keyframes rays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#crateopen .cvig { position: absolute; inset: 0; z-index: 2; pointer-events: none; box-shadow: inset 0 0 0 0 transparent; transition: box-shadow .5s; }
+#crateopen.edge .cvig { box-shadow: inset 0 0 140px 30px var(--glow); animation: edgepulse 1.2s ease-in-out infinite alternate; }
+@keyframes edgepulse { to { box-shadow: inset 0 0 90px 14px var(--glow); } }
+#crateopen.cpause { background: radial-gradient(circle at 50% 46%, rgba(10,10,14,.9), #000 60%); }
+#crateopen .cflash { position: absolute; inset: 0; z-index: 7; pointer-events: none; background: #fff; opacity: 0; }
+#crateopen.popped .cflash { animation: flash .55s ease-out; }
+#crateopen .cskip { position: absolute; bottom: calc(var(--sb) + 14px); left: 50%; transform: translateX(-50%); font: 700 12px var(--body); color: rgba(255,255,255,.45); letter-spacing: 1px; opacity: 0; transition: opacity .3s; z-index: 8; }
+#crateopen.canskip:not(.revealed) .cskip { opacity: 1; }
+/* reel */
+#crateopen .creel { position: absolute; left: 0; right: 0; top: 46%; height: 190px; transform: translateY(-50%) scale(.9); opacity: 0; z-index: 4; transition: opacity .35s, transform .35s; background: linear-gradient(90deg, rgba(0,0,0,.85), rgba(0,0,0,.2) 25%, rgba(0,0,0,.2) 75%, rgba(0,0,0,.85)); border-block: 2px solid rgba(255,255,255,.12); overflow: hidden; }
+#crateopen .creel.on { opacity: 1; transform: translateY(-50%) scale(1); }
+#crateopen .cstrip { position: absolute; left: 50%; top: 14px; display: flex; gap: 8px; will-change: transform; }
+#crateopen .cmark { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #ffd23b; box-shadow: 0 0 14px 3px rgba(255,210,59,.8); z-index: 2; }
+#crateopen .cmark::before, #crateopen .cmark::after { content: ''; position: absolute; left: -8px; border: 10px solid transparent; }
+#crateopen .cmark::before { top: 0; border-top-color: #ffd23b; }
+#crateopen .cmark::after { bottom: 0; border-bottom-color: #ffd23b; }
+#crateopen.revealed .creel { top: auto; bottom: calc(var(--sb) + 8px); transform: none; height: 160px; opacity: .35; transition: opacity .5s, top .5s; }
+.lcard { position: relative; flex: none; width: 132px; height: 160px; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; background: linear-gradient(180deg, rgba(255,255,255,.08), color-mix(in srgb, var(--rc) 35%, #0d0f12)); box-shadow: inset 0 -4px 0 var(--rc), inset 0 0 0 1px rgba(255,255,255,.1); }
+.lcard .sw { height: 86px; border-radius: 8px; display: grid; place-items: center; font-size: 42px; }
+.lcard .nm { font: 800 13px/1.15 var(--body); color: #fff; }
+.lcard i { font-style: normal; font: 900 10px var(--body); letter-spacing: 1px; color: var(--rc); }
+.lcard em { position: absolute; top: 6px; right: 6px; font-style: normal; font: 900 10px var(--body); padding: 2px 6px; border-radius: 6px; z-index: 2; }
+.lcard em.new { background: var(--gobbl); color: #04170b; }
+.lcard em.dupe { background: #ffd23b; color: #3a2600; }
+.lcard.r-legendary, .lcard.r-mythic { box-shadow: inset 0 -4px 0 var(--rc), inset 0 0 0 1px rgba(255,255,255,.1), 0 0 18px color-mix(in srgb, var(--rc) 60%, transparent); }
+.lcard.r-mythic { background: linear-gradient(180deg, rgba(255,255,255,.1), #5a0f22), linear-gradient(90deg, #ff3b3b, #ffd23b, #3bb4ff); }
+/* multi cards */
+#crateopen .ccards { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); display: flex; gap: 12px; z-index: 5; opacity: 0; pointer-events: none; }
+#crateopen .ccards.on { opacity: 1; pointer-events: auto; }
+.mcard { width: 132px; height: 160px; perspective: 800px; cursor: pointer; animation: mout .6s cubic-bezier(.2,1.3,.4,1) both; animation-delay: calc(var(--i) * .08s); }
+@keyframes mout { from { transform: translateY(40vh) scale(.4) rotate(calc((var(--i) - 2) * 12deg)); opacity: 0; } }
+.mcard > div { position: absolute; width: 132px; height: 160px; backface-visibility: hidden; transition: transform .45s cubic-bezier(.3,1.4,.5,1); border-radius: 12px; }
+.mcard .mback { background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--rc) 70%, #fff 10%), #0d0f12 75%); box-shadow: 0 0 22px 2px color-mix(in srgb, var(--rc) 70%, transparent), inset 0 0 0 2px var(--rc); }
+.mcard .mback::after { content: 'gobbl'; position: absolute; inset: 0; display: grid; place-items: center; font: 900 26px var(--display); color: rgba(255,255,255,.85); }
+.mcard .mface { transform: rotateY(180deg); }
+.mcard.flip .mback { transform: rotateY(-180deg); }
+.mcard.flip .mface { transform: rotateY(0); }
+.mcard.sel .lcard { outline: 3px solid #fff; outline-offset: 2px; }
+#crateopen.revealed .ccards { top: auto; bottom: calc(var(--sb) + 14px); transform: translateX(-50%) scale(.72); transform-origin: 50% 100%; transition: all .5s; }
+/* reveal */
+#crateopen.revealed { background: linear-gradient(90deg, rgba(4,5,8,.25), rgba(4,5,8,0) 40%, rgba(4,5,8,.75)); }
+#crateopen.revealed .crays { opacity: .18; }
+#crateopen .creveal { position: absolute; right: calc(var(--sr) + 24px); top: 50%; transform: translate(30px, -50%); width: min(380px, 42vw); opacity: 0; z-index: 8; transition: opacity .4s .15s, transform .4s .15s; display: flex; flex-direction: column; gap: 8px; color: #fff; pointer-events: none; }
+#crateopen .creveal.on { opacity: 1; transform: translate(0, -50%); pointer-events: auto; }
+.creveal .rban { align-self: flex-start; font: 900 14px var(--display); letter-spacing: 2px; padding: 6px 12px; border-radius: 8px; background: var(--rc); color: #0d0f12; box-shadow: 0 0 24px color-mix(in srgb, var(--rc) 70%, transparent); }
+.creveal.r-mythic .rban { background: linear-gradient(90deg, #ff3b3b, #ffd23b, #3bff6a, #3bb4ff, #a33bff); background-size: 200% 100%; animation: rb 2s linear infinite; }
+@keyframes rb { to { background-position: 200% 0; } }
+.creveal b { font: 900 40px/1 var(--display); font-stretch: 110%; text-shadow: 0 0 30px color-mix(in srgb, var(--rc) 60%, transparent); }
+.creveal small { font: 600 14px/1.35 var(--body); color: #cfd6dc; }
+.creveal .rnew { font: 900 13px var(--body); color: var(--gobbl); letter-spacing: .6px; }
+.creveal .rdupe { font: 900 13px var(--body); color: #ffd23b; letter-spacing: .6px; }
+.creveal .rbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.creveal .rbtns .btn { font-size: 15px; padding: 12px 14px; }
+.creveal .rbtns .btn.done { background: rgba(255,255,255,.12); color: var(--gobbl); box-shadow: none; }
+/* collection */
+.card2.locked .sw { background: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 6px, transparent 6px 12px), #0d0f12 !important; color: var(--rc); font: 900 30px var(--display); box-shadow: inset 0 0 0 2px var(--rc); }
+.card2.locked .nm { color: #7d858e; }
+.shp-grid.coll .card2 { box-shadow: inset 0 -3px 0 var(--rc); }
+.shp-grid.coll .card2.sel { box-shadow: 0 0 0 3px #fff, inset 0 -3px 0 var(--rc); }
+.shp-grid.coll .card2 .st { color: var(--rc); font: 900 10px var(--body); letter-spacing: 1px; }
+.shp-grid.coll .card2.r-legendary:not(.locked), .shp-grid.coll .card2.r-mythic:not(.locked) { background: color-mix(in srgb, var(--rc) 14%, rgba(255,255,255,.05)); }
+/* coin sheet */
+#shop.busy .shp { opacity: 0; pointer-events: none; transition: opacity .25s; }
+.shp-title { font-size: clamp(18px, 2.2vw, 28px); white-space: nowrap; }
+#coinsheet { pointer-events: auto; z-index: 40; background: rgba(0,0,0,.6); align-items: center; justify-content: center; }
+#coinsheet .sheet { width: min(480px, calc(100% - 32px)); padding: 20px; border-radius: 22px; background: #14171c; box-shadow: 0 0 0 2px rgba(255,210,59,.5), 0 20px 50px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 12px; color: #fff; text-align: center; }
+#coinsheet .sheet > b { font: 900 28px var(--display); color: #ffd23b; }
+#coinsheet .sheet > small { font: 600 14px var(--body); color: #b9c1c8; }
+#coinsheet .packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#coinsheet .pack { padding: 12px 6px; border-radius: 14px; background: rgba(255,255,255,.06); display: flex; flex-direction: column; gap: 4px; align-items: center; }
+#coinsheet .pack span { font-size: 28px; } #coinsheet .pack b { font: 900 20px var(--display); color: #ffd23b; } #coinsheet .pack small { font: 700 11px var(--body); color: #9aa3ad; }
+#coinsheet .pack button { margin-top: 4px; border: 0; border-radius: 10px; padding: 7px 10px; background: rgba(255,255,255,.1); color: #8a8f96; font: 900 13px var(--body); }
+@media (max-aspect-ratio: 1/1) {
+  .crate { grid-template-columns: 70px 1fr; }
+  .crateart { width: 64px; height: 54px; }
+  .buycoins { font-size: 11px; padding: 7px 8px; }
+  #crateopen .creveal { left: 16px; right: 16px; width: auto; top: auto; bottom: calc(var(--sb) + 150px); transform: none; padding: 12px; border-radius: 16px; background: rgba(8,9,12,.78); }
+  #crateopen .creveal.on { transform: none; }
+  .creveal b { font-size: 30px; }
+  #crateopen.revealed .ccards { transform: translateX(-50%) scale(.5); }
+  .mcard, .mcard > div { width: 100px; height: 124px; }
+  .mcard .lcard { width: 100px; height: 124px; } .mcard .lcard .sw { height: 60px; font-size: 30px; }
+}
 </style>
 <div id="app">
   <canvas id="gl"></canvas>

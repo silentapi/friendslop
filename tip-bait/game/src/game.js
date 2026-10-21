@@ -653,7 +653,7 @@ function jumpShot() { // big jumps: a low side angle inside the street (SunRail:
     : { ds: 4.0, lat: side * (h - 0.8), y: 1.8 + G.y * 0.5, lds: 0.3, llat: G.lat, ly: 0.9 + G.y, fov: baseFov() - 2 };
 }
 function titleShot(t) { // front three-quarter on the rider at the start, drifting gently across the street
-  if (G.state === 'shop') { const port = camera.aspect < 1, a = t * 0.45, r = port ? 4.4 : 3.0; return { ds: r * Math.cos(a), lat: r * Math.sin(a), y: port ? 1.7 : 1.45, lds: 0, llat: 0, ly: port ? 1.0 : 1.05, fov: port ? 52 : 38 }; } // the store's turntable
+  if (G.state === 'shop') { const port = camera.aspect < 1, a = window.__shopAngle ?? t * 0.45, r = port ? 4.4 : 3.0; return { ds: r * Math.cos(a), lat: r * Math.sin(a), y: port ? 1.8 : 1.62, lds: 0, llat: 0, ly: port ? 1.15 : 1.22, fov: port ? 54 : 42 }; } // the store's turntable (tall enough for balloons and UFOs)
   return { ds: 6.2, lat: 2.6 * Math.sin(t * 0.18 + 0.6), y: 1.7 + 0.25 * Math.sin(t * 0.11), lds: 0, llat: 0, ly: 1.15, fov: baseFov() - 4 };
 }
 const mixShot = (a, b, k) => Object.fromEntries(CKEYS.map((c) => [c, a[c] + (b[c] - a[c]) * k]));
