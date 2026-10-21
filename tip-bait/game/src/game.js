@@ -75,10 +75,11 @@ function breakCombo() { G.combo = 0; G.mult = 1; G.comboT = 0; }
 const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
 window.__sfx = (n, g, r) => Audio.sfx(n, g, r);
+window.__UI = UI; // QA: drive toasts/overlays directly
 const SHARE_URL = 'https://claude.ai/artifact/Gkp4oi7z7tQGeQAw57bFDX'; // where friends can play
 window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
 window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
-const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT), tumble: (d) => tumble(d) }); window.__EV = EV;
+const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT), tumble: (d, o) => tumble(d, o) }); window.__EV = EV;
 window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
@@ -253,7 +254,7 @@ function akiraPress(k) {
 }
 function resolveAkira(res, why = '') {
   const a = G.akira; a.res = res; a.resT = G.time; a.ui.result(res === 'ok', res === 'ok' ? '' : why);
-  if (res === 'ok') { G.score += 1500; Audio.sfx('skid', 1.2, 0.6); } else { breakCombo(); Audio.sfx('bwomp', 0.7); }
+  if (res === 'ok') { G.score += 1500; Audio.sfx('skid', 1.2, 0.6); } else { breakCombo(); Audio.sfx('bwomp', 0.7); UI.timeCost(6, 'botched the parking slide'); }
   G.fin = { ...(G.fin || {}), akira: res === 'ok' ? 'NAILED' : 'WIPEOUT', akiraT: res === 'ok' ? 0 : 6 };
 }
 // ---------------------------------------------------------------- tech landing: come down on a car → a split-second kick off its roof
@@ -268,7 +269,7 @@ function updateTech(dt) { const q = G.tech; q.t += dt; q.ui.set(1 - q.t / q.dur)
 function techPress(k) { k = QALIAS[k] || k; if (!QKEYS.includes(k)) return false; endTech(k === G.tech.key); return true; }
 function endTech(ok) {
   const q = G.tech; G.tech = null;
-  if (!ok) { q.ui.result('MISS', 'ate the car'); G.slowmo = 1; Audio.rate(1); crash(q.o.kind); return; }
+  if (!ok) { q.ui.result('MISS', 'ate the car'); G.slowmo = 1; Audio.rate(1); G.techMiss = true; crash(q.o.kind); UI.pop('ATE THE CAR', 'missed the tech'); return; }
   q.ui.result('PERFECT', 'TECH! +300');
   G.lane = clamp(G.lane + q.dir, 0, 2); G.vy = 6.5; G.y = Math.max(G.y, q.o.h + 0.15); G.invT = 0.6; G.airKind = null;
   addScore(300); addCombo(6); G.boostCharge = Math.min(1, G.boostCharge + 0.5); Audio.sfx('boom', 0.6, 1.5); Audio.sfx('ding', 0.8, 1.6);
@@ -301,7 +302,11 @@ function qtePress(k) {
 }
 function endQTE(grade, why = '') {
   const q = G.qte; G.qte = null; G.trickGrade = grade;
-  if (grade === 'MISS') { G.qteMisses = (G.qteMisses || 0) + 1; q.ui.result(false, why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2); return; }
+  if (grade === 'MISS') {
+    G.qteMisses = (G.qteMisses || 0) + 1; q.ui.result(false, why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2);
+    if (q.kind === 'rail' && G.rail && G.s < G.rail.s + 0.5 && !power('rocket')) { G.railClip = true; Audio.sfx('trainhorn', 1, 1.1); } // botched it over the tracks: the train is coming for you
+    return;
+  }
   const [name, kind] = TRICKS[q.key], pts = grade === 'PERFECT' ? 500 : 250;
   const tLand = (G.vy + Math.sqrt(Math.max(0, G.vy * G.vy + 48 * G.y))) / 24;
   G.trick = { name, kind, t: 0, dur: Math.max(0.3, Math.min(0.7, tLand * 0.85)) };
@@ -314,7 +319,7 @@ function land() {
   if (G.qte) endQTE('MISS', 'too slow');
   if (G.trick) { G.R.bike.rotation.y = 0; G.trick = null; }
   if (g && g !== 'MISS') { addScore(100); UI.pop('LANDED!', kind === 'rail' ? 'cleared the SunRail' : 'cleared the LYNX'); }
-  else { G.slowT = 0.9; G.shake = 0.35; UI.pop('SKETCHY LANDING', 'combo lost'); Audio.sfx('crash', 0.4, 1.3); }
+  else { G.railClip = false; G.shake = 0.5; UI.pop('BAILED!', 'over the bars · combo lost'); tumble(1.6, { kind: 'bars', label: 'bailed the landing' }); }
   G.shake = Math.max(G.shake || 0, 0.25); navigator.vibrate?.(25);
   const rp = G.R.root.position; FX.burst(rp.clone().setY(0.1), { color: 0xd8d2c6, n: 26, speed: 5, up: 1.2, life: 0.8, size: 0.6, grav: 2 }); FX.shock(rp, { color: 0xffffff, radius: 4, dur: 0.4 });
 }
@@ -452,6 +457,12 @@ function update(dt, t) {
     const rs = G.rail.s;
     if (G.trainCab == null && G.s > rs - 75) G.trainCab = (rs + 8 - G.s) * 1.6;
     if (G.trainCab != null) G.trainCab = G.s < rs + 8 && !G.trainGone ? Math.min(G.trainCab, (rs + 8 - G.s) * 1.6) : G.trainCab - 24 * sdt;
+    if (G.railClip && G.state === 'run') {
+      const R0 = G.rail, F = route.at(rs), sinA = Math.max(0.3, Math.abs(F.fx * R0.dir.z - F.fz * R0.dir.x)), edge = rs + 1.55 / sinA - 0.45; // the far edge of the train's path
+      const along = route.world(edge, G.lat, 0, tmp).sub(R0.X).dot(R0.dir);
+      if (G.s < edge) G.trainCab = damp(G.trainCab ?? 60, (edge - G.s) * 1.6 + along, 7, sdt);
+      else { G.railClip = false; return trainClip(); }
+    }
   }
   // collisions (route space)
   if (G.invT <= 0 && !G.tech) {
@@ -469,7 +480,7 @@ function update(dt, t) {
       if (!o.passed && o.s < G.s - o.len / 2 - 0.7) { o.passed = true; const dl = Math.abs(o.lat - G.lat); if ((o.kind === 'car' || o.kind === 'bus') && !o.parked && dl < 3.0) { G.nearMiss++; G.boostCharge = Math.min(1, G.boostCharge + 0.34); addScore(50); addCombo(4); if (G.boostT > 0) G.boostT = Math.min(3.5, G.boostT + 0.6); UI.pop('NEAR MISS', `+${50 * G.mult}${G.boostT > 0 ? ' · boost extended' : ' · +boost'}`); Audio.sfx('whoosh', 0.9, 1.2); } }
     }
     for (const w of G.pop.walkers) if (!w.gone && Math.abs(w.s - G.s) < 0.9 && Math.abs(w.lat - G.lat) < 0.6 && G.y < 1.5) { if (power('rocket')) { w.gone = true; FX.burst(route.world(w.s, w.lat, 1.2), { color: 0xff6ad5, n: 30, speed: 7, up: 6, life: 0.9, size: 0.4, grav: 9 }); UI.pop('YEET', 'sorry ma’am'); Audio.sfx('pop', 1, 0.6); continue; } return crash('tourist'); }
-    if (G.rail && G.trainCab != null && G.trainCab < 1.6 && G.trainCab > -78 && Math.abs(G.s - G.rail.s) < 2.2 && G.y < 4.8) return crash('train');
+    if (G.rail && !G.railClip && G.trainCab != null && G.trainCab < 1.6 && G.trainCab > -78 && Math.abs(G.s - G.rail.s) < 2.2 && G.y < 4.8) return crash('train');
   }
   // DMs + places
   const prog = G.s / L;
@@ -499,14 +510,27 @@ function update(dt, t) {
   EV.pose(R); updateRocket(dt);
   if (G.tumbleT > 0) { // went down: skid off the bike, a beat on the ground, back on (costs time, never the run)
     G.tumbleT -= sdt; const u = 1 - Math.max(0, G.tumbleT) / G.tumbleDur, down = smooth(seg(u, 0, 0.25)) * (1 - smooth(seg(u, 0.72, 1)));
-    R.bike.rotation.set(0, 0, down * 1.35);
-    if (u < 0.78) { R.walk(u < 0.5 ? 'falling' : 'defeated', u < 0.5 ? 0.3 + u * 2 : (u - 0.5) * 2.4, { offset: V(0.15 + down * 0.6, 0.15 * (1 - down), 0.4 * down), yaw: 0, loop: false }); R.C.root.rotation.x = down * 1.2 * (1 - smooth(seg(u, 0.5, 0.78))); }
+    if (G.tumbleKind === 'bars') { // over the bars: the front wheel digs in, the bike stands on its nose, you fly over and land flat on your back
+      const fly = seg(u, 0.04, 0.4), up = smooth(seg(u, 0.66, 0.94)), nose = Math.sin(Math.PI * clamp(u / 0.34)) * 0.75, side = smooth(seg(u, 0.22, 0.42)) * (1 - up);
+      R.bike.rotation.set(nose, 0, side * 1.4); R.bike.position.set(0, Math.sin(nose) * 0.62, 0);
+      if (u < 0.94) {
+        const zL = 2.6, z = lerp(0.1 + easeOut(fly) * zL, 0.3, up), y = (0.2 + Math.sin(Math.PI * fly) * 1.25) * (1 - smooth(seg(u, 0.4, 0.46))) + 0.1;
+        R.walk(u < 0.66 ? 'falling' : 'defeated', u < 0.66 ? 0.2 + Math.min(u, 0.5) * 2.4 : (u - 0.66) * 3, { offset: V(0.1, y, z), yaw: 0, loop: false });
+        R.C.root.rotation.x = smooth(fly) * Math.PI * 1.5 + up * Math.PI * 0.5; // one forward flip, flat on the back, then sit up and stand
+        if (u > 0.4 && !G.tumbleThud) { G.tumbleThud = 1; G.shake = Math.max(G.shake || 0, 0.45); Audio.sfx('crash', 0.9, 0.8); Audio.sfx('step', 1.3, 0.5); FX.burst(R.root.localToWorld(V(0.1, 0.2, z)), { color: 0xd8d2c6, n: 26, speed: 4, up: 1.6, life: 0.8, size: 0.6, grav: 3 }); }
+      }
+      if (G.tumbleT <= 0) R.bike.position.set(0, 0, 0);
+    } else R.bike.rotation.set(0, 0, down * 1.35);
+    if (u < 0.78 && G.tumbleKind !== 'bars') { R.walk(u < 0.5 ? 'falling' : 'defeated', u < 0.5 ? 0.3 + u * 2 : (u - 0.5) * 2.4, { offset: V(0.15 + down * 0.6, 0.15 * (1 - down), 0.4 * down), yaw: 0, loop: false }); R.C.root.rotation.x = down * 1.2 * (1 - smooth(seg(u, 0.5, 0.78))); }
     if (G.tumbleT <= 0) { G.tumbleT = 0; R.bike.rotation.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0); G.invT = Math.max(G.invT, 0.6); G.runT = 0.3; }
   }
   R.root.visible = G.tumbleT > 0 || G.invT <= 0 || Math.floor(G.invT * 12) % 2 === 0;
 }
 // the rocket: everything you touch goes up in a fireball (short and capped: ~20 m more than riding)
-function tumble(d = 1.1) { if (G.tumbleT > 0) return; G.tumbleT = d; G.tumbleDur = d; G.invT = d + 0.6; Audio.sfx('crash', 0.8, 1.1); Audio.sfx('skid', 0.7); FX.burst(G.R.root.position.clone().setY(0.4), { color: 0xd8d2c6, n: 22, speed: 4, up: 1.5, life: 0.7, size: 0.5, grav: 3 }); navigator.vibrate?.(60); }
+function tumble(d = 1.1, { kind = 'skid', label = 'wiped out' } = {}) {
+  if (G.tumbleT > 0) return; G.tumbleT = d; G.tumbleDur = d; G.tumbleKind = kind; G.tumbleThud = 0; G.invT = d + 0.6;
+  UI.timeCost(d + 0.9, label); // the stop plus getting back up to speed
+  Audio.sfx('crash', 0.8, 1.1); Audio.sfx('skid', 0.7); FX.burst(G.R.root.position.clone().setY(0.4), { color: 0xd8d2c6, n: 22, speed: 4, up: 1.5, life: 0.7, size: 0.5, grav: 3 }); navigator.vibrate?.(60); }
 function rocketSmash(o) {
   o.dead = true; G.smashes++;
   const at = G.route.world(o.s, o.lat, Math.min(1.2, o.h / 2));
@@ -537,19 +561,67 @@ function updateRocket(dt) {
   if (Math.random() < 0.6) FX.burst(R.root.localToWorld(V(0, 1.3, -1.5)), { color: 0x8a8580, n: 2, speed: 1.5, up: 0.6, life: 0.8, size: 0.7, grav: -0.5 });
 }
 function crash(kind) {
-  G.state = 'crashing'; G.crashT = 0; G.crashes++; G.crashAt = G.s; G.crashKind = kind; breakCombo(); G.powers = []; if (G.qte) { G.qte.ui.remove(); G.qte = null; } G.qteAt = null; G.airKind = null; G.trick = null; G.R.bike.rotation.y = 0; G.slowmo = 1; Audio.rate(1);
+  G.state = 'crashing'; G.crashT = 0; G.crashY0 = G.y; G.clip = null; G.crashThud = 0; G.crashRoof = !!G.techMiss && G.y > 0.5; G.techMiss = false; G.railClip = false; G.crashes++; G.crashAt = G.s; G.crashKind = kind; breakCombo(); G.powers = []; if (G.qte) { G.qte.ui.remove(); G.qte = null; } G.qteAt = null; G.airKind = null; G.trick = null; G.R.bike.rotation.y = 0; G.slowmo = 1; Audio.rate(1);
   Audio.sfx('crash', 1); Audio.sfx('skid', 0.8); Audio.music(null); Audio.sfx('scratch', 0.9);
   FX.burst(G.R.root.position.clone().setY(0.7), { color: 0xfff1c0, n: 30, speed: 6, up: 4, life: 0.6, size: 0.35, grav: 10 });
   navigator.vibrate?.([60, 40, 60]);
 }
+// SunRail clip: botch the trick over the tracks and the cab catches your back wheel — slow-mo hit, spun through the air, thrown down the road
+function trainClip() {
+  const rail = G.rail, R = G.R, p = R.root.position;
+  G.trainCab = p.clone().sub(rail.X).dot(rail.dir) - 0.15; // the cab's nose is right at you
+  crash('train');
+  const f = G.route.at(G.s), td = rail.dir.clone().negate(), tL = td.x * f.rx + td.z * f.rz, tS = td.x * f.fx + td.z * f.fz;
+  G.clip = { vs: Math.max(7, G.v * 0.55) + Math.max(0, tS) * 6, vl: Math.sign(tL || 1) * 5.5, vy: Math.max(4, G.vy + 4), yaw: 0, roll: 0, pitch: 0, wy: 13 * Math.sign(tL || 1), wr: 10, wp: 4, ground: false, k: 0.18, dust: 0 };
+  G.slowmo = 1; G.shake = 0.9; UI.flash(); Audio.sfx('boom', 1, 0.7); Audio.sfx('trainhorn', 1, 0.95); navigator.vibrate?.([120, 40, 80]);
+  const at = p.clone().setY(Math.max(1, G.y + 0.9));
+  FX.burst(at, { color: 0xfff1c0, n: 50, speed: 9, up: 4, life: 0.7, size: 0.4, grav: 10 }); FX.shock(at, { color: 0xffffff, radius: 6, dur: 0.5 });
+  UI.pop('CLIPPED BY THE SUNRAIL', 'botched trick over the tracks');
+}
+function updateClip(dt) {
+  const c = G.clip, R = G.R, route = G.route;
+  c.k = Math.min(1, c.k + dt * (G.crashT < 0.45 ? 0.15 : 1.8)); const k = dt * c.k; // a held beat of slow-mo on impact, then full speed
+  G.trainCab -= 24 * k;
+  const h = halfAt(G.s) - 0.7;
+  G.s += c.vs * k; G.lat = clamp(G.lat + c.vl * k, -h, h); if (Math.abs(G.lat) >= h) c.vl *= -0.3;
+  if (!c.ground) {
+    c.vy -= 16 * k; G.y += c.vy * k; c.yaw += c.wy * k; c.roll += c.wr * k; c.pitch += c.wp * k;
+    if (G.y <= 0 && c.vy < 0) { // slam into the asphalt
+      G.y = 0; c.ground = true; c.gT = G.crashT; c.r0 = { yaw: c.yaw, roll: c.roll, pitch: c.pitch };
+      c.vs *= 0.6; c.vl *= 0.5; G.shake = 0.7; Audio.sfx('crash', 1, 0.8); Audio.sfx('skid', 1, 0.9); navigator.vibrate?.(90);
+      FX.burst(R.root.position.clone().setY(0.3), { color: 0xd8d2c6, n: 40, speed: 6, up: 2, life: 1.0, size: 0.8, grav: 3 }); FX.shock(R.root.position.clone().setY(0.05), { color: 0xd8d2c6, radius: 4, dur: 0.4 });
+    }
+  } else { // skid to a stop on your side
+    const sp = Math.hypot(c.vs, c.vl), nsp = Math.max(0, sp - 9 * k); if (sp > 0) { c.vs *= nsp / sp; c.vl *= nsp / sp; }
+    const g = smooth(clamp((G.crashT - c.gT) / 0.35)), near = (a, t) => t + Math.round((a - t) / (2 * Math.PI)) * 2 * Math.PI;
+    c.yaw = lerp(c.r0.yaw, c.r0.yaw + 0.6 * Math.sign(c.wy), g); c.roll = lerp(c.r0.roll, near(c.r0.roll, Math.PI / 2), g); c.pitch = lerp(c.r0.pitch, near(c.r0.pitch, 0), g);
+    c.dust -= dt; if (nsp > 0.8 && c.dust <= 0) { c.dust = 0.05; FX.burst(R.root.position.clone().setY(0.15), { color: 0xcfc6b6, n: 6, speed: 2, up: 1, life: 0.7, size: 0.6, grav: 1 }); }
+  }
+  // spin about the body's middle, not the tyres
+  const f = route.at(G.s), lift = c.ground ? 0.45 : 0.9;
+  R.root.rotation.set(0, f.yaw + c.yaw, 0); R.root.rotateZ(c.roll); R.root.rotateX(c.pitch);
+  route.world(G.s, G.lat, G.y + lift, R.root.position).sub(tmp.set(0, lift, 0).applyQuaternion(R.root.quaternion));
+  R.bike.rotation.set(0, 0, 0);
+  R.walk('falling', 0.3 + G.crashT * 1.2, { offset: V(0.15, 0.25, 0.25 + (c.ground ? smooth(clamp((G.crashT - c.gT) / 0.4)) * 0.6 : 0)), yaw: 0, loop: false });
+  R.C.root.rotation.x = c.ground ? 0.4 : Math.sin(G.crashT * 9) * 0.5;
+  return c.ground && G.crashT - c.gT > 1.3;
+}
 function updateCrash(dt) {
   G.crashT += dt;
   const R = G.R, u = clamp(G.crashT / 0.6);
-  R.bike.rotation.set(-0.35 * Math.sin(Math.PI * Math.min(1, G.crashT / 0.35)), 0, smooth(clamp((G.crashT - 0.1) / 0.45)) * 1.4);
-  const uu = easeOut(u), fwd = uu * 3.8, y = (0.85 + 1.6 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
-  R.walk('falling', 0.3 + G.crashT * 1.4, { offset: V(0, y, 0.2 + fwd), yaw: 0 });
-  R.C.root.rotation.x = uu * Math.PI * 2.5;
-  if (G.crashT > 1.0 && G.state === 'crashing') {
+  let done = G.crashT > 1.0;
+  if (G.clip) done = updateClip(dt);
+  else {
+    const roof = G.crashRoof; // came down on a car: the bike stays up there, you flip off its front edge onto the road
+    R.bike.rotation.set(-0.35 * Math.sin(Math.PI * Math.min(1, G.crashT / 0.35)), 0, smooth(clamp((G.crashT - 0.1) / 0.45)) * 1.4);
+    const uu = easeOut(u), fwd = uu * (roof ? 5.6 : 3.8), y = (0.85 + 1.6 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
+    const drop = G.crashY0 * smooth(roof ? seg(u, 0.3, 0.85) : seg(u, 0, 0.6)); // airborne crashes come down to the road, never hang in the air
+    R.root.position.y = G.crashY0 - drop; R.bike.position.y = roof ? drop : 0;
+    if (roof) { if (u >= 1 && !G.crashThud) { G.crashThud = 1; G.shake = 0.5; Audio.sfx('crash', 0.8, 0.8); FX.burst(R.root.localToWorld(V(0, 0.2, 0.2 + fwd)), { color: 0xd8d2c6, n: 24, speed: 4, up: 1.5, life: 0.8, size: 0.6, grav: 3 }); } }
+    R.walk('falling', 0.3 + G.crashT * 1.4, { offset: V(0, y, 0.2 + fwd), yaw: 0 });
+    R.C.root.rotation.x = uu * Math.PI * 2.5;
+  }
+  if (done && G.state === 'crashing') {
     G.state = 'crashed';
     UI.crash({ tip: G.tip, onAd: () => { UI.remove('crash'); G.state = 'ad'; Audio.sfx('jingle', 0.9); UI.ad({ seconds: 4, onDone: continueRun }); }, onRestart: () => { bankCoins(); partialXP(); UI.remove('crash'); startOrder(true); } });
   }
@@ -561,10 +633,13 @@ function continueRun() {
   for (const o of G.lv.obs) if (o.s > at - 3 && o.s < at + 28) o.dead = true;
   for (const w of G.pop.walkers) if (Math.abs(w.s - at) < 28) w.gone = true;
   const keep = { time: G.time, eta: G.eta, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, boostCharge: G.boostCharge, dist: G.dist, dmDone: G.dmDone, trainCab: G.trainCab, trainGone: G.trainGone, score: G.score, coins: G.coins, lateT: G.lateT, tricks: G.tricks, smashes: G.smashes, bestMult: G.bestMult };
+  G.R.bike.position.set(0, 0, 0); G.clip = null; G.crashThud = 0; G.crashRoof = false;
   resetRun(at); Object.assign(G, keep);
+  // the wipeout itself costs time: picking yourself (and the bike) up off the road
+  const lost = G.crashKind === 'train' ? 6 : 4; G.time += lost; G.eta -= lost;
   G.invT = 2.0; G.runT = 0.6; G.v = G.base * 0.6;
   G.state = 'run'; Audio.music('full'); loseTip(0.1, K.pickLine(K.CRASH_TEXTS));
-  UI.pop('CONTINUE ▶', 'from right here');
+  UI.pop('CONTINUE ▶', 'from right here'); setTimeout(() => UI.timeCost(lost, G.crashKind === 'train' ? 'hit by the train' : 'wiped out'), 350);
 }
 
 // ---------------------------------------------------------------- per-frame visuals of the level
@@ -815,7 +890,7 @@ function step(dt, draw) {
   else if (G.state === 'shop') { titleCamera(T, dt); G.introT = 0; }
   else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
-  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
+  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(G.clip ? { ...chaseShot(), ds: -10, lat: G.lat * 0.85, y: 4.2 + G.y * 0.5, llat: G.lat, lds: 2, ly: 0.8 + G.y * 0.6 } : chaseShot(), dt, { scale: G.clip ? 1.2 : 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
   FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes

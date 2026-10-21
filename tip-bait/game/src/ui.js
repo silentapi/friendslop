@@ -19,7 +19,7 @@ export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMu
     <div class="top">
       <div class="logo">Tip<b>Bait</b></div>
       <div class="tagline">Deliver on time in real Downtown Orlando. Kyle takes the tip anyway.</div>
-      <div class="chips"><span class="chip">📍 S Orange Ave</span><span class="chip">🚆 Church Street Station</span><span class="chip">🏢 <b>Citi Tower</b></span></div>
+      <div class="chips"><span class="chip">S Orange Ave</span><span class="chip">Church Street Station</span><span class="chip"><b>Citi Tower</b></span></div>
     </div>
     <div class="bottom">
       <div class="menu-stats">
@@ -28,7 +28,7 @@ export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMu
         <div><small>DELIVERED</small><b>${orders || 0}</b></div>
       </div>
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
-      <div class="menu-row"><button class="btn ghost menu-shop" id="shop">🛒 STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button><button class="btn ghost menu-shop menu-bp" id="bpbtn"><span class="bpb">${bpTier}</span>🎟 BATTLE PASS${bpReady ? `<em>${bpReady}</em>` : ''}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">B</small>'}</button></div>
+      <div class="menu-row"><button class="btn ghost menu-shop" id="shop">STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button><button class="btn ghost menu-shop menu-bp" id="bpbtn"><span class="bpb">${bpTier}</span>BATTLE PASS${bpReady ? `<em>${bpReady}</em>` : ''}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">B</small>'}</button></div>
       <div class="small">${TOUCH ? 'Swipe to dodge · swipe up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'} · best time ${best || '—'}</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
@@ -43,10 +43,10 @@ export function orderCard({ tip, note, pickup, dropoff, eta, n, thought = '', on
   const el = layer('order', `
     ${thought ? `<div class="othought">💭 ${thought}</div>` : ''}
     <div class="card">
-      <div class="hd">gobbl <span>NEW ORDER #${n} · from Kyle S</span></div>
+      <div class="hd">gobbl <span>NEW ORDER #${n}</span></div>
       <div class="bd">
         <div class="who"><div class="av">K</div><div class="nm">Kyle S<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
-        <div class="tip">${money(tip)}<small>TIP 🤑</small></div>
+        <div class="tip">${money(tip)}<small>TIP</small></div>
         <div class="note">“${note}”</div>
         <div class="route"><i style="background:#00704a"></i><span>Pickup · ${pickup}</span><i style="background:#ffc83d"></i><span>Dropoff · ${dropoff}</span></div>
         <div class="small" style="color:#5b6470">Deliver in ${fmtTime(eta)} · 1 iced caramel macchiato</div>
@@ -181,9 +181,9 @@ export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${tex
 
 export function crash({ tip, onAd, onRestart }) {
   const el = layer('crash', `
-    <div class="wo">WIPED<br>OUT 💥</div>
-    <div class="wsub">your <b>${money(tip)}</b> tip is in danger 😬</div>
-    <button class="btn" id="watchad">📺 WATCH AD TO CONTINUE<small>keep your spot · keep the tip (lol)${TOUCH ? '' : ' · ⏎'}</small></button>
+    <div class="wo">WIPED<br>OUT</div>
+    <div class="wsub">your <b>${money(tip)}</b> tip is in danger</div>
+    <button class="btn" id="watchad">WATCH AD TO CONTINUE<small>keep your spot and the tip (lol)${TOUCH ? '' : ' · ⏎'}</small></button>
     <button class="btn ghost" id="rs">Restart order${TOUCH ? '' : ' (R)'}</button>`);
   el.querySelector('#watchad').onclick = onAd; el.querySelector('#rs').onclick = onRestart;
   return el;
@@ -243,7 +243,7 @@ export function deskUI() {
       <div class="knocknow" id="knocknow"><div class="qring" id="kring"></div><b>KNOCK NOW!</b><small>${TOUCH ? 'tap KNOCK' : 'press Space'}</small></div>
       <div class="bstat" id="bstat">📱 she’s on her phone</div>
       <div class="bbar"><i id="bm"></i><em>GET NOTICED</em></div>
-      <div class="bhint">${TOUCH ? '<b>WAVE</b> fast to get noticed · <b>KNOCK</b> only when she looks up' : 'Mash <b>←</b> <b>→</b> to fill the meter · keep it full · she glances up for a split second — <b>Space</b> to knock right then'}</div>
+      <div class="bhint">${TOUCH ? '<b>WAVE</b> to fill the meter · <b>KNOCK</b> the instant she looks up' : 'Mash <b>←</b> <b>→</b> to fill the meter · <b>Space</b> the instant she looks up'}</div>
       ${TOUCH ? '<div class="stairs"><button id="bw">👋 WAVE</button><button id="bk">✊ KNOCK</button></div>' : ''}
     </div>`);
   const st = el.querySelector('#bstat'), kn = el.querySelector('#knocknow'), ring = el.querySelector('#kring');
@@ -353,7 +353,7 @@ export function notif(title, body) { return `<div class="notif"><div class="ic">
 // to decide a perfect run (every reached section PERFECT).
 export const SECTIONS = [
   ['ride', '🚲', 'Ride'], ['rival', '🛴', 'Rival courier'], ['crane', '🏗️', 'Crane drop'], ['akira', '🅿️', 'Parking slide'],
-  ['door', '🛎️', 'Front desk'], ['stairs', '🪜', 'Stairs'], ['hall', '🚪', 'Hallway'], ['time', '⏱️', 'Time'], ['ice', '🧊', 'Ice'],
+  ['door', '🛎️', 'Front desk'], ['stairs', '🪜', 'Stairs'], ['hall', '🚪', 'Hallway'], ['knock', '🎵', 'Secret knock'], ['time', '⏱️', 'Time'], ['ice', '🧊', 'Ice'],
 ];
 const BADGES = [[0.95, 'PERFECT'], [0.75, 'GREAT'], [0.55, 'GOOD'], [0.3, 'OK'], [0, 'BAD']];
 const badgeOf = (pct) => BADGES.find(([t]) => pct >= t - 1e-9)[1];
@@ -363,6 +363,7 @@ const GRADE_PCT = {
   akira: { NAILED: 1, WIPEOUT: 0.15 },
   door: { PERFECT: 1, GOOD: 0.65, SLOW: 0.3 },
   stairs: { PERFECT: 1, GOOD: 0.65, GASSED: 0.25 },
+  knock: { SS: 1, S: 1, A: 0.8, B: 0.62, C: 0.45, D: 0.25 }, // osu rank of the secret knock (knock.js)
   hall: { UNTOUCHABLE: 1, PERFECT: 1, FLAWLESS: 1, NICKED: 0.65, CHEWED: 0.35, 'CHEW TOY': 0.1 },
 };
 const c01 = (x) => Math.max(0, Math.min(1, x));
@@ -384,7 +385,7 @@ export function rate(section, d = {}) {
     const g = section === 'hall' ? (d.hall ?? d.dog) : d[section];
     if (!g) return null;
     pct = section === 'hall' && d.hallPerfect ? 1 : section === 'hall' && d.hallPct != null ? c01(d.hallPct) : GRADE_PCT[section]?.[g] ?? 0.5;
-    label = g;
+    label = section === 'knock' && d.knockLabel ? d.knockLabel : g;
   }
   return { pct, badge: badgeOf(pct), label };
 }
@@ -416,4 +417,18 @@ export function results({ next, nextN, tip, promised, pay, time, eta, ice, crash
   el.querySelector('#next').onclick = onNext;
   el.querySelector('#share').onclick = onShare;
   return el;
+}
+// time-penalty chip: "−2.4 s · label" pops near the action, then flies into the ETA pill (or fades top-centre)
+export function timeCost(sec, label = '') {
+  if (!(sec > 0.05)) return;
+  const el = h(`<div class="tcost"><b>−${sec.toFixed(1)} s</b>${label ? `<span>${label}</span>` : ''}</div>`); root().appendChild(el);
+  const eta = document.getElementById('eta')?.getBoundingClientRect(), r = el.getBoundingClientRect();
+  const tgt = eta && eta.width ? { x: eta.left + eta.width / 2 - (r.left + r.width / 2), y: eta.top + eta.height / 2 - (r.top + r.height / 2) } : { x: 0, y: -60 };
+  const a = el.animate([
+    { transform: 'translate(-50%,0) scale(.6)', opacity: 0 },
+    { transform: 'translate(-50%,0) scale(1.12)', opacity: 1, offset: 0.12 },
+    { transform: 'translate(-50%,0) scale(1)', opacity: 1, offset: 0.62 },
+    { transform: `translate(calc(-50% + ${tgt.x}px), ${tgt.y}px) scale(.45)`, opacity: eta ? 0.85 : 0 },
+  ], { duration: 1700, easing: 'cubic-bezier(.5,0,.75,1)' });
+  a.onfinish = () => { el.remove(); const p = document.getElementById('eta'); p?.animate([{ background: 'var(--danger)' }, { background: '' }], { duration: 420 }); };
 }

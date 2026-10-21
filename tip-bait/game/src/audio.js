@@ -2,7 +2,7 @@
 // into seamless stereo loops, city / interior ambience beds with random far-off one-shots, and synthesized SFX.
 // Nothing is downloaded. Starts on the first tap (browser autoplay rules).
 const SR = 44100;
-let ctx = null, master = null, musicGain = null, sfxGain = null, current = null, muted = false;
+let ctx = null, master = null, musicGain = null, muffleF = null, sfxGain = null, current = null, muted = false;
 const buffers = {};
 const rnd = (() => { let s = 7; return () => { s = (s * 16807) % 2147483647; return s / 2147483647 * 2 - 1; }; })();
 const note = (n) => 440 * Math.pow(2, (n - 69) / 12);
@@ -259,8 +259,56 @@ function* classicG(kind) {
   for (let i = 0; i < L.length; i++) L[i] = Math.tanh(L[i] * 1.1) * 0.8;
   yield; return [L, L.slice()];
 }
+// ---- 'knock': the secret-knock song at Kyle's door (knock.js builds its beatmap from these constants).
+// Straight 16ths (no swing) so the map lands exactly on the grid: 2 count-in bars, the 12-bar map, a spinner bar, a ring-out bar.
+export const KNOCK_BPM = 128, KNOCK_OFFSET = 0.1, KNOCK_INTRO = 2, KNOCK_BARS = 12, KNOCK_OUTRO = 2;
+const KB = 60 / KNOCK_BPM, KS = KB / 4;
+export const knockBeat = (b) => KNOCK_OFFSET + b * KB; // song time (s) of beat b (beat 0 = first count-in downbeat)
+const KBASS = [[0, 42, 1.5], [1.5, 42, 0.5], [2, 45, 1], [3, 40, 1, 42], [4, 42, 1.5], [5.5, 42, 0.5], [6, 47, 1], [7, 45, 0.75, 40]];
+function* knockG() {
+  const bars = KNOCK_INTRO + KNOCK_BARS + KNOCK_OUTRO, n = Math.ceil((knockBeat(bars * 4) + 2.2) * SR), L = new Float32Array(n), R = new Float32Array(n);
+  const c = new Map(), m = (k, f) => { if (!c.has(k)) c.set(k, f()); return c.get(k); };
+  const put = (t, b, g, pan = 0) => { oAdd(L, t, b, g * (1 - pan)); oAdd(R, t, b, g * (1 + pan)); };
+  const rim = () => { const b = oBuf(0.07); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = (Math.sin(TAU * 1700 * t) * 0.5 + Math.sin(TAU * 820 * t) * 0.5) * Math.exp(-t * 80) * 0.5; } return b; };
+  const cym = () => oEnv(oHp(oNoise(2.2), 3800), 0.002, 1.6).map((v) => v * 0.5);
+  const roll = () => oEnv(oHp(oLp(oNoise(0.12), 7000), 1200), 0.001, 30).map((v) => v * 0.7);
+  for (let bar = 0; bar < bars; bar++) {
+    const sec = bar < KNOCK_INTRO ? 'in' : bar < KNOCK_INTRO + 4 ? 'A' : bar < KNOCK_INTRO + 8 ? 'B' : bar < KNOCK_INTRO + 11 ? 'C' : bar < KNOCK_INTRO + 12 ? 'D' : bar === bars - 2 ? 'S' : 'E';
+    for (let s = 0; s < 16; s++) {
+      const t = knockBeat(bar * 4 + s / 4), on = s % 4 === 0;
+      if (sec === 'in') { if (on) put(t, m('rim', rim), s ? 0.55 : 0.8); if (s === 0 || (bar === 1 && s === 8)) put(t, m('k', oKick), 0.7); if (s % 2 === 0) put(t, m('h', () => oHat()), 0.25, 0.3); if (bar === 1 && s >= 12) put(t, m('c78', () => oCowbell(oNote(78))), 0.35 + (s - 12) * 0.1); continue; }
+      if (sec === 'E') { if (s === 0) { put(t, m('k', oKick), 1); put(t, m('cy', cym), 0.9); put(t, m('cl', oClap), 0.9); put(t, o808(oNote(42), KB * 3.5, oNote(30)), 0.95); put(t, m('c85', () => oCowbell(oNote(85))), 0.7); } continue; }
+      if (sec === 'D') { // the finisher bar: stop-time stabs on 1, the "and" of 2, and 4 (the map's finishers sit on these)
+        if (s === 0 || s === 6 || s === 12) { put(t, m('k', oKick), 1); put(t, m('cl', oClap), 0.85); put(t, m('c78', () => oCowbell(oNote(78))), 0.7); put(t, m('c85', () => oCowbell(oNote(85))), 0.45); put(t, o808(oNote(s === 12 ? 47 : 42), KB * 1.2), 0.9); }
+        if (s === 0) put(t, m('cy', cym), 0.7);
+        if (s >= 14) put(t, m('h', () => oHat()), 0.4);
+        continue;
+      }
+      if (sec === 'S') { // spinner bar: four on the floor under a snare roll that tightens into the ring-out
+        if (on) put(t, m('k', oKick), 0.9);
+        put(t, m('ro', roll), 0.25 + 0.5 * s / 16, (s % 2 ? 0.3 : -0.3));
+        if (s >= 8 && s % 2) put(t, m('ro', roll), 0.35 + 0.4 * s / 16);
+        if (s === 0) for (let k = 0; k < 4; k++) put(t + k * KB, o808(oNote(42 + k * 2), KB * 0.9), 0.7);
+        continue;
+      }
+      // A / B / C: the groove
+      const rb = bar - KNOCK_INTRO;
+      if (on || (sec === 'C' && s === 10 && rb % 2)) put(t, m('k', oKick), 0.95);
+      if (s === 4 || s === 12) put(t, m('cl', oClap), 0.8);
+      if (sec === 'A' ? s % 2 === 0 : sec === 'B' ? true : s % 2 === 0) put(t, m('h', () => oHat()), (s % 4 === 2 ? 0.55 : 0.35) * (sec === 'B' && s % 2 ? 0.6 : 1), 0.3);
+      if (sec === 'C' && s % 4 === 2) put(t, m('ho', () => oHat(true)), 0.35, -0.25);
+      const ri = ((rb % 2) * 16 + s), nt = ORIFF[ri];
+      if (nt != null && (sec !== 'A' || rb >= 2)) put(t, m('c' + nt, () => oCowbell(oNote(nt))), sec === 'A' ? 0.5 : 0.75, -0.15);
+      const bt = (rb % 2) * 4 + s / 4;
+      for (const [b0, nn, d, gl] of KBASS) if (Math.abs(bt - b0) < 1e-6) put(t, o808(oNote(nn), d * KB * 0.95, gl ? oNote(gl) : null), 0.85);
+    }
+    yield;
+  }
+  for (let i = 0; i < n; i++) { L[i] = Math.tanh(L[i] * 1.1) * 0.8; R[i] = Math.tanh(R[i] * 1.1) * 0.8; }
+  yield; return [L, R];
+}
 const MUSIC_STYLE = 'classic'; // 'classic' (phonk) | 'lofi'
-const musicGen = (kind) => (MUSIC_STYLE === 'classic' ? classicG(kind) : renderMusicG(kind));
+const musicGen = (kind) => (kind === 'knock' ? knockG() : MUSIC_STYLE === 'classic' ? classicG(kind) : renderMusicG(kind));
 
 // ---------------------------------------------------------------- ambience: the city behind the music
 // Continuous beds are rendered long and their overhang crossfaded into the head (seamless); events (cars passing,
@@ -383,7 +431,7 @@ const SHOTS = {
 const AMB_LAYERS = { city: ['city', 'cityTraffic'], lobby: ['lobby'], stair: ['stair'], hall: ['hall'] };
 
 // QA hook: pure renders (no AudioContext needed)
-export const __renderForTest = { music: renderMusic, amb: renderAmb, shot: renderShot, musicG: renderMusicG, ambG: renderAmbG, SR };
+export const __renderForTest = { music: renderMusic, knock: () => run(knockG()), amb: renderAmb, shot: renderShot, musicG: renderMusicG, ambG: renderAmbG, SR };
 
 // ---------------------------------------------------------------- SFX
 const SFX = {
@@ -420,6 +468,13 @@ const SFX = {
   stinger() { const d = 2.4, b = buf(d); const n = lp(noise(d), 5000); for (const [st, f] of [[0, 261.6], [0, 329.6], [0, 392], [0, 523.3], [0.08, 659.3], [0.16, 784]]) for (let i = Math.floor(st * SR); i < b.length; i++) { const t = i / SR - st; b[i] += (Math.sin(2 * Math.PI * f * t) * 0.6 + Math.sin(2 * Math.PI * f * 2 * t) * 0.2 + (((f * t) % 1) * 2 - 1) * 0.12) * Math.min(1, t / 0.01) * Math.exp(-t * 1.1) * 0.13; } for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] += n[i] * Math.exp(-t * 6) * 0.35 + Math.sin(2 * Math.PI * (60 + 40 * Math.exp(-t * 8)) * t) * Math.exp(-t * 3) * 0.5; b[i] = Math.tanh(b[i] * 1.3) * 0.8; } return b; },
   rise() { const d = 0.6, b = hp(noise(d), 800); let y = 0; for (let i = 0; i < b.length; i++) { const t = i / SR, fc = 400 + 6000 * (t / d) ** 2, a = Math.exp(-2 * Math.PI * fc / SR); y = (1 - a) * b[i] + a * y; b[i] = y * (t / d) * 0.6; } return b; },
   bwomp() { const d = 1.0, b = buf(d); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += 220 * Math.exp(-t * 0.9) / SR; b[i] = Math.tanh(2 * Math.sin(2 * Math.PI * ph)) * Math.exp(-t * 2.2) * 0.3; } return b; },
+  // ---- osu-style hitsounds for the secret knock (knock.js)
+  tok() { const d = 0.11, b = buf(d), n = lp(hp(noise(d), 700), 3200); let p1 = 0, p2 = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; p1 += (520 - 180 * Math.min(1, t / 0.03)) / SR; p2 += 1270 / SR; b[i] = (Math.sin(TAU * p1) * 0.7 + Math.sin(TAU * p2) * 0.25 * Math.exp(-t * 90) + n[i] * 0.45 * Math.exp(-t * 120)) * Math.exp(-t * 48) * Math.min(1, t / 0.0008) * 0.75; } return b; },
+  sdrum() { const d = 0.2, b = buf(d), n = hp(lp(noise(d), 6500), 900); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += (230 - 70 * Math.min(1, t / 0.05)) / SR; b[i] = (n[i] * Math.exp(-t * 22) * 0.6 + Math.sin(TAU * ph) * Math.exp(-t * 30) * 0.7) * 0.7; } return b; },
+  fclap() { const d = 0.35, b = hp(lp(noise(d), 7000), 1000); for (let i = 0; i < b.length; i++) { const t = i / SR; let e = Math.exp(-t * 14); for (const o of [0, 0.009, 0.019, 0.028]) if (t >= o) e += Math.exp(-(t - o) * 140) * 0.8; b[i] *= e * 0.5; } return b; },
+  whistle() { const d = 0.32, b = buf(d); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += (2350 + 260 * Math.min(1, t / 0.06) + 40 * Math.sin(TAU * 11 * t)) / SR; b[i] = Math.sin(TAU * ph) * Math.min(1, t / 0.01) * Math.min(1, (d - t) / 0.08) * 0.22; } return b; },
+  cbreak() { const d = 0.42, b = buf(d), n = lp(noise(d), 1600); let ph = 0; for (let i = 0; i < b.length; i++) { const t = i / SR; ph += (330 * Math.exp(-t * 4.5)) / SR; b[i] = (Math.tanh(Math.sin(TAU * ph) * 2.5) * 0.6 + n[i] * 0.25) * Math.exp(-t * 6) * 0.42; } return b; },
+  spin() { const d = 0.05, b = buf(d); for (let i = 0; i < b.length; i++) { const t = i / SR; b[i] = Math.sin(TAU * 1900 * t) * Math.exp(-t * 90) * 0.3; } return b; },
 };
 
 function toBuffer(f32) { const b = ctx.createBuffer(1, f32.length, SR); b.copyToChannel(f32, 0); return b; }
@@ -457,7 +512,8 @@ export const Audio = {
     try { ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SR }); } catch { return; }
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4; comp.connect(master);
-    musicGain = ctx.createGain(); musicGain.gain.value = MUSIC_LVL; musicGain.connect(comp);
+    musicGain = ctx.createGain(); musicGain.gain.value = MUSIC_LVL;
+    muffleF = ctx.createBiquadFilter(); muffleF.type = 'lowpass'; muffleF.frequency.value = 20000; muffleF.Q.value = 0.9; musicGain.connect(muffleF); muffleF.connect(comp); // Audio.muffle: music heard through a door
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(comp);
     ambGain = ctx.createGain(); ambGain.gain.value = AMB_LVL; ambGain.connect(master); // ambience skips the compressor so SFX never pump it
     this.unlocked = true;
@@ -466,6 +522,7 @@ export const Audio = {
     for (const k of ['chill', 'full']) enqueue(k, () => musicGen(k));
     for (const k of ['city', 'cityTraffic']) enqueue('a_' + k, () => renderAmbG(k));
     enqueue('tense', () => musicGen('tense'));
+    for (const k of this._pre || []) enqueue(k, () => musicGen(k));
     for (const k of ['lobby', 'stair', 'hall']) enqueue('a_' + k, () => renderAmbG(k));
   },
   _ready(key) {
@@ -478,6 +535,7 @@ export const Audio = {
     if (current?.kind === kind) return;
     const now = ctx.currentTime;
     if (current) { current.g.gain.cancelScheduledValues(now); current.g.gain.setTargetAtTime(0, now, 0.3); const c = current; setTimeout(() => { try { c.src.stop(); } catch {} }, 2200); current = null; }
+    muffleF?.frequency.setTargetAtTime(20000, now, 0.2); // a looped track never plays through the door filter
     if (!kind) return;
     if (!buffers[kind]) { enqueue(kind, () => musicGen(kind), true); return; }
     const src = ctx.createBufferSource(); src.buffer = buffers[kind]; src.loop = true;
@@ -485,6 +543,23 @@ export const Audio = {
     src.connect(g); g.connect(musicGain); src.start();
     current = { kind, src, g };
   },
+  // one-shot (no loop) from `offset` s into the track, sample-locked to musicTime(). false while it's still rendering
+  musicAt(kind, offset = 0) {
+    this._want = null;
+    if (!ctx) return false;
+    if (!buffers[kind]) { enqueue(kind, () => musicGen(kind), true); return false; }
+    const now = ctx.currentTime, at = now + 0.04, off = Math.max(0, offset);
+    if (current) { const c = current; c.g.gain.cancelScheduledValues(now); c.g.gain.setTargetAtTime(0, now, c.kind === kind ? 0.02 : 0.25); setTimeout(() => { try { c.src.stop(); } catch {} }, 1500); }
+    const src = ctx.createBufferSource(); src.buffer = buffers[kind];
+    const g = ctx.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(1, at, off > 0 ? 0.03 : 0.005);
+    src.connect(g); g.connect(musicGain); src.start(at, off);
+    current = { kind, src, g, t0: at - off };
+    return true;
+  },
+  musicTime() { return ctx && current?.t0 != null ? ctx.currentTime - current.t0 : null; }, // seconds into a musicAt() track
+  ready(kind) { return !!buffers[kind]; },
+  prefetch(kind) { if (ctx) enqueue(kind, () => musicGen(kind)); else (this._pre ||= []).includes(kind) || this._pre.push(kind); },
+  muffle(hz = 20000, tc = 0.12) { if (muffleF) muffleF.frequency.setTargetAtTime(Math.min(20000, hz), ctx.currentTime, tc); },
   duck(amount = 0.25, t = 0.6) { if (!ctx) return; const g = musicGain.gain, now = ctx.currentTime; g.cancelScheduledValues(now); g.setTargetAtTime(MUSIC_LVL * amount, now, 0.03); g.setTargetAtTime(MUSIC_LVL, now + t, 0.2); },
   rate(r) { if (current) current.src.playbackRate.setTargetAtTime(r, ctx.currentTime, 0.1); },
   sfx(name, gain = 1, rate = 1) {

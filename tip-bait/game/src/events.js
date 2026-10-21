@@ -187,7 +187,7 @@ export function createEvents(ctx) {
       if (p.root) { p.root.visible = false; p.bubble.visible = false; }
       if (p.pieces) {
         p.load.visible = true; p.hook.visible = true;
-        for (const q of p.pieces) { q.m.visible = false; q.o.landed = false; q.o.fall = null; q.o.dead = false; q.mark.material.opacity = 0; q.ring.material.opacity = 0; }
+        for (const q of p.pieces) { q.m.visible = false; q.o.landed = false; q.o.fall = null; q.o.dead = false; q.o.flung = null; q.mark.material.opacity = 0; q.ring.material.opacity = 0; }
       }
     }
   };
@@ -281,7 +281,7 @@ export function createEvents(ctx) {
       G.score += 100 * G.mult; ev.dodge = 1; Audio.sfx('whoosh', 0.9, 1.3); UI.pop('SIDESTEP', `+${100 * G.mult} · he whiffed`, { top: 30 }); sayBubble(p, '😠');
     } else {
       const lost = loseCoins(6 + Math.floor(G.coins * 0.1), G.R.root.position.clone().setY(1));
-      G.lat -= ev.side * 0.6; ctx.tumble?.(1.15); G.ice = Math.max(0, G.ice - 6); ctx.breakCombo(); G.shake = 0.5;
+      G.lat -= ev.side * 0.6; ctx.tumble?.(1.15, { label: 'shoved off the bike' }); G.ice = Math.max(0, G.ice - 6); ctx.breakCombo(); G.shake = 0.5;
       Audio.sfx('crash', 0.7, 1.1); UI.pop('SHOVED', `${lost ? `−${lost} coins · ` : ''}ice −6`, { top: 30 }); sayBubble(p, '😂'); navigator.vibrate?.(50);
     }
   }
@@ -388,7 +388,11 @@ export function createEvents(ctx) {
     let pending = 0;
     for (const q of p.pieces) {
       const o = q.o;
-      if (o.dead) { q.m.visible = false; continue; }
+      if (o.dead) { // a piece that clonked you bounces off down the street, then it's gone
+        if (o.flung != null && o.flung < 1.1) { o.flung += sdt; const u = o.flung; q.m.visible = true; q.m.position.addScaledVector(o.flV, sdt); o.flV.y -= 18 * sdt; if (q.m.position.y < 0.3 && o.flV.y < 0) { q.m.position.y = 0.3; o.flV.y *= -0.35; o.flV.multiplyScalar(0.7); } q.m.rotateOnAxis(q.spin, sdt * 9 * (1.1 - u)); }
+        else q.m.visible = false;
+        continue;
+      }
       // every marker shows from the snap; it gets hotter as its piece comes down
       const T = 0.9, eta = (o.s - o.land - G.s) / v;
       if (!o.fall && eta <= T) o.fall = 0;
@@ -428,8 +432,10 @@ export function createEvents(ctx) {
   }
   E.clonk = (o) => { // a dropped piece hit you: costly, never a wipeout
     const ev = E.cur?.kind === 'crane' ? E.cur : (G.lv.events || []).find((e) => e.kind === 'crane');
-    o.dead = true; ctx.tumble?.(1.2); G.ice = Math.max(0, G.ice - 10); ctx.breakCombo(); G.shake = 0.6;
+    o.dead = true; ctx.tumble?.(1.2, { label: 'clonked off the bike' }); G.ice = Math.max(0, G.ice - 10); ctx.breakCombo(); G.shake = 0.6;
     const lost = loseCoins(10, G.R.root.position.clone().setY(1)); if (ev) ev.hits = (ev.hits || 0) + 1;
+    const f = G.route.at(G.s), side = Math.sign(o.lat - G.lat) || (Math.random() < 0.5 ? -1 : 1); o.flung = 0; // bounce it up and off to the side it came from
+    o.flV = V(f.fx * 5 + f.rx * side * 4, 7, f.fz * 5 + f.rz * side * 4);
     FX.burst(G.R.root.position.clone().setY(1), { color: 0xffffff, n: 30, speed: 6, up: 3, life: 0.6, size: 0.4 });
     UI.pop('CLONK!', `${lost ? `−${lost} coins · ` : ''}ice −10`, { top: 30 }); Audio.sfx('crash', 0.9, 0.8); navigator.vibrate?.(70);
   };

@@ -15,6 +15,7 @@ const HC = { c0: 3.0, c: -1.5, cx: 0.25 }, DOOR_Z = -9;
 // reaction windows for every hallway encounter: tight enough to need attention, always humanly doable (~0.25 s to react + a key)
 export const hallWindows = (G) => (G.delivered === 0 ? [0.85, 0.75, 0.66] : [0.72, 0.62, 0.54]);
 const DODGE_X = { arrowleft: -0.52, arrowright: 0.52 };
+const FLAT_T = 2.6, FLAT_COST = 2.0; // ladder: the second hit knocks you flat; the slow get-up costs time
 const KEYMAP = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup', s: 'arrowdown' };
 const GRADES = {
   ladder: [['LADDER’D', 0], ['BONKED', 100], ['GRAZED', 250], ['UNTOUCHABLE', 700]],
@@ -193,8 +194,11 @@ async function buildLadder(F, scene) {
           h.st = 'res'; h.t = 0; const ok = h.dodge?.ok; h.res.push(!!ok); ui.set(h.res);
           if (ok) { const pts = 150 * (h.i + 1); G.score += pts; h.slow = 0.22; q.result(h.i === 2 && h.res.every(Boolean) ? 'PERFECT' : 'NICE', { swingL: 'sidestepped', swingR: 'sidestepped', high: 'ducked it', low: 'hopped it' }[a.kind]); UI.pop('DODGED', `+${pts}`, { top: 24 }); A.sfx('whoosh', 0.9, 1.1); }
           else {
-            h.hit = true; h.hitK = 1; h.pen += 1.6; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9;
-            q.result('MISS', h.dodge ? 'wrong move' : 'too slow'); UI.pop({ swingL: 'BONK', swingR: 'BONK', high: 'CLONK', low: 'SHIN DESTROYER' }[a.kind], '+1.6s · ice −7', { top: 24 });
+            // one bonk: you stagger, seeing stars. a second one lays you flat and you're slow getting up
+            h.hits = (h.hits || 0) + 1; const flat = h.hits >= 2, cost = 1.6 + (flat ? FLAT_COST : 0);
+            h.hit = true; h.hitK = 1; h.pen += cost; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9; if (flat) h.flatT = 0;
+            q.result('MISS', h.dodge ? 'wrong move' : 'too slow'); UI.pop(flat ? 'LAID OUT' : { swingL: 'BONK', swingR: 'BONK', high: 'CLONK', low: 'SHIN DESTROYER' }[a.kind], flat ? 'second hit · ice −7' : 'seeing stars · ice −7', { top: 24 });
+            UI.timeCost?.(cost, flat ? 'knocked flat' : 'bonked by the ladder');
             A.sfx('knock', 1.2, 0.7); A.sfx('crash', 0.4, 1.7); navigator.vibrate?.(60); stars.visible = true;
           }
         }
@@ -203,7 +207,9 @@ async function buildLadder(F, scene) {
         tipGoal = h.hit ? target(a.kind) : target(a.kind).add(V(a.kind === 'swingL' ? -0.5 : a.kind === 'swingR' ? 0.5 : 0, 0, 0.3));
         if (h.t > hold) tipGoal = rest(); point = 1 - smooth(seg(h.t, hold, hold + 0.4));
         if (h.t > hold + 0.1 && !h.said) { h.said = true; if (h.hit) caption(F, 'maintenance guy', ['huh? 🎵', 'did something hit me', '(still humming)'][h.i], 1200); }
-        if (h.t > hold + 0.75) {
+        if (h.flatT != null) { h.flatT += dt; if (h.flatT > 0.5 && !h.flatThud) { h.flatThud = 1; A.sfx('crash', 0.7, 0.7); h.shake = 0.6; } }
+        if (h.t > hold + 0.75 && (h.flatT == null || h.flatT > FLAT_T)) {
+          h.flatT = null; h.flatThud = 0;
           h.i++; h.dodge = null; h.hit = false; h.said = false; h.t = 0; stars.visible = false; h.look = 0;
           if (h.i >= 3) { h.st = 'outro'; E.finish(); const n = h.res.filter(Boolean).length; UI.pop(GRADES.ladder[n][0], n === 3 ? `not a scratch · +${GRADES.ladder[n][1]}` : `${3 - n} hit${3 - n > 1 ? 's' : ''} · +${GRADES.ladder[n][1]}`, { top: 24 }); A.sfx(n === 3 ? 'jingle' : 'pop', 0.7); setTimeout(() => UI.remove('evui'), 1500); }
           else { h.st = 'wait'; h.wait = [1.0, 0.75, 0.55][h.i] * 0.8 + Math.random() * 0.5; }
@@ -245,7 +251,8 @@ async function buildLadder(F, scene) {
         else { cDx = DODGE_X[d.k] * k; roll = -DODGE_X[d.k] * 0.35 * Math.sin(Math.PI * seg(d.t, 0, 0.3)); }
       }
       const cx = h.cx + cDx, cz = h.cz;
-      poseCourier(F, { x: cx, z: cz, yaw: h.st === 'pass' ? lerp(Math.PI, Math.PI / 2, smooth(seg(h.t, 2.5, 3.0))) : Math.PI, walk: walkC, jog: h.st === 'pass', duck, hop, roll, hit: h.hitK, t: F.t });
+      if (h.hitK > 0 && h.flatT == null) roll += Math.sin(F.t * 7) * 0.12 * h.hitK; // the stagger
+      poseCourier(F, { x: cx, z: cz, yaw: h.st === 'pass' ? lerp(Math.PI, Math.PI / 2, smooth(seg(h.t, 2.5, 3.0))) : Math.PI, walk: walkC, jog: h.st === 'pass', duck, hop, roll, hit: h.flatT != null ? 0 : h.hitK, fall: h.flatT != null ? clamp(h.flatT / FLAT_T) : 0, t: F.t });
       // ---- tells
       bang.visible = h.st === 'tele'; if (bang.visible) { bang.position.copy(guy.boneWorld('Head')).add(V(0, 0.5, 0)); const s = 0.36 * (1 + 0.15 * Math.sin(F.t * 30)); bang.scale.set(s, s, 1); }
       if (note.visible) { note.position.copy(guy.boneWorld('Head')).add(V(0.25, 0.42 + Math.sin(F.t * 3) * 0.05, 0)); note.scale.set(0.28, 0.28, 1); }
@@ -313,7 +320,7 @@ async function buildMop(F, scene) {
       const G = F.G, UI = F.UI, A = F.Audio;
       if (h.slip) { h.res.push(false); ui?.set(h.res); q?.result('MISS', why); q = null; h.slip = null; h.i++; bang.visible = false; }
       h.fallT = 1.7; h.fallDur = 1.7; h.pen += 1.6; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9; h.b = 0; h.bv = 0;
-      UI.pop('SPLAT', `${why} · +1.6s · ice −7`, { top: 24 }); A.sfx('splash', 1, 0.8); A.sfx('crash', 0.5, 1.3); navigator.vibrate?.(60);
+      UI.pop('SPLAT', `${why} · ice −7`, { top: 24 }); UI.timeCost?.(1.6, 'slipped on the wet floor'); A.sfx('splash', 1, 0.8); A.sfx('crash', 0.5, 1.3); navigator.vibrate?.(60);
       splash.visible = true;
       if (!h.fl) { h.fl = true; caption(F, 'janitor', ['AY. I JUST MOPPED THAT', 'that’s gonna leave a mark', 'bro is SWIMMING'][Math.floor(Math.random() * 3)], 1500); }
     },
@@ -498,7 +505,7 @@ async function buildBeam(F, scene) {
       h.res.push(false); ui?.set(h.res);
       h.fell = true; h.falls = (h.falls || 0) + 1; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.6; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1; h.landed = false;
       h.pen += 3; G.ice = Math.max(0, G.ice - 6); G.combo = 0; G.mult = 1;
-      UI.pop('AAAAAA', `${why} · back to the plank · +3s`, { top: 24 }); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
+      UI.pop('AAAAAA', `${why} · back to the plank`, { top: 24 }); UI.timeCost?.(3, 'fell off the plank'); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
     },
     hide() { set.g.visible = false; well.visible = false; bang.visible = dustS.visible = false; for (const m of F.hall.children) if (m.isMesh && m.geometry.type === 'PlaneGeometry' && m.geometry.parameters.height === 30) m.visible = true; },
     dispose() {},

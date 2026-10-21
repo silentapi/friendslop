@@ -6,7 +6,8 @@ import { join } from 'node:path';
 const [out = '/tmp/qa2', mode = 'play', order = '1'] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+const VIEW = process.env.VIEW?.split('x').map(Number); // e.g. VIEW=390x844: a touch phone
+const ctx = await browser.newContext(VIEW ? { viewport: { width: VIEW[0], height: VIEW[1] }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 } : { viewport: { width: 1280, height: 720 } });
 await ctx.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**', (route) => { const p = route.request().url().replace('https://cdn.jsdelivr.net/npm/three@0.169.0/', ''); const f = join('/home/user/friendslop/tip-bait/node_modules/three', p); existsSync(f) ? route.fulfill({ body: readFileSync(f), contentType: 'application/javascript' }) : route.fulfill({ status: 404 }); });
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
@@ -14,6 +15,7 @@ if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFa
 if (process.env.EQUIP) await ctx.addInitScript((eq) => { try { localStorage.setItem('tipbait:equipped', eq); } catch {} }, process.env.EQUIP); // e.g. EQUIP='{"bag":"bag_ufo","outfit":"fit_ceo","head":"head_fire"}'
 if (process.env.BP) await ctx.addInitScript((bp) => { try { localStorage.setItem('tipbait:bp', bp); } catch {} }, process.env.BP); // e.g. BP='{"xp":700,"premium":true,"claimed":{"free":[],"prem":[]}}'
 if (process.env.HALL_KIND) await ctx.addInitScript((k) => { globalThis.__hallKind = k; }, process.env.HALL_KIND);
+await ctx.addInitScript((f) => { globalThis.__fail = f; }, { rail: !!process.env.FAIL_RAIL, mega: !!process.env.FAIL_MEGA, tech: !!process.env.FAIL_TECH }); // force QTE failures to review their consequences
 if (process.env.RIVAL) await ctx.addInitScript((m) => { globalThis.__rivalMode = m; }, process.env.RIVAL);
 const page = await ctx.newPage();
 const errors = [];
@@ -39,7 +41,10 @@ if (mode === 'ramp') {
     await tick(2);
     const r = await page.evaluate(() => { const g = window.__G; return { st: g.state, ds: +(g.s - g.rail.s).toFixed(1), y: +g.y.toFixed(2), v: +g.v.toFixed(1), cab: g.trainCab == null ? null : +g.trainCab.toFixed(1), slow: +g.slowmo.toFixed(2), kind: g.crashKind }; });
     if (k % 3 === 0 || r.st !== 'run') console.log(JSON.stringify(r));
-    if ([12, 18, 22, 26, 30].includes(k)) await shot(`ramp_${k}`);
+    if (process.env.FAIL_RAIL) { const q = await page.evaluate(() => window.__G.qte); if (q && q.idx === 1 && q.t > 0.2) await key(q.seq[1] === 'arrowup' ? 'ArrowDown' : 'ArrowUp'); else if (q && q.idx === 0 && q.t > 0.12) await key('Arrow' + q.seq[0].slice(5, 6).toUpperCase() + q.seq[0].slice(6)); }
+    else { const q = await page.evaluate(() => window.__G.qte); if (q && q.t > 0.12 + q.idx * 0.1) await key('Arrow' + q.seq[q.idx].slice(5, 6).toUpperCase() + q.seq[q.idx].slice(6)); }
+    if (process.env.FRAMES ? k % 1 === 0 && k >= 8 : [12, 18, 22, 26, 30].includes(k)) await shot(`ramp_${String(k).padStart(3, '0')}`);
+    if (r.st === 'crashing') { for (let f = 0; f < 40; f++) { await tick(2); await shot(`clip_${String(f).padStart(3, '0')}`); if ((await page.evaluate(() => window.__G.state)) !== 'crashing') break; } await tick(4); await shot('clip_ui'); const t0 = await page.evaluate(() => window.__G.time); await page.click('#watchad'); for (let w = 0; w < 80 && (await page.evaluate(() => window.__G.state)) !== 'run'; w++) await page.waitForTimeout(150); await page.waitForTimeout(500); await shot('clip_continue'); await page.waitForTimeout(700); await shot('clip_continue2'); console.log('time cost', (await page.evaluate(() => window.__G.time)) - t0); break; }
     if (r.st !== 'run' || r.ds > 30) break;
   }
   await browser.close(); process.exit(0);
@@ -49,9 +54,10 @@ const pilot = () => page.evaluate((crashMode) => {
   const g = window.__G, LANES = g.LANES;
   if (g.state !== 'run' || crashMode) return null;
   const cap = (k) => 'Arrow' + k.slice(5, 6).toUpperCase() + k.slice(6);
-  if (g.tech) return cap(g.tech.key);
+  if (g.tech) return globalThis.__fail.tech ? null : cap(g.tech.key);
   { const E = window.__EV, ev = E?.cur; if (E?.locked && ev?.kind === 'rival') { if (ev.st === 'strike' && !ev.pressed && ev.combo) { const u = ev.t / ev.W; if (globalThis.__rivalMode === 'miss' && ev.res.length === 1) return null; return u > 0.55 ? cap(ev.combo[ev.hit].key) : null; } if (globalThis.__rivalMode === 'flinch' && ev.st === 'feint' && ev.t > 0.1 && !ev.flinchCd) return cap(ev.toward); return null; } }
   if (g.akira && !g.akira.res) return globalThis.__akiraFail && g.akira.idx === 1 ? 'ArrowUp' === cap(g.akira.seq[1]) ? 'ArrowLeft' : 'ArrowUp' : cap(g.akira.seq[g.akira.idx]);
+  if (g.qte && globalThis.__fail[g.qte.kind]) return g.qte.t > 0.2 && g.qte.idx === 1 ? (g.qte.seq[1] === 'arrowup' ? 'ArrowDown' : 'ArrowUp') : g.qte.idx === 0 && g.qte.t > 0.12 ? cap(g.qte.seq[0]) : null;
   if (g.qte) return g.qte.t > 0.12 + g.qte.idx * 0.1 ? cap(g.qte.seq[g.qte.idx]) : null;
   { const m = g.lv.ramps.find((r) => r.mega && r.s - g.s > 0 && r.s - g.s < 45); if (m && g.lane !== 1) return g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; if (m) return null; }
   const ahead = (li) => {
@@ -78,11 +84,12 @@ while (i < 4000) {
   i += 3;
   const g = await G();
   if (i % 90 === 0) { console.log(i, JSON.stringify(g)); }
+  if (process.env.FRAMES && (await page.evaluate(() => window.__G.tumbleT > 0 || window.__G.state === 'crashing'))) await shot(`tum_${String(i).padStart(4, '0')}`); // frame-by-frame through every fall
   { const q = await page.evaluate(() => { const g = window.__G; return g.qte ? 'QTE ' + g.qte.kind + ' ' + g.qte.key : null; }); if (q && q !== globalThis.lastQ) { console.log(q); await shot('qte_' + i); } globalThis.lastQ = q; }
   if (i % 150 === 0) await shot(`run_${String(i).padStart(4, '0')}`);
   { const es = await page.evaluate(() => { const c = window.__EV?.cur; return c ? c.kind + '_' + c.st : ''; }); if (es && (i % 6 === 0 || es !== globalThis.lastEs)) { await shot(`ev_${String(i).padStart(4, '0')}_${es}`); } if (es !== globalThis.lastEs) console.log('EV', es, '@', i); globalThis.lastEs = es; }
   if (mode === 'coach') { const c = await page.evaluate(() => document.querySelector('.coach')?.textContent || ''); if (c && !seen.has(c)) { seen.add(c); console.log('COACH', c); await shot(`coach_${seen.size}`); } if (i > 900) break; }
-  if (g.st === 'crashing') { console.log('CRASH', await page.evaluate(() => window.__G.crashKind + ' @' + window.__G.s.toFixed(0))); await tick(12); await shot(`crash_${i}`); }
+  if (g.st === 'crashing') { console.log('CRASH', await page.evaluate(() => window.__G.crashKind + ' @' + window.__G.s.toFixed(0))); if (process.env.FRAMES) for (let f = 0; f < 22 && (await page.evaluate(() => window.__G.state)) === 'crashing'; f++) { await tick(2); await shot(`crash_${i}_${String(f).padStart(2, '0')}`); } else await tick(12); await shot(`crash_${i}`); }
   if (g.st === 'crashed') {
     await shot(`crashui_${i}`);
     await page.click('#watchad'); await page.waitForTimeout(500); await shot(`ad_${i}`);
@@ -123,14 +130,49 @@ if ((await G()).st === 'finale') {
   let hs;
   while ((hs = await H()).ph === 'hall' && k < 900) {
     const cap = (kk) => kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase());
-    if (hs.kind === 'ladder') { if (hs.st === 'tele' && !hs.done && hs.t > 0.2) { const miss = process.env.DOG_MISS && !globalThis.__lm && hs.t > 0.2 && (globalThis.__lc = (globalThis.__lc || 0) + 1) === 2; if (miss) globalThis.__lm = 1; await key(cap(miss ? (hs.key === 'arrowup' ? 'arrowdown' : 'arrowup') : hs.key)); } }
+    if (hs.kind === 'ladder') { if (hs.st === 'tele' && !hs.done && hs.t > 0.2) { const nm = Number(process.env.DOG_MISS || 0), c = (globalThis.__lc = (globalThis.__lc || 0) + 1), miss = nm >= 2 ? c <= nm : nm && c === 2; await key(cap(miss ? (hs.key === 'arrowup' ? 'arrowdown' : 'arrowup') : hs.key)); } }
     else if (hs.kind === 'mop' || hs.kind === 'beam') { if (hs.st === 'slide') { if (hs.slip) { if (hs.slipT > 0.14) { globalThis.__sl = (globalThis.__sl || 0) + (hs.slipT < 0.2 ? 1 : 0); if (!(process.env.DOG_MISS && globalThis.__sl === 2)) await key(cap(hs.key)); } } else if (Math.abs(hs.b) > 0.33 && k % 3 === 0) await key(hs.b > 0 ? 'ArrowLeft' : 'ArrowRight'); } }
-    else if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const miss = process.env.DOG_MISS && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
+    else if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const nm = Number(process.env.DOG_MISS || 0), miss = nm >= 2 ? hs.i < nm : nm && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
     if (hs.st !== lastSt) { lastSt = hs.st; n = 0; }
-    if (n % 6 === 0 || hs.st === 'lunge' || hs.st === 'swing') await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);
+    if (n % (process.env.FRAMES ? 2 : 6) === 0 || hs.st === 'lunge' || hs.st === 'swing') await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);
     await tick(1); k++; n++;
   }
   console.log('hall took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
+  // Kyle's secret knock (osu): hit each note on the tick nearest its time, alternating Z/X and a click/tap on the circle,
+  // holding sliders to their end (the pointer follows the ball); mash Z/X or circle the pointer on the spinner.
+  // KNOCK_MISS=1 never presses: HP drains → WRONG KNOCK restarts → he opens anyway.
+  {
+    const KN = () => page.evaluate(() => { const F = window.__F; return F.knock ? { ph: F.phase, ...F.knock.qa() } : { ph: F.phase }; });
+    const ptr = (type, x, y) => page.evaluate(([type, x, y, touch]) => document.getElementById('knock')?.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerType: touch ? 'touch' : 'mouse', pointerId: 1, bubbles: true })), [type, x, y, !!VIEW]);
+    const kev = (type, k) => page.evaluate(([type, k]) => window.dispatchEvent(new KeyboardEvent(type, { key: k })), [type, k]);
+    const MISS = !!process.env.KNOCK_MISS, done = new Set();
+    let kk = 0, ks, n = 0, hold = null, last = '', sn = 0, upNext = null, spinA = 0;
+    if (!VIEW) await ptr('pointermove', 640, 400);
+    while ((ks = await KN()).ph === 'knock' && kk < 3000) {
+      if (upNext) { await upNext(); upNext = null; }
+      if (ks.st === 'play' && !MISS) {
+        const o = ks.objs.find((o) => o.hit == null && !done.has(o.i));
+        if (o && o.t - ks.t < 1 / 60 + 1e-6) {
+          done.add(o.i); const viaKey = n++ % 3 === 1, k = n % 2 ? 'z' : 'x';
+          if (viaKey) { await kev('keydown', k); if (o.kind === 'slider') hold = { end: o.tEnd, key: k, i: o.i }; else upNext = () => kev('keyup', k); }
+          else { await ptr('pointermove', o.x, o.y); await ptr('pointerdown', o.x, o.y); if (o.kind === 'slider') hold = { end: o.tEnd, i: o.i }; else upNext = () => ptr('pointerup', o.x, o.y); }
+        }
+        if (hold && !hold.key) { const b = ks.objs.find((q) => q.i === hold.i); if (b?.bx != null) await ptr('pointermove', b.bx, b.by); }
+        if (hold && ks.t > hold.end + 0.02) { if (hold.key) await kev('keyup', hold.key); else await ptr('pointerup', 0, 0); hold = null; }
+        const [s0, s1] = ks.spin;
+        if (ks.t > s0 && ks.t < s1) { // spin: circle the pointer on desktop/touch (held), Z/X mash every other frame as well
+          spinA += 1.5; const R = 110, x = ks.cx + Math.cos(spinA) * R, y = ks.cy + Math.sin(spinA) * R;
+          if (!globalThis.__spun) { globalThis.__spun = 1; await ptr('pointermove', x, y); await ptr('pointerdown', x, y); } else await ptr('pointermove', x, y);
+        } else if (globalThis.__spun === 1 && ks.t >= s1) { globalThis.__spun = 2; await ptr('pointerup', 0, 0); }
+      }
+      const st = ks.st + (ks.fails || 0); if (st !== last) { console.log('KNOCK', ks.st, 'fails', ks.fails, 't', ks.t, 'hp', ks.hp, 'combo', ks.combo, ks.res ? JSON.stringify(ks.res) : ''); last = st; sn = 0; }
+      const every = ks.st === 'intro' ? 5 : ks.st === 'out' ? 2 : ks.st === 'fail' ? 3 : ks.st === 'rank' ? 8 : (ks.t < 6 ? 2 : 5);
+      if (sn % every === 0) await shot(`kn_${String(kk).padStart(4, '0')}_${ks.st}`);
+      await tick(1); kk++; sn++;
+    }
+    console.log('knock took', kk, 'ticks', JSON.stringify(await page.evaluate(() => { const f = window.__G.fin; return { knock: f.knock, knockT: f.knockT, label: f.knockLabel }; })));
+    for (let k = 0; k < 8; k++) { await shot(`kn_door_${k}`); await tick(1); } // the hand-off into the door-open shot, frame by frame
+  }
   for (let k = 0; k < 90; k++) { await tick(6); if (await page.evaluate(() => !!document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');
   if (process.env.BP) for (let k = 0; k < 8; k++) { await page.waitForTimeout(250); await page.screenshot({ path: `${out}/fin_xp_${k}.jpg`, type: 'jpeg', quality: 82 }); } // battle pass XP count-up + tier pops (DOM timers, real time)
