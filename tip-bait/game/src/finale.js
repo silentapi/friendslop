@@ -565,8 +565,22 @@ export class Finale {
       && f.akira === 'NAILED' && f.door === 'PERFECT' && f.stairs === 'PERFECT' && (f.hallPerfect || f.dog === 'UNTOUCHABLE')
       && (f.rival == null || f.rival === 'SENT HIM' || f.rival === 'RIVAL DOWN') && (f.crane == null || f.crane === 'UNTOUCHED' || f.crane === 'CLEAN');
   }
+  // the tip scales with how well you did: every section at least 50% → a tip, from a token amount at 50% up to the
+  // full promised tip on a perfect run
+  tipShare() {
+    const G = this.G, f = G.fin || {}, timeLeft = Math.max(0, G.etaTotal - G.time - (f.doorT || 0) - (f.stairT || 0) * 0.5 - (f.akiraT || 0) - (f.hallT ?? f.dogT ?? 0));
+    const rows = this.UI.rateAll({ ...f, time: G.time, eta: G.etaTotal, timeLeft, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, coins: G.coins, coinsTotal: G.lv?.coins?.length ?? 0, tricks: G.tricks }).rows.filter((x) => x.r);
+    if (!rows.length || rows.some((x) => x.r.pct < 0.5)) return 0;
+    const mean = rows.reduce((a, x) => a + x.r.pct, 0) / rows.length;
+    return Math.max(0.1, Math.min(1, (mean - 0.5) / 0.5));
+  }
   updateDoor(dt) {
-    if (this.perfect == null) { this.perfect = this.isPerfect(); this.G.fin = { ...(this.G.fin || {}), perfect: this.perfect }; if (this.perfect) this.line = 'ok… that was actually insane. respect 🫡'; }
+    if (this.perfect == null) {
+      this.perfect = this.isPerfect(); const share = this.perfect ? 1 : this.tipShare(), paid = Math.round(this.G.tip * share * 4) / 4;
+      this.paid = paid; this.G.fin = { ...(this.G.fin || {}), perfect: this.perfect, tipShare: share, tipPaid: paid };
+      if (this.perfect) this.line = 'ok… that was actually insane. respect 🫡';
+      else if (paid > 0) this.line = ['fine. it was… acceptable', 'ok it’s mostly cold. mostly', 'decent. don’t let it go to ur head'][Math.floor(Math.random() * 3)];
+    }
     const t = (this.t += dt), R = this.G.R, K = this.K, cam = this.camera, A = this.Audio, UI = this.UI;
     const open = 0.05, take = 0.6, sip = 1.95, line = 2.35, close = 3.2, tipT = 3.6;
     if (t < tipT) {
@@ -599,7 +613,7 @@ export class Finale {
       // the courier in the hall, looking at his phone … the tip changes
       const u = t - tipT;
       R.root.rotation.set(0, Math.PI - 0.35, 0);
-      if (this.perfect) R.walk(u < 0.9 ? 'idle' : 'reaction', u < 0.9 ? 1 + u : (u - 0.9) * 1.1 + 0.2, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
+      if (this.perfect || this.paid > 0) R.walk(u < 0.9 ? 'idle' : 'reaction', u < 0.9 ? 1 + u : (u - 0.9) * 1.1 + 0.2, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
       else R.walk(u < 0.9 ? 'idle' : 'facepalm', u < 0.9 ? 1 + u : (u - 0.9) * 1.3 + 0.3, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
       const base = R.root.position;
       cam.position.copy(base.clone().add(V(0.55, 1.5, -1.9).lerp(V(0.4, 1.55, -1.35), easeInOut(clamp(u / 3))))); cam.lookAt(base.clone().add(V(0, 1.4, 0))); cam.fov = 56; cam.updateProjectionMatrix();
@@ -607,6 +621,10 @@ export class Finale {
       if (this.perfect) {
         if (!this.tp) { this.tp = true; R.bag.visible = false; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'ok fine. you earned it 🫡') }); }
         if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('jingle', 1); A.sfx('ding', 0.8, 1.5); UI.sceneCap('wait. <em class="kept">he actually tipped.</em>', { extra: UI.notif('Kyle S changed your tip', 'ok fine. you earned it 🫡') + `<div class="tipchg kept"><b>${UI.money(this.G.tip)}</b></div>` }); }
+      } else if (this.paid > 0) { // a good run: he docks it, but you get something
+        const msg = ['here’s… some of it 🙄', 'tip adjusted for melting', 'ok here. don’t get used to it'][Math.floor(this.G.order % 3)];
+        if (!this.tp) { this.tp = true; R.bag.visible = false; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', msg) }); }
+        if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('ding', 0.9, 1.3); UI.sceneCap(`he tipped. <em class="kept">${Math.round(this.G.fin.tipShare * 100)}% of it.</em>`, { extra: UI.notif('Kyle S changed your tip', msg) + `<div class="tipchg kept"><s>${UI.money(this.G.tip)}</s><b>${UI.money(this.paid)}</b></div>` }); }
       } else {
       if (!this.tp) { this.tp = true; R.bag.visible = false; /* set the bag down at the cut so the facepalm can't swing it through his head */ A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') }); }
       if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('trombone', 1); UI.sceneCap('every. single. <em>time.</em>', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') + `<div class="tipchg"><s>${UI.money(this.G.tip)}</s><b>$0.00</b></div>` }); }

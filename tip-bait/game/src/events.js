@@ -35,7 +35,7 @@ export function planEvents({ r, start, end, vb, d, free, reserve, obs, ground, a
   if (c != null) {
     const e = Math.floor(r() * 3);                                     // the lane the coins lead you in on
     const a = [0, 1, 2].filter((l) => l !== e)[Math.floor(r() * 2)];    // second drop: one of the lanes you dodged to
-    const f = [0, 1, 2].filter((l) => l !== a)[Math.floor(r() * 2)];    // the one lane left open at the double drop
+    const f = e;                                                         // the double drop leaves only the lane you started in: e (drop 1), a (drop 2) and the third lane (drop 3) all get hit
     const blk = [0, 1, 2].filter((l) => l !== f);
     const drops = [
       { piece: 'crate', s: c + C.d1, li: e, len: 1.5, w: 1.9, h: 1.25, land: 3.2 },

@@ -373,13 +373,13 @@ export function results({ next, nextN, tip, promised, pay, time, eta, ice, crash
     : `<div class="srow off" style="--d:${(0.15 + i * 0.07).toFixed(2)}s"><span class="si">${x.icon}</span><span class="sn">${x.name}</span><span class="sb"></span><span class="bdg">—</span></div>`;
   const el = layer('results', `
     <div class="res${perfect ? ' perfect' : ''}">
-      <h2>Delivered${onTime && !perfect ? ' on time' : ''}.<br>${perfect ? `<em class="won">Kyle actually tipped.</em>` : '<em>Tip: $0.00</em>'}</h2>
+      <h2>Delivered${onTime && !perfect ? ' on time' : ''}.<br>${perfect ? `<em class="won">Kyle actually tipped.</em>` : S.tipPaid > 0 ? `<em class="won">Tip: ${money(S.tipPaid)}</em>` : '<em>Tip: $0.00</em>'}</h2>
       <div class="shead">
         <div class="grade g${S.grade}">${S.grade}</div>
         <div class="stot"><small>SCORE${S.newBest ? ' · <b>NEW BEST!</b>' : ` · best ${S.best.toLocaleString('en-US')}`}</small><span>${S.total.toLocaleString('en-US')}</span></div>
         ${perfect ? '<div class="bdg b-gold">PERFECT RUN</div>' : ''}
       </div>
-      <div class="ledger1">${perfect ? `Kyle promised ${money(promised ?? tip)} · tipped <b class="tipwon">${money(tip)}</b> 🤯` : `Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b>`} · you earned <b>${money(pay + (perfect ? tip : 0))}</b></div>
+      <div class="ledger1">${perfect ? `Kyle promised ${money(promised ?? tip)} · tipped <b class="tipwon">${money(tip)}</b> 🤯` : `Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b${S.tipPaid > 0 ? ' class="tipwon"' : ''}>${money(S.tipPaid || 0)}</b>${S.tipPaid > 0 ? ` (${Math.round((S.tipShare || 0) * 100)}%)` : ''}`} · you earned <b>${money(pay + (perfect ? tip : S.tipPaid || 0))}</b></div>
       <div class="srows">${rows.map(bar).join('')}</div>
       <div class="small rline">Kyle S: “${line}” · ${nearMiss} near misses · best combo x${S.bestMult}</div>
       <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>

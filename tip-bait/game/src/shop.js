@@ -147,14 +147,16 @@ function runOpening(crate, pulls, ctx) {
   const parts = [];
   const burst = (n, col, speed = 9, life = 1.2, cx = 0.5, cy = 0.48) => { for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = (0.3 + Math.random()) * speed; parts.push({ x: cx * cv.width, y: cy * cv.height, vx: Math.cos(a) * v * 60, vy: Math.sin(a) * v * 60 - 200, life, max: life, col: col === 'rainbow' ? `hsl(${Math.random() * 360},100%,60%)` : col, s: 2 + Math.random() * 5 }); } };
   // the rarity ladder: each step lights the seams one tier hotter, with a chime a little higher
-  const steps = [0]; for (let r = 1; r <= top; r++) steps.push(r);
-  const tStep = (i) => 0.7 + i * 0.32, tBurst = tStep(steps.length - 1) + (top >= 3 ? 0.8 : 0.32);
+  // no tells: the build-up looks the same for every roll (the colour only shows when the reel lands / a card flips),
+  // except Kyle-tier, which is allowed to announce itself with the full escalating ladder
+  const KT = top === 4, steps = KT ? [0, 1, 2, 3, 4] : [0, 0, 0];
+  const tStep = (i) => 0.7 + i * 0.32, tBurst = tStep(steps.length - 1) + (KT ? 0.8 : 0.32);
   let t0 = performance.now(), last = t0, phase = 'build', stepDone = 0, burstDone = false, skipOK = false, raf = 0;
   const glowCol = (r) => (r === 'mythic' ? '#ff2a4d' : RC(r));
   // ---- the reel (single pulls): ~40 cards, winner near the end, a juicier card parked right after it
   const reel = el.querySelector('.creel'), strip = el.querySelector('.cstrip');
   const W = 31, CW = 140;
-  let reelT = 0, reelDur = top >= 3 ? 3.4 : 2.8, reelFrom = 0, reelTo = 0, lastIdx = -1;
+  let reelT = 0, reelDur = 3.1, reelFrom = 0, reelTo = 0, lastIdx = -1;
   if (!multi) {
     const rates = crate.rates, randR = () => { let x = Math.random(); for (const t of TIERS) { if ((x -= rates[t]) < 0) return t; } return 'rare'; };
     const pick = (r) => { const l = ITEMS.filter((i) => !i.def && i.r === r); return l[Math.floor(Math.random() * l.length)]; };
@@ -166,7 +168,7 @@ function runOpening(crate, pulls, ctx) {
   const ease = (u) => 1 - Math.pow(1 - u, 4);
   // ---- multi: cards come out face-down, coloured by rarity (the tell), flip one by one, best last
   const cardsEl = el.querySelector('.ccards');
-  if (multi) cardsEl.innerHTML = pulls.map((p, i) => `<div class="mcard r-${p.r}" style="--rc:${glowCol(p.r)};--i:${i}" data-i="${i}"><div class="mback"></div><div class="mface">${cardHTML(p.item, p.dupe ? `<em class="dupe">+${p.refund}🪙</em>` : '<em class="new">NEW</em>')}</div></div>`).join('');
+  if (multi) cardsEl.innerHTML = pulls.map((p, i) => `<div class="mcard" style="--rc:${KT ? glowCol(p.r) : '#d8dde3'};--i:${i}" data-i="${i}"><div class="mback"></div><div class="mface">${cardHTML(p.item, p.dupe ? `<em class="dupe">+${p.refund}🪙</em>` : '<em class="new">NEW</em>')}</div></div>`).join('');
   let flipT = 0, flipped = 0;
 
   function frame(now) {
@@ -175,15 +177,15 @@ function runOpening(crate, pulls, ctx) {
     if (phase === 'build') {
       // wobble grows; the seams step up the rarity ladder
       while (stepDone < steps.length && t >= tStep(stepDone)) { const r = TIERS[steps[stepDone]]; el.style.setProperty('--glow', glowCol(r)); art.dataset.r = r; sfx('chime', 0.55 + stepDone * 0.1, 0.8 + stepDone * 0.17); if (stepDone >= 3) { el.classList.add('edge'); sfx('boom', 0.35, 1.6); } if (r === 'mythic') el.classList.add('mythic'); stepDone++; }
-      const k = Math.min(1, t / tBurst), shake = (Math.sin(t * 38) * 4 + Math.sin(t * 23) * 3) * k * k * (1 + top * 0.35);
-      const pause = top >= 3 && t > tStep(steps.length - 1) + 0.15; // the held breath before a Legendary pops
+      const k = Math.min(1, t / tBurst), shake = (Math.sin(t * 38) * 4 + Math.sin(t * 23) * 3) * k * k * (KT ? 2.4 : 1.6);
+      const pause = KT && t > tStep(steps.length - 1) + 0.15; // the held breath before a Legendary pops
       art.style.transform = pause ? `scale(${1.04 + Math.sin(t * 40) * 0.006})` : `rotate(${shake * 0.6}deg) translate(${shake}px, ${-Math.abs(shake) * 0.4}px) scale(${1 + k * 0.06})`;
       el.classList.toggle('cpause', pause);
       if (t >= tBurst && !burstDone) {
         burstDone = true; phase = multi ? 'cards' : 'reel'; el.classList.add('popped'); el.classList.remove('cpause'); stage.classList.add('punch');
-        const col = top === 4 ? 'rainbow' : glowCol(best.r);
-        burst(60 + top * 50, col, 8 + top * 2); if (top >= 3) burst(80, '#ffffff', 12, 0.8);
-        sfx('boom', 0.7, top >= 3 ? 0.7 : 1); sfx(top >= 3 ? 'stinger' : 'rise', top >= 3 ? 0.9 : 0.6, top === 4 ? 0.9 : 1);
+        const col = KT ? 'rainbow' : '#ffffff';
+        burst(KT ? 260 : 130, col, KT ? 16 : 11); if (KT) burst(80, '#ffffff', 12, 0.8);
+        sfx('boom', 0.7, KT ? 0.7 : 0.85); sfx(KT ? 'stinger' : 'rise', KT ? 0.9 : 0.7, KT ? 0.9 : 1);
         if (!multi) { reel.classList.add('on'); reelT = 0; }
         else cardsEl.classList.add('on');
       }
@@ -194,24 +196,26 @@ function runOpening(crate, pulls, ctx) {
       if (u >= 1) reveal();
     } else if (phase === 'cards') {
       flipT += dt; const gap = 0.5;
-      while (flipped < pulls.length && flipT > 0.5 + flipped * gap + (flipped === pulls.length - 1 && top >= 3 ? 0.5 : 0)) { flip(flipped); flipped++; }
+      while (flipped < pulls.length && flipT > 0.5 + flipped * gap + (flipped === pulls.length - 1 ? 0.5 : 0)) { flip(flipped); flipped++; }
       if (flipped >= pulls.length && flipT > 0.5 + pulls.length * gap + 0.9) reveal();
     }
     // particles + ambient sparkle for the big ones
     g.clearRect(0, 0, cv.width, cv.height);
-    if (phase !== 'build' && top >= 3 && Math.random() < 0.5) burst(1, top === 4 ? 'rainbow' : glowCol(best.r), 2, 1.6, Math.random(), 0.7 + Math.random() * 0.3);
+    if ((phase === 'reveal' ? top >= 3 : KT && phase !== 'build') && Math.random() < 0.5) burst(1, top === 4 ? 'rainbow' : glowCol(best.r), 2, 1.6, Math.random(), 0.7 + Math.random() * 0.3);
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; if (p.life <= 0) { parts.splice(i, 1); continue; } p.vy += 600 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - dt * 1.2; g.globalAlpha = Math.min(1, p.life / p.max * 1.5); g.fillStyle = p.col; g.beginPath(); g.arc(p.x, p.y, p.s, 0, 7); g.fill(); }
     g.globalAlpha = 1;
     raf = requestAnimationFrame(frame);
   }
   function flip(i) {
-    const c = cardsEl.querySelector(`[data-i="${i}"]`), p = pulls[i]; c.classList.add('flip');
+    const c = cardsEl.querySelector(`[data-i="${i}"]`), p = pulls[i]; c.classList.add('flip', 'r-' + p.r); c.style.setProperty('--rc', glowCol(p.r));
     sfx('chime', 0.5 + rank(p.r) * 0.12, 0.8 + rank(p.r) * 0.2); if (rank(p.r) >= 3) { sfx('stinger', 0.7, 1.1); const b = c.getBoundingClientRect(); burst(70, p.r === 'mythic' ? 'rainbow' : glowCol(p.r), 9, 1.2, (b.left + b.width / 2) / innerWidth, (b.top + b.height / 2) / innerHeight); }
   }
   let selI = pulls.indexOf(best);
   function reveal() {
     if (phase === 'reveal') return;
     phase = 'reveal'; el.classList.add('revealed'); el.classList.remove('cpause');
+    if (!multi) { el.style.setProperty('--glow', glowCol(best.r)); art.dataset.r = best.r; if (top >= 3) el.classList.add('edge'); if (KT) el.classList.add('mythic'); burst(40 + top * 45, KT ? 'rainbow' : glowCol(best.r), 8 + top * 2, 1.2, 0.5, 0.3); sfx(top >= 3 ? 'stinger' : 'chime', top >= 3 ? 0.9 : 0.6, 0.8 + top * 0.17); }
+    else { pulls.forEach((p, k) => { const c = cardsEl.querySelector(`[data-i="${k}"]`); c?.classList.add('r-' + p.r); c?.style.setProperty('--rc', glowCol(p.r)); }); }
     if (!multi) strip.style.transform = `translateX(${-reelTo}px)`;
     else { cardsEl.querySelectorAll('.mcard').forEach((c) => c.classList.add('flip')); cardsEl.classList.add('on', 'pick'); }
     showCard(selI);
@@ -234,7 +238,7 @@ function runOpening(crate, pulls, ctx) {
   el.addEventListener('click', (e) => { if (phase !== 'reveal' && skipOK && !e.target.closest('button')) skip(); });
   function skip() {
     if (phase === 'reveal') return;
-    if (!burstDone) { el.style.setProperty('--glow', glowCol(best.r)); art.dataset.r = best.r; el.classList.add('popped'); if (top >= 3) el.classList.add('edge'); if (top === 4) el.classList.add('mythic'); burst(80, top === 4 ? 'rainbow' : glowCol(best.r), 9); sfx(top >= 3 ? 'stinger' : 'rise', 0.7); burstDone = true; reel.classList.add('on'); }
+    if (!burstDone) { el.classList.add('popped'); burstDone = true; reel.classList.add('on'); }
     reveal();
   }
   function done(again) { cancelAnimationFrame(raf); el.remove(); ctx.onDone(again && ctx.store.get('wallet', 0) >= crate.price); }
