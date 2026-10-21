@@ -12,7 +12,7 @@ export function lobby(ctx) {
   const W = 8; // side walls at x = ±W
   const bronze = new THREE.MeshStandardMaterial({ color: 0x8a6a42, metalness: 1, roughness: 0.32 });
   const darkBronze = new THREE.MeshStandardMaterial({ color: 0x2a2420, metalness: 0.7, roughness: 0.4 });
-  const brushTex = canvasTex('brushed', 256, 256, (c, w, h) => { c.fillStyle = '#9aa0a8'; c.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { const y = Math.random() * h, a = 0.04 + Math.random() * 0.1; c.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`; c.fillRect(0, y, w, 0.6 + Math.random()); } });
+  const brushTex = canvasTex('brushed', 256, 256, (c, w, h) => { c.fillStyle = '#9aa0a8'; c.fillRect(0, 0, w, h); for (let i = 0; i < 1400; i++) { const y = Math.random() * h, a = 0.012 + Math.random() * 0.03; c.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`; c.fillRect(0, y, w, 0.5 + Math.random() * 0.6); } });
   const steel = new THREE.MeshStandardMaterial({ map: brushTex, color: 0xd6dade, metalness: 0.95, roughness: 0.28 });
   // floor: big polished limestone tiles with a dark granite border band
   const f = mesh(new THREE.PlaneGeometry(20, 20), std('tex/lobby_floor.jpg', 'tex/lobby_floor_n.jpg', 20 / 1.5, 20 / 1.5, { rough: 0.22, ns: 0.35 }), { cast: false }); f.rotation.x = -Math.PI / 2; g.add(f);
@@ -103,6 +103,10 @@ export function lobby(ctx) {
     const hours = plane(signTex('hours', 'GUESTS PLEASE CHECK IN', { w: 1024, h: 96, font: '600 52px system-ui', color: '#e8eef2' }), 0.9, 0.085, { transparent: true }); hours.position.set(0.75, 1.32, 4.26); g.add(hours);
     // sidewalk outside
     const walk = mesh(new THREE.PlaneGeometry(20, 10), std('tex/sidewalk.jpg', null, 20 / 2.5, 10 / 2.5, { color: 0xd8d2c8, rough: 0.9 }), { cast: false }); walk.rotation.x = -Math.PI / 2; walk.position.set(0, 0.005, 9.3); g.add(walk);
+    // daylight beyond the glass (seen when the camera looks back out from the elevators)
+    const sky = new THREE.MeshBasicMaterial({ map: T('tex/sky.jpg', 0.5, 0.5), toneMapped: false, color: 0xe8eef2 }); sky.map.offset.set(0.2, 0.3);
+    const bd = mesh(new THREE.PlaneGeometry(40, 16), sky, { cast: false }); bd.position.set(0, 6, 14.3); bd.rotation.y = Math.PI; g.add(bd);
+    const street = mesh(new THREE.PlaneGeometry(40, 12), std('tex/asphalt.jpg', null, 8, 2.4, { color: 0x9a9a9c, rough: 0.9 }), { cast: false }); street.rotation.x = -Math.PI / 2; street.position.set(0, 0.002, 20); g.add(street);
     g.userData.doors = doors;
   }
   // front desk: walnut front with bronze reveals, granite top, backlit sign, monitor, lamp, orchid

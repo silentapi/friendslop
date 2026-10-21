@@ -349,7 +349,7 @@ export function rate(section, d = {}) {
   } else {
     const g = section === 'hall' ? (d.hall ?? d.dog) : d[section];
     if (!g) return null;
-    pct = section === 'hall' && d.hallPct != null ? c01(d.hallPct) : GRADE_PCT[section]?.[g] ?? 0.5;
+    pct = section === 'hall' && d.hallPerfect ? 1 : section === 'hall' && d.hallPct != null ? c01(d.hallPct) : GRADE_PCT[section]?.[g] ?? 0.5;
     label = g;
   }
   return { pct, badge: badgeOf(pct), label };

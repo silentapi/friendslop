@@ -684,7 +684,7 @@ function countdownGo() {
 }
 let finale = null;
 function arrive() {
-  G.state = 'finale'; UI.remove('hud'); hud = null;
+  G.state = 'finale'; UI.remove('hud'); hud = null; EV.reset(); // no set-piece banner carries into the building
   finale = new Finale({ renderer, scene, camera, G, Audio, UI, sun, onDone: showResults }); window.__F = finale;
   finale.start();
 }
@@ -703,7 +703,7 @@ function showResults(line) {
   Audio.music('chill');
   // per-section success bars + badges (same thresholds decide a perfect run, where Kyle keeps the tip)
   const rated = UI.rateAll({ ...(G.fin || {}), time: G.time, eta: G.etaTotal, timeLeft, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, coins: G.coins, coinsTotal: G.lv?.coins?.length ?? 0, tricks: G.tricks });
-  const perfect = G.fin?.perfect ?? rated.perfect;
+  const perfect = !!G.fin?.perfect; // decided by the finale (Finale.isPerfect); the bars use the same rate() thresholds
   UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line, rows: rated.rows,
     score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, perfect, fin: G.fin, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog, rival: G.fin?.rival, crane: G.fin?.crane },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
