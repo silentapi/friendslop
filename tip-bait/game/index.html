@@ -1175,10 +1175,11 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 
 /* ---- polish A ---- */
 /* one thing at a time up top: a Kyle text never lands on an event banner */
-#ui:has(#evui) .dms, #ui:has(#evui) .thought { opacity: 0; pointer-events: none; }
+#ui:has(#hud):has(#evui) .dms, #ui:has(#hud):has(#evui) .thought, #ui:has(#hud):has(#evui) .place { opacity: 0; pointer-events: none; }
 @media (max-aspect-ratio: 1/1) {
-  .dogui.run { top: calc(var(--st) + 132px); } /* below the score row, not over it */
+  #ui:has(#hud) .dogui.run { top: calc(var(--st) + 132px); } /* below the score row, not over it */
   .dms { top: calc(var(--st) + 132px); }
+  .place { top: calc(var(--st) + 214px); } /* street chip below Kyle's texts, not under them */
 }
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) { /* landscape phones: keep combo keys low, off the rider */
   #combo { padding-bottom: calc(var(--sb) + 10px); }
@@ -1186,9 +1187,10 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   .ck { min-width: 50px; height: 50px; font-size: 26px; padding: 0 10px; }
 }
 /* rival duel: the hit prompt sits above the two riders instead of on top of them */
-@media (min-height: 600px) and (min-aspect-ratio: 1/1) { #ui:has(#evui) #qte { justify-content: flex-start; padding-top: calc(var(--st) + 190px); } }
-@media (max-aspect-ratio: 1/1) { #ui:has(#evui) #qte { justify-content: flex-start; padding-top: calc(var(--st) + 30vh); } }
-@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#evui) #qte { align-items: flex-end; padding-right: calc(var(--sr) + 120px); padding-top: 40px; } }
+#ui:has(#hud):has(#evui) #qte .qbox { margin-top: 0; }
+@media (min-height: 501px) and (min-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { align-items: flex-end; padding-right: max(calc(var(--sr) + 150px), 18vw); } } /* beside the two riders, not on them or the banner */
+@media (max-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { justify-content: flex-end; padding-bottom: calc(var(--sb) + 150px); } } /* below them, by your thumbs */
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#hud):has(#evui) #qte { align-items: flex-end; padding-right: calc(var(--sr) + 190px); padding-bottom: 70px; } } /* beside them, clear of BOOST */
 /* ---- /polish A ---- */
 
 /* ---- polish B ---- */
