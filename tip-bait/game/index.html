@@ -1185,6 +1185,10 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   .cbox { gap: 6px; } .clab { font-size: 15px !important; }
   .ck { min-width: 50px; height: 50px; font-size: 26px; padding: 0 10px; }
 }
+/* rival duel: the hit prompt sits above the two riders instead of on top of them */
+@media (min-height: 600px) and (min-aspect-ratio: 1/1) { #ui:has(#evui) #qte { justify-content: flex-start; padding-top: calc(var(--st) + 190px); } }
+@media (max-aspect-ratio: 1/1) { #ui:has(#evui) #qte { justify-content: flex-start; padding-top: calc(var(--st) + 30vh); } }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { #ui:has(#evui) #qte { align-items: flex-end; padding-right: calc(var(--sr) + 120px); padding-top: 40px; } }
 /* ---- /polish A ---- */
 
 /* ---- polish B ---- */

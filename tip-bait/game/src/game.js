@@ -564,9 +564,9 @@ function rocketProp() {
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.8, 16), white); body.rotation.x = Math.PI / 2; g.add(body);
   const nose = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 16), red); nose.rotation.x = Math.PI / 2; nose.position.z = 0.55; g.add(nose);
   for (let k = 0; k < 3; k++) { const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.22), red); fin.position.set(Math.cos(k * 2.09) * 0.15, Math.sin(k * 2.09) * 0.15, -0.3); fin.rotation.z = k * 2.09; g.add(fin); }
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffa21a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); flame.rotation.x = -Math.PI / 2; flame.position.z = -0.85; g.add(flame);
-  const core = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); core.rotation.x = -Math.PI / 2; core.position.z = -0.65; g.add(core);
-  g.userData = { flame, core }; g.position.set(0, 1.32, -0.66); g.scale.setScalar(1.55); g.visible = false;
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffa21a, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); flame.rotation.x = -Math.PI / 2; flame.position.z = -0.85; g.add(flame);
+  const core = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false })); core.rotation.x = -Math.PI / 2; core.position.z = -0.65; g.add(core);
+  g.userData = { flame, core }; g.position.set(0, 1.62, -0.5); g.scale.setScalar(1.05); g.visible = false; // high and slim on his back: the chase cam still reads the rider
   return g;
 }
 function updateRocket(dt) {
@@ -576,11 +576,12 @@ function updateRocket(dt) {
   G.rocketWas = on;
   if (!on) return;
   const f = 0.85 + Math.random() * 0.4; rocketMesh.userData.flame.scale.set(f, 1 + Math.random() * 0.6, f); rocketMesh.userData.core.scale.setScalar(0.8 + Math.random() * 0.4);
-  if (Math.random() < 0.6) FX.burst(R.root.localToWorld(V(0, 1.3, -1.5)), { color: 0x8a8580, n: 2, speed: 1.5, up: 0.6, life: 0.8, size: 0.7, grav: -0.5 });
+  if (Math.random() < 0.35) FX.burst(R.root.localToWorld(V(0, 1.7, -2.0)), { color: 0x6f6a66, n: 1, speed: 1.2, up: 0.5, life: 0.6, size: 0.45, grav: -0.5 }); // thin smoke trail, not a wall in front of the lens
 }
 function crash(kind) {
   G.state = 'crashing'; G.crashT = 0; G.crashY0 = G.y; G.clip = null; G.crashThud = 0; G.crashRoof = !!G.techMiss && G.y > 0.5; G.techMiss = false; G.railClip = false; G.crashes++; G.crashAt = G.s; G.crashKind = kind; breakCombo(); G.powers = []; if (G.qte) { G.qte.ui.remove(); G.qte = null; } G.qteAt = null; G.airKind = null; G.trick = null; G.R.bike.rotation.y = 0; G.slowmo = 1; Audio.rate(1);
   Audio.sfx('crash', 1); Audio.sfx('skid', 0.8); Audio.music(null); Audio.sfx('scratch', 0.9);
+  if (hud) for (const id of ['#speed', '#bglow']) { const e = hud.el.querySelector(id); if (e) e.style.opacity = 0; } // the boost glow / speed lines don't freeze over the wipeout
   FX.burst(G.R.root.position.clone().setY(0.7), { color: 0xfff1c0, n: 30, speed: 6, up: 4, life: 0.6, size: 0.35, grav: 10 });
   navigator.vibrate?.([60, 40, 60]);
 }
@@ -613,7 +614,7 @@ function updateClip(dt) {
     const sp = Math.hypot(c.vs, c.vl), nsp = Math.max(0, sp - 9 * k); if (sp > 0) { c.vs *= nsp / sp; c.vl *= nsp / sp; }
     const g = smooth(clamp((G.crashT - c.gT) / 0.35)), near = (a, t) => t + Math.round((a - t) / (2 * Math.PI)) * 2 * Math.PI;
     c.yaw = lerp(c.r0.yaw, c.r0.yaw + 0.6 * Math.sign(c.wy), g); c.roll = lerp(c.r0.roll, near(c.r0.roll, Math.PI / 2), g); c.pitch = lerp(c.r0.pitch, near(c.r0.pitch, 0), g);
-    c.dust -= dt; if (nsp > 0.8 && c.dust <= 0) { c.dust = 0.05; FX.burst(R.root.position.clone().setY(0.15), { color: 0xcfc6b6, n: 6, speed: 2, up: 1, life: 0.7, size: 0.6, grav: 1 }); }
+    c.dust -= dt; if (nsp > 0.8 && c.dust <= 0) { c.dust = 0.09; FX.burst(R.root.position.clone().setY(0.15), { color: 0xcfc6b6, n: 4, speed: 2, up: 1, life: 0.55, size: 0.42, grav: 1 }); } // light scuff trail, not a cloud over the rider
   }
   // spin about the body's middle, not the tyres
   const f = route.at(G.s), lift = c.ground ? 0.45 : 0.9;
@@ -689,10 +690,10 @@ function animateLevel(t, dt) {
   }
   for (const o of P.buses) { const f = route.at(o.s); route.world(o.s, o.lat, 0, o.mesh.position); o.mesh.rotation.y = f.yaw + (o.t0 ? 0.08 * Math.sin(Math.PI * seg(G.time - o.t0, 0, 1.4)) * Math.sign(o.pull - o.lat0) : 0); o.mesh.visible = !o.dead; }
   // coins spin
-  const cm = P.coinMesh; let ci = 0;
+  const cm = P.coinMesh, _cs = V(); let ci = 0;
   for (const c of lv.coins) {
     if (c.got || c.s < G.s - 6 || c.s > G.s + 160) m4.makeScale(0, 0, 0);
-    else { route.world(c.s, c.lat, c.y, tmp); qq.setFromAxisAngle(UP, t * 4 + c.s * 0.3 + route.at(c.s).yaw); m4.compose(tmp, qq, ONE); }
+    else { route.world(c.s, c.lat, c.y, tmp); qq.setFromAxisAngle(UP, t * 4 + c.s * 0.3 + route.at(c.s).yaw); const k = clamp((c.s - G.s + 2.5) / 2.5); m4.compose(tmp, qq, k < 1 ? _cs.setScalar(Math.max(1e-4, k)) : ONE); } // missed coins shrink away behind him instead of sweeping past the lens
     cm.setMatrixAt(ci++, m4);
   }
   cm.instanceMatrix.needsUpdate = true;
@@ -773,6 +774,8 @@ function orbitMix(a, b, k, minR = 5.5) {
   let dt = tb - ta; if (dt > Math.PI) dt -= 2 * Math.PI; if (dt < -Math.PI) dt += 2 * Math.PI;
   const th = ta + dt * k, r = Math.max(minR, ra + (rb - ra) * k);
   m.ds = r * Math.cos(th); m.lat = c + r * Math.sin(th);
+  // mid-swing the lens is beside him: look at the rider then, not at a point far up the street (he'd sit on the frame edge)
+  const mid = Math.sin(Math.PI * clamp(k)); m.lds *= 1 - 0.85 * mid; m.llat += (c - m.llat) * 0.7 * mid;
   return m;
 }
 function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {}) {
@@ -950,7 +953,7 @@ function step(dt, draw) {
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
   FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes
-  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && (G.boostT > 0 || !!power('rocket')), cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
+  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : G.clip ? 1 : 0.4), { rider: G.R.root, boosting: G.state === 'run' && (G.boostT > 0 || !!power('rocket')), cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
   if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: power('rocket') ? 1 : G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.1 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);
   G.cos?.tick(T, { speed: G.state === 'run' ? G.v : 6 });
