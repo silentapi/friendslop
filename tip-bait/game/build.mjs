@@ -21,8 +21,8 @@ const site = join(here, 'dist-site');
 rmSync(site, { recursive: true, force: true }); mkdirSync(site, { recursive: true });
 execSync(`npx -y esbuild@0.24.0 ${join(here, 'src/game.js')} --bundle --format=esm --target=es2020 --minify --outfile=${join(site, 'game.js')}`, { stdio: 'inherit' });
 // Link previews (Discord, iMessage, Slack, X): crawlers need an absolute og:image URL, so pass the site's public
-// origin at build time: SITE_URL=https://tipbait.example node tip-bait/game/build.mjs
-const SITE = (process.env.SITE_URL || '').replace(/\/+$/, '');
+// origin at build time (default: where it's hosted now): SITE_URL=http://host:port node tip-bait/game/build.mjs
+const SITE = (process.env.SITE_URL ?? 'http://media.basedboats.com:8000').replace(/\/+$/, '');
 if (!SITE) console.warn('SITE_URL not set: og:image is relative, so Discord/iMessage previews will show no image');
 const ogImg = `${SITE}/assets/og.png?v=1`;
 const head = `<!doctype html>

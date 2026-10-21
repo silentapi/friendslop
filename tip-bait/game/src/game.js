@@ -76,7 +76,7 @@ const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
 window.__sfx = (n, g, r) => Audio.sfx(n, g, r);
 window.__UI = UI; // QA: drive toasts/overlays directly
-const SHARE_URL = 'https://claude.ai/artifact/Gkp4oi7z7tQGeQAw57bFDX'; // where friends can play
+const SHARE_URL = 'http://media.basedboats.com:8000/'; // where friends can play (self-hosted: its link unfurls with the og card)
 window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
 window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
 const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT), tumble: (d, o) => tumble(d, o) }); window.__EV = EV;
