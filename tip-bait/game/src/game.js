@@ -846,18 +846,10 @@ function leaveRun() { if (G.daily) { G.order = G.careerOrder ?? G.order; G.daily
 function startDaily() { if (!G.daily) G.careerOrder = G.order; G.daily = dailyInfo(); G.order = DAILY_ORDER; startOrder(); }
 window.__startDaily = startDaily;
 const SQ = { PERFECT: '🟩', GREAT: '🟦', GOOD: '🟨', OK: '🟧', BAD: '🟥' };
-// the copy-paste brag: multi-line, one line per section, a Wordle-style strip on top so a chat can compare at a glance
+// the copy-paste brag: score + grade, then a Wordle-style strip (one square per section) — nothing else
 function shareText({ total, grade, rows, perfect, daily }) {
-  const played = rows.filter((x) => x.r), paid = G.fin?.tipPaid || 0;
-  const L = [daily ? `🛵 TIP BAIT DAILY · ${daily.label}${daily.tries > 1 ? ` · try #${daily.tries}` : ''}` : `🛵 TIP BAIT · Order #${G.order}`,
-    `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}${perfect ? ' · ⭐ PERFECT RUN' : ''}`,
-    played.map((x) => SQ[x.r.badge] || '⬛').join(''), ''];
-  for (const x of played) { const lb = String(x.r.label || '').replace(/<[^>]+>/g, ''); L.push(`${SQ[x.r.badge] || '⬛'} ${x.icon} ${x.name}: ${x.r.badge}${lb && lb !== x.r.badge ? ` (${lb})` : ''}`); }
-  L.push('', `⏱️ ${UI.fmtTime(G.time)} · 💥 ${G.crashes} crash${G.crashes === 1 ? '' : 'es'} · 🪙 ${G.coins} coins · 🔥 x${G.bestMult || 1} best combo`);
-  L.push(perfect ? `🤯 Kyle actually tipped ${UI.money(G.tip)}` : paid > 0 ? `💸 Kyle tipped ${UI.money(paid)} of ${UI.money(G.def.tip)}` : `🙄 Kyle tipped $0.00 of ${UI.money(G.def.tip)}`);
-  if (daily) L.push(`${daily.streak > 1 ? `🔥 ${daily.streak}-day streak · ` : ''}same route + same rolls for everyone today`, `👉 hit PLAY DAILY: ${SHARE_URL}`);
-  else L.push(`👉 beat it: ${SHARE_URL}`);
-  return L.join('\n');
+  const head = daily ? `🛵 TIP BAIT Daily ${daily.label}` : `🛵 TIP BAIT #${G.order}`;
+  return [head, `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}${perfect ? ' ⭐' : ''}`, rows.filter((x) => x.r).map((x) => SQ[x.r.badge] || '⬛').join('')].join('\n');
 }
 window.__shareText = () => G.lastShare;
 window.__showResults = (line = 'kinda melted ngl') => showResults(line); // QA: preview the results screen
