@@ -93,14 +93,15 @@ if ((await G()).st === 'finale') {
   for (let k = 0; k < 40 && (await F()).ph === 'arrive'; k++) { await tick(4); await shot(`fin_arrive_${String(k).padStart(2, '0')}`); }
   for (let w = 0; w < 60 && (await F()).ph !== 'locked'; w++) await tick(5);
   let k = 0, f;
+  if (process.env.HALL_ONLY) { await page.evaluate(() => { const f = window.__F; f.phase = 'stairs'; f.toDoor(); }); for (let w = 0; w < 100 && (await F()).ph !== 'hall'; w++) await page.waitForTimeout(100); }
   while ((f = await F()).ph === 'locked' && k < 400) {
     if (f.on) { if (f.look) await key(' '); else await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); } // wave until she looks up, then knock
     await tick(4); k++; // ~7.5 waves/s: a human mash rate
     if (k % 8 === 4) await shot(`fin_locked_${String(k).padStart(3, '0')}`);
   }
   console.log('door minigame took', k * 2, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
-  for (let k = 0; k < 6; k++) { await tick(18); await shot(`fin_elev_${k}`); }
-  for (let w = 0; w < 60 && (await F()).ph !== 'stairs'; w++) await tick(10);
+  if (!process.env.HALL_ONLY) { for (let k = 0; k < 6; k++) { await tick(18); await shot(`fin_elev_${k}`); }
+  for (let w = 0; w < 60 && (await F()).ph !== 'stairs'; w++) await tick(10); }
   k = 0;
   while ((f = await F()).ph === 'stairs' && k < 1500) {
     if (f.haz) { if (f.haz[1] > 0.3) await key(f.haz[0].replace('arrow', 'Arrow').replace(/Arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
@@ -109,6 +110,18 @@ if ((await G()).st === 'finale') {
     if (k % 60 === 20 || (f.haz && f.haz[1] < 0.05)) await shot(`fin_stairs_${String(k).padStart(4, '0')}`);
   }
   console.log('stairs took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
+  // hallway pitbull: react a human-ish 0.2 s after the wind-up starts (DOG_MISS: whiff the second one)
+  for (let w = 0; w < 100 && (await F()).ph !== 'hall'; w++) { await page.waitForTimeout(60); await tick(1); }
+  k = 0; let lastSt = '', n = 0;
+  const H = () => page.evaluate(() => { const h = window.__F.h; return h ? { ph: window.__F.phase, st: h.st, t: h.t, i: h.i, key: h.atk?.key, side: h.atk?.side, dodged: !!h.dodge } : { ph: window.__F.phase }; });
+  let hs;
+  while ((hs = await H()).ph === 'hall' && k < 900) {
+    if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const miss = process.env.DOG_MISS && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
+    if (hs.st !== lastSt) { lastSt = hs.st; n = 0; }
+    if (n % 6 === 0 || (hs.st === 'lunge')) await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);
+    await tick(1); k++; n++;
+  }
+  console.log('hall took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));
   for (let k = 0; k < 90; k++) { await tick(6); if (await page.evaluate(() => !!document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');
 }

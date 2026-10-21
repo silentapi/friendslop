@@ -252,6 +252,22 @@ export function deskUI() {
   };
 }
 // stairs rhythm climb: hit ↑ when the marker crosses the green zone
+// the hallway pitbull: three bites, three pips
+export function dogUI() {
+  const el = layer('dogui', `
+    <div class="dogui">
+      <div class="dtitle">🐕 DODGE THE DOG</div>
+      <div class="dpips"><i></i><i></i><i></i></div>
+      <div class="dhint">${TOUCH ? 'bite at your <b>LEFT</b>: tap <b>→</b> · <b>RIGHT</b>: tap <b>←</b> · <b>LOW</b>: tap <b>↑</b>' : 'bite at your <b>LEFT</b>: press <b>→</b> &nbsp;·&nbsp; at your <b>RIGHT</b>: press <b>←</b> &nbsp;·&nbsp; <b>LOW</b>: press <b>↑</b> to jump'}</div>
+      ${TOUCH ? '<div class="stairs"><button data-k="arrowleft">←</button><button data-k="arrowup">↑ JUMP</button><button data-k="arrowright">→</button></div>' : ''}
+    </div>`);
+  return {
+    el,
+    bind(fn) { el.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); fn(b.dataset.k); })); },
+    set(res) { el.querySelectorAll('.dpips i').forEach((p, i) => { p.className = res[i] === true ? 'ok' : res[i] === false ? 'bit' : ''; }); },
+    done(g) { el.querySelector('.dtitle').textContent = g === 'UNTOUCHABLE' ? '🐕 UNTOUCHABLE' : '🐕 ' + g; el.querySelector('.dogui').classList.add('fin'); },
+  };
+}
 export function climbUI() {
   const el = layer('climbui', `
     <div class="floor" id="floor"><small>FLOOR</small><span>1</span></div>
@@ -291,8 +307,8 @@ export function results({ next, nextN, tip, promised, pay, time, eta, ice, crash
       </div>
       <div class="ledger1">Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b> · you earned <b>${money(pay)}</b></div>
       <div class="kv">
-        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS · TRICKS<b>${S.coins} · ${S.tricks}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div>
-        <div>SLIDE PARK<b>${S.akira || '—'}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div>
+        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS · TRICKS<b>${S.coins} · ${S.tricks}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div><div>ICE LEFT<b>${Math.round(ice)}%</b></div>
+        <div>SLIDE PARK<b>${S.akira || '—'}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div><div>HALLWAY DOG<b>${S.dog || '—'}</b></div>
       </div>
       <div class="small" style="color:#cfd6dc">Kyle S: “${line}” · ${crashes ? `${crashes} crash${crashes > 1 ? 'es' : ''}` : 'no crashes'} · ${nearMiss} near misses · ice ${Math.round(ice)}%</div>
       <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>

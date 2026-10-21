@@ -27,7 +27,7 @@ export async function rider() {
     p.attach(o);
   }
   const C = await character('m/courier.glb', { tint: { casualsuit05: 0x2b3a2f } });
-  await C.load('sitidle', 'jog', 'idle', 'falling', 'facepalm', 'shrug', 'defeated');
+  await C.load('sitidle', 'jog', 'idle', 'falling', 'facepalm', 'shrug', 'defeated', 'walk', 'reaction');
   root.add(C.root);
   const helm = helmet(); C.attach('Head', helm, [0, 0.095, 0.0], [-0.12, 0, 0], 0.88);
   const bag = deliveryBag(); C.attach('Spine2', bag, [0, 0.02, -0.25], [0, Math.PI, 0], 0.82);

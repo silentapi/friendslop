@@ -169,7 +169,19 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .ledger div { display: flex; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid #e7e8ea; gap: 10px; }
 .ledger div:last-child { border: 0; font: 900 22px var(--display); }
 .ledger s { color: #9aa1a8; } .ledger .z { color: var(--danger); font-weight: 900; }
-.kv { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.kv { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+.kv b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#dogui { pointer-events: none; padding: 0; }
+.dogui { position: absolute; left: 50%; top: calc(var(--st, 0px) + 18px); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; padding: 12px 16px; border-radius: 18px; background: rgba(13,15,18,.72); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+.dtitle { font: 900 26px var(--display); font-stretch: 112%; letter-spacing: .5px; color: #fff; }
+.dogui.fin .dtitle { color: var(--gobbl); animation: bump .35s; }
+.dpips { display: flex; gap: 10px; }
+.dpips i { width: 34px; height: 12px; border-radius: 6px; background: rgba(255,255,255,.18); transition: background .15s; }
+.dpips i.ok { background: var(--gobbl); box-shadow: 0 0 12px var(--gobbl); }
+.dpips i.bit { background: var(--danger); box-shadow: 0 0 12px var(--danger); }
+.dhint { font: 700 14px/1.35 var(--body); color: #dfe5ea; text-wrap: balance; }
+.dhint b { color: #fff; }
+.dogui .stairs { pointer-events: auto; position: static; transform: none; width: 100%; display: flex; gap: 10px; }
 #climbui .floor { right: auto; left: var(--sl); }
 .kv div { background: rgba(255,255,255,.08); border-radius: 14px; padding: 10px 12px; font: 700 12px var(--body); color: var(--mute); letter-spacing: .4px; }
 .kv b { display: block; font: 900 24px var(--display); color: var(--paper); font-variant-numeric: tabular-nums; }
@@ -193,7 +205,7 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   #title .top { margin-top: 8vh; }
   .res { max-width: 560px; gap: 10px; }
   .res h2 { font-size: 40px; }
-  .kv { grid-template-columns: 1fr 1fr 1fr; }
+  .kv { grid-template-columns: 1fr 1fr 1fr 1fr; }
   .kv div { padding: 7px 12px; }
   .kv b { font-size: 21px; }
   .ledger div { padding: 8px 0; }

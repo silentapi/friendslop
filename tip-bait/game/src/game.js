@@ -678,7 +678,7 @@ function showResults(line) {
   G.delivered++; store.set('delivered', G.delivered);
   if (!G.best || G.time < G.best) { G.best = Math.round(G.time); store.set('best', G.best); }
   // delivery bonuses on top of the live score
-  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0));
+  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.dogT || 0));
   const run = Math.round(G.score), timeB = Math.round(timeLeft * 25), iceB = Math.round(G.ice * 8), cleanB = G.crashes ? 0 : 1000;
   const total = run + timeB + iceB + cleanB;
   const per = total / G.route.length, grade = per >= 26 ? 'S' : per >= 18 ? 'A' : per >= 11 ? 'B' : per >= 6 ? 'C' : 'D';
@@ -686,7 +686,7 @@ function showResults(line) {
   G.lastTotal = total; G.lastGrade = grade;
   Audio.music('chill');
   UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line,
-    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira },
+    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
     onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. He tipped $0.00. Again. 🙄 #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
 }

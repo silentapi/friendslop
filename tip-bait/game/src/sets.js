@@ -127,36 +127,84 @@ export function stairPath(s) {
 export const DOOR_Z = -9;
 export function hallway(ctx) {
   const g = new THREE.Group();
-  const len = 30;
-  const carpet = pbr('Carpet012', { world: 1.6, color: 0x8a8aa0, rough: 1 });
-  const f = mesh(new THREE.PlaneGeometry(2.6, len), carpet, { cast: false }); f.rotation.x = -Math.PI / 2; f.position.set(0, 0, -len / 2 + 4); g.add(f);
-  const wallM = pbr('painted_plaster_wall', { world: 2, color: 0xe8e2d6 });
+  const len = 30, z0 = 4, zEnd = -len + 4, W = 1.3;
+  // CC0 photo materials (Poly Haven), tiled by real-world size so nothing stretches
+  const T = (p, rx, ry, srgb = true) => { const t = tex(p, { srgb }).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
+  const std = (p, n, rx, ry, o = {}) => new THREE.MeshStandardMaterial({ map: p ? T(p, rx, ry) : null, normalMap: n ? T(n, rx, ry, false) : null, normalScale: new THREE.Vector2(o.ns ?? 0.8, o.ns ?? 0.8), color: o.color ?? 0xffffff, roughness: o.rough ?? 0.85, metalness: o.metal ?? 0 });
+  const plaster = (L, h) => std('tex/hall_wall.jpg', 'tex/hall_wall_n.jpg', L / 1.6, h / 1.6, { ns: 0.5, rough: 0.92 });
+  const panelM = (L) => std(null, 'tex/hall_wall_n.jpg', L / 1.6, 0.6, { color: 0xf3eee4, rough: 0.55, ns: 0.25 });
+  const trim = mat(0xf6f2ea, { roughness: 0.45 }), darkTrim = mat(0x3a2a20, { roughness: 0.5 });
+  const brass = mat(0xc9a35a, { metalness: 1, roughness: 0.28 }), steel = mat(0xb8bcc2, { metalness: 1, roughness: 0.35 });
+  // floor: patterned hotel runner with a navy border, carpet grain + normal
+  const carpet = mesh(new THREE.PlaneGeometry(2.6, len), std('tex/hall_carpet.jpg', 'tex/hall_carpet_n.jpg', 2, len / 1.3, { ns: 0.6, rough: 1 }), { cast: false });
+  carpet.rotation.x = -Math.PI / 2; carpet.position.set(0, 0, z0 - len / 2); g.add(carpet);
+  const border = std(null, 'tex/hall_carpet_n.jpg', 0.2, len / 1.3, { color: 0x1c2636, ns: 0.6, rough: 1 });
+  for (const sx of [-1, 1]) { const bd = mesh(new THREE.PlaneGeometry(0.2, len), border, { cast: false }); bd.rotation.x = -Math.PI / 2; bd.position.set(sx * 1.14, 0.002, z0 - len / 2); g.add(bd); }
+  // ceiling tiles + crown
+  const ceil = mesh(new THREE.PlaneGeometry(2.6, len), std('tex/hall_ceiling.jpg', 'tex/hall_wall_n.jpg', 2.6 / 1.2, len / 1.2, { rough: 0.95, color: 0xfff8ee, ns: 0.3 }), { cast: false });
+  ceil.rotation.x = Math.PI / 2; ceil.position.set(0, 2.8, z0 - len / 2); g.add(ceil);
+  // one run of wall between doors: plaster above a painted wainscot, chair rail, baseboard, crown
+  const wallRun = (sx, za, zb) => {
+    const L = za - zb; if (L <= 0.01) return; const zc = (za + zb) / 2, x = sx * W;
+    box(0.12, 2.8, L, plaster(L, 2.8), x, 1.4, zc, g);
+    box(0.02, 0.92, L, panelM(L), x - sx * 0.065, 0.46, zc, g);
+    box(0.045, 0.05, L, trim, x - sx * 0.08, 0.93, zc, g);
+    box(0.03, 0.14, L, darkTrim, x - sx * 0.075, 0.07, zc, g);
+    box(0.05, 0.07, L, trim, x - sx * 0.08, 2.765, zc, g);
+    // raised wainscot panels
+    const n = Math.max(1, Math.round(L / 0.9));
+    for (let i = 0; i < n; i++) { const pz = za - (i + 0.5) * (L / n); box(0.012, 0.56, L / n - 0.16, trim, x - sx * 0.077, 0.5, pz, g); }
+  };
   const doorZs = [-3, DOOR_Z, -15, -21];
   for (const sx of [-1, 1]) {
-    let z = 4;
-    for (const dz of doorZs) { const L = z - (dz + 0.55); if (L > 0) box(0.12, 2.8, L, wallM, sx * 1.3, 1.4, z - L / 2, g); box(0.12, 0.7, 1.1, wallM, sx * 1.3, 2.45, dz, g); z = dz - 0.55; }
-    const L = z - (-len + 4); box(0.12, 2.8, L, wallM, sx * 1.3, 1.4, z - L / 2, g);
+    let z = z0;
+    for (const dz of doorZs) { wallRun(sx, z, dz + 0.62); box(0.12, 0.66, 1.24, plaster(1.24, 0.66), sx * W, 2.47, dz, g); box(0.05, 0.07, 1.24, trim, sx * (W - 0.08), 2.765, dz, g); z = dz - 0.62; }
+    wallRun(sx, z, zEnd);
   }
-  box(2.7, 0.1, len, mat(0xf2eee6, { roughness: 0.9 }), 0, 2.8, -len / 2 + 4, g);
-  box(2.7, 2.8, 0.1, wallM, 0, 1.4, -len + 4, g);
+  // far end: a window onto the skyline; near end: the stairwell door we came through
+  const endM = plaster(2.6, 2.8);
+  box(2.7, 0.8, 0.1, endM, 0, 0.4, zEnd, g); box(2.7, 0.5, 0.1, endM, 0, 2.55, zEnd, g); for (const sx of [-1, 1]) box(0.55, 1.5, 0.1, endM, sx * 1.05, 1.55, zEnd, g);
+  const sky = new THREE.MeshBasicMaterial({ map: T('tex/sky.jpg', 0.35, 0.5), toneMapped: false, color: 0xd8e2ea }); sky.map.offset.set(0.3, 0.32);
+  const win = mesh(new THREE.PlaneGeometry(1.6, 1.5), sky, { cast: false }); win.position.set(0, 1.55, zEnd + 0.01); g.add(win);
+  box(0.05, 1.5, 0.08, darkTrim, 0, 1.55, zEnd + 0.06, g); box(1.6, 0.05, 0.08, darkTrim, 0, 1.55, zEnd + 0.06, g); box(1.7, 0.06, 0.16, trim, 0, 0.8, zEnd + 0.08, g);
+  box(2.7, 2.8, 0.1, endM, 0, 1.4, z0 + 0.05, g);
+  const stairDoor = box(1.0, 2.1, 0.05, mat(0x7d8790, { metalness: 0.4, roughness: 0.5 }), 0, 1.05, z0 - 0.02, g); void stairDoor;
+  box(0.8, 0.05, 0.04, steel, 0, 1.0, z0 - 0.06, g);
+  const exitTex = canvasTex('hallexit', 256, 96, (c, w, h) => { c.fillStyle = '#0d3b1d'; c.fillRect(0, 0, w, h); c.fillStyle = '#4dff8a'; c.font = '900 64px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('EXIT', w / 2, h / 2 + 4); });
+  const ex = mesh(new THREE.PlaneGeometry(0.36, 0.135), new THREE.MeshBasicMaterial({ map: exitTex, toneMapped: false }), { cast: false }); ex.position.set(0, 2.38, z0 - 0.03); ex.rotation.y = Math.PI; g.add(ex);
+  // doors: oak veneer leaves with raised panels, brass lever + peephole, steel kick plate, white casing, number plaque
+  const woodM = std('tex/hall_wood.jpg', 'tex/hall_wood_n.jpg', 1, 1.8, { ns: 0.6, rough: 0.5, color: 0xb08a6a });
   const doors = {};
   doorZs.forEach((dz, i) => {
     for (const sx of [-1, 1]) {
-      const n = 2001 + i * 2 + (sx > 0 ? 1 : 0);
-      for (const o of [-0.55, 0.55]) box(0.16, 2.2, 0.07, mat(0x2a221c), sx * 1.27, 1.1, dz + o, g);
-      box(0.16, 0.07, 1.17, mat(0x2a221c), sx * 1.27, 2.17, dz, g);
-      const leaf = new THREE.Group(); leaf.position.set(sx * 1.27, 0, dz - 0.5); g.add(leaf);
-      box(0.05, 2.12, 1.0, pbr('wood_table_001', { world: 1, color: 0x6a4a34, rough: 0.5 }), 0, 1.06, 0.5, leaf);
-      const knob = cyl(0.03, 0.03, 0.07, mat(0xc8a860, { metalness: 1, roughness: 0.25 }), 12, -sx * 0.05, 1.0, 0.92, leaf); knob.rotation.z = Math.PI / 2;
-      const plate = plane(signTex('d' + n, String(n), { w: 256, h: 128, font: '700 80px system-ui', color: '#f4efe6', bg: '#1a1a1a' }), 0.22, 0.11, { transparent: false }); plate.position.set(sx * 1.23, 1.65, dz + 0.75); plate.rotation.y = -sx * Math.PI / 2; g.add(plate);
-      const sc = box(0.06, 0.28, 0.14, emissive(0xffd8a8, 2.2), sx * 1.24, 1.95, dz + 1.2, g); void sc;
+      const n = 2001 + i * 2 + (sx > 0 ? 1 : 0), x = sx * (W - 0.03);
+      for (const o of [-0.6, 0.6]) box(0.12, 2.2, 0.08, trim, x - sx * 0.02, 1.1, dz + o, g);
+      box(0.12, 0.09, 1.28, trim, x - sx * 0.02, 2.2, dz, g);
+      const leaf = new THREE.Group(); leaf.position.set(x, 0, dz - 0.52); g.add(leaf);
+      box(0.05, 2.12, 1.04, woodM, 0, 1.06, 0.52, leaf);
+      for (const [py, ph] of [[1.55, 0.8], [0.6, 0.8]]) { const pnl = box(0.012, ph, 0.72, woodM, -sx * 0.03, py, 0.52, leaf); pnl.scale.set(1, 1, 1); }
+      box(0.008, 0.22, 0.9, steel, -sx * 0.03, 0.13, 0.52, leaf);
+      const lever = box(0.03, 0.025, 0.13, brass, -sx * 0.05, 1.0, 0.92, leaf); void lever;
+      cyl(0.03, 0.03, 0.02, brass, 14, -sx * 0.035, 1.0, 0.96, leaf).rotation.z = Math.PI / 2;
+      cyl(0.012, 0.012, 0.02, brass, 10, -sx * 0.035, 1.55, 0.52, leaf).rotation.z = Math.PI / 2;
+      const plate = plane(signTex('d' + n, String(n), { w: 256, h: 128, font: '700 80px Georgia, serif', color: '#e8cf8a', bg: '#1a1612' }), 0.2, 0.1, { transparent: false }); plate.position.set(sx * (W - 0.065), 1.6, dz + 0.78); plate.rotation.y = -sx * Math.PI / 2; g.add(plate);
       doors[n] = { leaf, z: dz, sx };
     }
   });
-  for (let z = 2; z > -len + 4; z -= 4) { box(0.5, 0.03, 0.5, emissive(0xfff0dc, 5), 0, 2.74, z, g); const pl = new THREE.PointLight(0xffe2c0, 3.5, 6, 2); pl.position.set(0, 2.5, z); g.add(pl); }
+  // framed art + wall sconces between doors (the warm pools of light down the corridor)
+  const artTex = (k) => canvasTex('hallart' + k, 256, 320, (c, w, h) => { const r = mulberry(31 + k); c.fillStyle = ['#e9e2d2', '#d9dfe3', '#efe6d6'][k % 3]; c.fillRect(0, 0, w, h); for (let i = 0; i < 7; i++) { c.fillStyle = ['#c0553a', '#2d4b6b', '#d8a34a', '#6b8f71', '#2a2a2a'][Math.floor(r() * 5)]; c.globalAlpha = 0.75; c.beginPath(); c.arc(r() * w, r() * h, 20 + r() * 70, 0, 7); c.fill(); } c.globalAlpha = 1; });
+  const shadeM = emissive(0xffe6c4, 2.4);
+  let k = 0;
+  for (const sx of [-1, 1]) for (const z of [0.6, -6, -12, -18]) {
+    const art = plane(artTex(k++), 0.5, 0.62, { transparent: false }); art.position.set(sx * (W - 0.092), 1.62, z); art.rotation.y = -sx * Math.PI / 2; g.add(art);
+    box(0.03, 0.68, 0.56, darkTrim, sx * (W - 0.075), 1.62, z, g);
+    for (const dz of [-1.0, 1.0]) { box(0.02, 0.18, 0.1, brass, sx * (W - 0.07), 1.95, z + dz, g); cyl(0.07, 0.05, 0.16, shadeM, 14, sx * (W - 0.14), 2.02, z + dz, g, { cast: false }); }
+  }
+  // flush round ceiling fixtures
+  for (let z = 2; z > zEnd; z -= 4) { cyl(0.2, 0.2, 0.03, emissive(0xfff0dc, 5), 24, 0, 2.785, z, g, { cast: false }); const pl = new THREE.PointLight(0xffe2c0, 3.5, 6, 2); pl.position.set(0, 2.5, z); g.add(pl); }
   // Kyle's apartment glimpse: warm lamp light + window with the skyline beyond the door
   const apt = new THREE.Group(); g.add(apt);
-  box(4, 0.05, 4, pbr('wood_floor', { world: 2, rough: 0.5 }), 3.3, 0.01, DOOR_Z, apt);
+  box(4, 0.05, 4, std('tex/hall_wood.jpg', null, 2, 2, { rough: 0.5, color: 0x9a7a5a }), 3.3, 0.01, DOOR_Z, apt);
   box(0.1, 2.8, 4, mat(0xd8cfc0, { roughness: 0.9 }), 5.2, 1.4, DOOR_Z, apt);
   const L = new THREE.PointLight(0xffc890, 0, 8, 1.6); L.position.set(3, 2, DOOR_Z + 0.5); apt.add(L);
   g.userData = { doors, aptLight: L };

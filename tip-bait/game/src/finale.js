@@ -1,14 +1,21 @@
 // The delivery finale: pull up at the CITITOWER 101 canopy (real-life vs in-game panel) → elevator OUT OF ORDER
 // → climb 20 floors (alternate LEFT/RIGHT taps) → Kyle S opens 2004, takes it, sips, complains → takes the tip.
-import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, box, cyl, mat } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeIn, easeOut, easeInOut, damp, box, cyl, mat } from './core.js';
 import { character, ik2, coldCup } from './chars.js';
 import * as Sets from './sets.js';
 import * as KY from './kyle.js';
+import { pitbull, prefetchDog } from './dog.js';
+
+// floor-20 hallway blocking (corridor runs along -z, x ∈ ±1.24): courier walks in from the stairs, she walks the dog toward him
+const HALL = { c0: 3.0, c: -1.5, cx: 0.25, d0: -6.4, d: -2.95, dx: -0.3, w0: -7.2, w: -3.75, wx: -0.64 };
+const LUNGE = 0.17, DODGE_X = { arrowleft: -0.52, arrowright: 0.52, arrowup: 0 };
 
 const KYLE_LOOK = { maps: { casualsuit06: 'tex/kyle_fit.jpg', shoes05: 'tex/kyle_shoes.jpg' } };
 let kyleP = null;
 export function prefetchKyle() { return (kyleP ||= character('m/kyle.glb', KYLE_LOOK).then(async (K) => { await K.load('idle', 'shrug'); for (const f of ['LeftFoot', 'RightFoot']) K.bone(f).scale.setScalar(1.18); K.captureRest(); return K; })); }
 
+let walkP = null;
+export function prefetchWalker() { return (walkP ||= character('m/tourist_f.glb', { tint: { casualsuit02: 0x8e2f45 } }).then(async (C) => { await C.load('walk', 'idle', 'shrug'); return C; })); }
 let recP = null;
 export function prefetchReceptionist() { return (recP ||= character('m/tourist_f.glb', { tint: { casualsuit02: 0x3a4a6a } }).then(async (C) => { await C.load('sitidle', 'idle', 'point'); return C; })); }
 function phone() { const g = new THREE.Group(); box(0.075, 0.15, 0.012, mat(0x111214, { roughness: 0.3 }), 0, 0, 0, g); box(0.065, 0.13, 0.002, new THREE.MeshBasicMaterial({ color: 0x8fd8ff }), 0, 0, 0.007, g); return g; }
@@ -41,7 +48,7 @@ export class Finale {
   start() {
     const { G, UI, Audio } = this;
     UI.skipChip(true).addEventListener('click', () => this.skip());
-    prefetchKyle(); prefetchReceptionist(); G.R.root.visible = true;
+    prefetchKyle(); prefetchReceptionist(); prefetchWalker(); prefetchDog(); G.R.root.visible = true;
     Audio.music('chill'); Audio.sfx('skid', 0.9);
     this.c0 = this.camera.position.clone(); this.l0 = new THREE.Vector3(); this.camera.getWorldDirection(this.l0); this.l0.multiplyScalar(10).add(this.c0);
     const ud = G.citi.userData;
@@ -297,25 +304,232 @@ export class Finale {
       UI.pop('FLOOR 20', `${g === 'GASSED' ? 'gassed 😮‍💨' : g + ' climb 💪'} · +${pts}`); setTimeout(() => this.toDoor(), 900);
     }
   }
-  // ---------------------------------------------------------------- Kyle's door
+  // ---------------------------------------------------------------- floor 20: the neighbour's pitbull, then Kyle's door
   async toDoor() {
     if (this.phase !== 'stairs') return;
-    const { UI, Audio, G } = this;
+    const { UI, G } = this;
     window.removeEventListener('keydown', this.keyH);
     UI.remove('climbui'); UI.remove('qte');
     this.phase = 'loadingDoor';
     const s = interiorScene(this.world.environment); s.environmentIntensity = 0.5;
     const hall = Sets.hallway(); s.add(hall);
     this.hall = hall; this.d = hall.userData.doors[2004];
-    const K = await prefetchKyle(); s.add(K.root); this.K = K;
+    const [K, W, dog] = await Promise.all([prefetchKyle(), prefetchWalker(), pitbull()]);
+    s.add(K.root); K.root.visible = false; this.K = K;
+    s.add(W.root); W.root.visible = true; this.W = W;
+    this.dog = dog; s.add(dog.root);
+    this.leash = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.6 })); s.add(this.leash);
+    // the red "it's coming here" floor marker + a ❗ over the dog while he winds up
+    this.zoneM = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0, depthWrite: false }));
+    this.zoneM.rotation.x = -Math.PI / 2; this.zoneM.renderOrder = 3; s.add(this.zoneM);
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#ff2a1a'; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.fill(); x.lineWidth = 8; x.strokeStyle = '#fff'; x.stroke(); x.font = '900 84px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText('!', 64, 70);
+    const bt = new THREE.CanvasTexture(c); bt.colorSpace = THREE.SRGBColorSpace;
+    this.bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: bt, depthTest: false })); this.bang.renderOrder = 9; this.bang.visible = false; s.add(this.bang);
     const R = G.R; s.add(R.root);
-    R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.set(0, Math.PI / 2, 0);
     this.cup.removeFromParent(); s.add(this.cup);
-    this.scene = s; this.phase = 'door'; this.t = 0;
+    this.scene = s;
+    this.startHall();
+  }
+  startHall() {
+    const { UI, Audio } = this;
+    this.phase = 'hall'; this.t = 0; this.W.wave = 0; this.camK = null;
+    // three attacks, never the same side twice in a row, each faster than the last
+    const sides = []; for (let i = 0; i < 3; i++) { const opts = [-1, 0, 1].filter((v) => v !== sides[i - 1]); sides.push(opts[Math.floor(Math.random() * opts.length)]); }
+    this.h = { st: 'intro', t: 0, i: 0, sides, res: [], pen: 0, slow: 1, cx: HALL.cx, cz: HALL.c0, dx: HALL.dx, dz: HALL.d0, wz: HALL.w0, gait: 0, barkT: 9, nextBark: 0, shake: 0, jawK: 0, dodge: null, atk: null, look: 0, bit: 0 };
+    this.keyH = (e) => { if (!e.repeat && this.phase === 'hall') this.hallKey(e.key.toLowerCase(), e); };
+    window.addEventListener('keydown', this.keyH);
+    Audio.music('tense'); Audio.sfx('creak', 0.6, 1.3);
+    UI.skipChip(false);
+  }
+  hallKey(k, e) {
+    const h = this.h, map = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup' }; k = map[k] || k;
+    if (!['arrowleft', 'arrowright', 'arrowup'].includes(k)) return;
+    e?.preventDefault();
+    if ((h.st !== 'tele' && h.st !== 'lunge') || h.dodge) return; // one committed move per attack
+    h.dodge = { k, t: 0, ok: k === h.atk.key };
+    this.Audio.sfx('whoosh', 0.6, k === 'arrowup' ? 1.3 : 1.6);
+  }
+  bark(g = 0.9) { const h = this.h; h.barkT = 0; this.Audio.sfx('bark', g, 0.92 + Math.random() * 0.16); h.shake = Math.max(h.shake, 0.25); }
+  resolveBite() {
+    const h = this.h, a = h.atk, G = this.G, UI = this.UI, A = this.Audio, ok = h.dodge?.ok;
+    h.res.push(ok); this.dui.set(h.res);
+    A.sfx('snap', 1, ok ? 1 : 0.9);
+    if (ok) {
+      const pts = 150 * (h.i + 1); G.score += pts; h.slow = 0.22; // a beat of slow-mo on the empty snap
+      this.hq.result(h.i === 2 && h.res.every(Boolean) ? 'PERFECT' : 'NICE', a.side === 0 ? 'hopped it' : 'sidestepped');
+      UI.pop('DODGED', `+${pts}`, { top: 24 });
+    } else {
+      h.bit = 1; h.pen += 1.6; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1;
+      this.hq.result('MISS', h.dodge ? (h.dodge.k === 'arrowup' || Math.sign(DODGE_X[h.dodge.k]) === a.side ? 'dodged into it' : 'wrong way') : 'too slow');
+      UI.pop(a.side === 0 ? 'ANKLE BITER' : 'GOT YOUR SLEEVE', '+1.6s · ice −7', { top: 24 }); A.sfx('crash', 0.35, 1.6); A.sfx('growl', 0.9, 1.1); navigator.vibrate?.(60);
+      h.shake = 0.9;
+    }
+  }
+  hallLine(text, ttl = 1700) { const UI = this.UI; UI.sceneCap(`<span style="color:#ffb3c1">neighbour:</span> “${text}”`); clearTimeout(this.capT); this.capT = setTimeout(() => this.phase === 'hall' && UI.remove('scene'), ttl); }
+  updateHall(rdt) {
+    const h = this.h, R = this.G.R, D = this.dog, W = this.W, cam = this.camera, UI = this.UI, A = this.Audio;
+    h.slow = damp(h.slow, 1, 2.2, rdt); const dt = rdt * h.slow;
+    this.t += dt; h.t += dt; h.barkT += dt; h.shake = Math.max(0, h.shake - rdt * 2.5);
+    const jawBark = Math.exp(-h.barkT * 11) * Math.min(1, h.barkT / 0.03);
+    // defaults; each state overrides what it needs
+    let dp = { gait: h.gait, stride: 0, crouch: 0.25, angry: 1, tail: 0.5, wag: 0, jaw: 0.08 + jawBark * 0.9, headYaw: 0, headPitch: -jawBark * 0.25, t: this.t };
+    let dogYaw = 0, dogFwd = 0, wWalk = false, wPull = 0, cWalk = 0, cYaw = Math.PI, cDx = 0, cDy = 0, cTilt = 0, camK = 'game';
+    const home = V(HALL.dx, 0, HALL.d), toC = Math.atan2(h.cx - h.dx, h.cz - h.dz);
+    if (h.st === 'intro') {
+      // he walks in; she walks him toward you; the dog clocks you, plants, and loses it
+      const t = h.t, walk = 1 - smooth(seg(t, 1.5, 2.0));
+      h.cz = lerp(HALL.c0, HALL.c, easeOut(seg(t, 0, 2.0)) ); cWalk = walk;
+      const stop = smooth(seg(t, 1.15, 1.45));
+      h.dz = lerp(HALL.d0, HALL.d, Math.min(1, seg(t, 0, 1.45) * 1.0)); h.wz = lerp(HALL.w0, HALL.w, easeOut(seg(t, 0, 1.95)));
+      h.gait += dt * 13 * (1 - stop); dp.stride = 1 - stop; dp.angry = stop; dp.tail = 0.1 + stop * 0.5; dp.wag = 1 - stop; dp.crouch = stop * 0.3; dp.jaw = stop * (0.08 + jawBark * 0.9);
+      wWalk = t < 1.95; wPull = stop * 0.6;
+      if (t > 1.5 && !h.g1) { h.g1 = true; A.sfx('growl', 0.9); }
+      if (t > 1.95 && !h.th) { h.th = true; UI.thought('…is that a pitbull'); }
+      if (t > 2.05 && h.nextBark < 4 && h.barkT > 0.28) { h.nextBark++; this.bark(); }
+      if (t > 2.4 && !h.l1) { h.l1 = true; this.hallLine('BRUNO. he’s never like this i swear', 2100); }
+      camK = t < 2.0 ? 'follow' : t < 3.6 ? 'dogcu' : 'game';
+      if (t > 3.6) { h.st = 'standoff'; h.t = 0; h.wait = 1.0 + Math.random() * 0.5; this.dui = UI.dogUI(); this.dui.bind((k) => this.hallKey(k)); }
+    } else if (h.st === 'standoff') {
+      // pacing at the end of the leash, barking
+      dp.crouch = 0.3; h.dx = HALL.dx + Math.sin(this.t * 3.1) * 0.13; dp.stride = 0.35; h.gait += dt * 7; dp.headYaw = Math.sin(this.t * 2.3) * 0.12;
+      if (h.barkT > 0.32 + Math.random() * 0.25) this.bark(0.8);
+      wPull = 0.5;
+      if (h.t > h.wait) {
+        const side = h.sides[h.i], key = side === 0 ? 'arrowup' : side < 0 ? 'arrowright' : 'arrowleft';
+        const target = V(h.cx + side * 0.24, side === 0 ? 0.25 : 0.95, h.cz);
+        h.atk = { side, key, target, tele: [0.6, 0.48, 0.4][h.i], from: V(h.dx, 0, h.dz) };
+        h.st = 'tele'; h.t = 0; h.dodge = null;
+        const LBL = { '-1': 'he’s going for your <b>LEFT</b> — dodge right', 0: 'going <b>LOW</b> for your ankles — jump', 1: 'he’s going for your <b>RIGHT</b> — dodge left' };
+        this.hq = UI.qte({ key, label: LBL[side] }); A.sfx('growl', 1, 1.15); A.sfx('pop', 0.7, 0.6);
+      }
+    } else if (h.st === 'tele' || h.st === 'lunge') {
+      const a = h.atk, side = a.side;
+      if (h.st === 'tele') {
+        // the wind-up: drops low, weight onto the back legs, head snaps to where he's going, lip curls
+        const k = smooth(clamp(h.t / (a.tele * 0.55)));
+        dp.crouch = 0.3 + 0.7 * k; dp.pitch = side === 0 ? 0.12 * k : -0.05 * k; dp.roll = -side * 0.12 * k; dp.fwd = -0.08 * k;
+        dp.headYaw = side * 0.42 * k; dp.headPitch = side === 0 ? 0.35 * k : -0.15 * k; dp.jaw = 0.25 + Math.sin(this.t * 60) * 0.04; dp.tail = 0.7;
+        dogYaw = Math.atan2(a.target.x - a.from.x, a.target.z - a.from.z) * k;
+        h.dx = a.from.x - Math.sin(dogYaw) * 0.04 * k;
+        this.hq.set(1 - h.t / (a.tele + LUNGE));
+        if (h.t >= a.tele) { h.st = 'lunge'; h.t = 0; this.bark(1.1); }
+      } else {
+        // the lunge: launches at the target, jaws wide, snaps shut at contact
+        const u = clamp(h.t / LUNGE), e = 1 - (1 - u) * (1 - u), dir = Math.atan2(a.target.x - a.from.x, a.target.z - a.from.z);
+        const dist = Math.hypot(a.target.x - a.from.x, a.target.z - a.from.z) - 0.52;
+        h.dx = a.from.x + Math.sin(dir) * dist * e; h.dz = a.from.z + Math.cos(dir) * dist * e; dogYaw = dir;
+        const high = side !== 0;
+        dp.crouch = 1 - u; dp.rise = high ? Math.sin(u * Math.PI * 0.6) * 0.36 : 0.02; dp.pitch = high ? -0.55 * u : 0.15; dp.reach = u; dp.stride = 0;
+        dp.headPitch = high ? -0.15 : 0.45; dp.jaw = u < 0.85 ? 1 : 0.2; dp.angry = 1; dp.tail = 0.9;
+        this.hq.set(1 - (a.tele + h.t) / (a.tele + LUNGE));
+        wPull = 1;
+        if (h.t >= LUNGE) { h.st = 'res'; h.t = 0; h.lungeEnd = V(h.dx, 0, h.dz); h.lungeYaw = dir; this.resolveBite(); }
+      }
+    } else if (h.st === 'res') {
+      // either chomping air (and yanked back) or hanging off your sleeve shaking his head
+      const a = h.atk, high = a.side !== 0, hold = h.bit ? 0.75 : 0.12, back = smooth(seg(h.t, hold, hold + 0.5));
+      h.dx = lerp(h.lungeEnd.x, home.x, back); h.dz = lerp(h.lungeEnd.z, home.z, back); dogYaw = h.lungeYaw * (1 - back);
+      dp.rise = high ? (h.bit ? 0.3 : 0.3 * (1 - smooth(seg(h.t, 0, 0.18)))) * (1 - back) : 0; dp.pitch = high ? -0.5 * (1 - back) : 0.1;
+      dp.reach = 1 - smooth(seg(h.t, hold * 0.5, hold + 0.3)); dp.crouch = 0.3 * back; dp.jaw = h.bit ? 0.3 * (1 - back) : jawBark * 0.6;
+      if (h.bit && h.t < hold) { dp.headYaw = Math.sin(this.t * 34) * 0.55; dp.roll = Math.sin(this.t * 34) * 0.12; }
+      wPull = 1 - back * 0.5;
+      if (h.t > hold + 0.05 && !h.yank) { h.yank = true; A.sfx('step', 1, 0.6); if (h.bit) this.hallLine(['BRUNO drop it!!', 'oh my god BRUNO', 'he’s playing!! he’s playing'][h.i], 1500); else if (h.i === 1) this.hallLine('he just wants to say hi!', 1400); }
+      if (h.t > hold + 0.75) {
+        h.i++; h.bit = 0; h.dodge = null; h.yank = false; h.t = 0;
+        if (h.i >= 3) { h.st = 'bored'; this.finishDog(); } else { h.st = 'standoff'; h.wait = [1.1, 0.8, 0.6][h.i] * 0.7 + Math.random() * 0.55; }
+      }
+    } else if (h.st === 'bored') {
+      // gets bored: sits, yawns, scratches nothing in particular, tail starts going
+      const t = h.t, sit = smooth(seg(t, 0.2, 0.7)), yawn = Math.sin(Math.PI * seg(t, 0.9, 1.9));
+      dp = { gait: h.gait, sit, angry: 1 - sit, tail: 0.25, wag: sit, jaw: yawn * 1.0, headPitch: -yawn * 0.4, headYaw: Math.sin(t * 1.3) * 0.2 * sit, crouch: 0, t: this.t };
+      camK = t < 2.6 ? 'two' : 'game';
+      if (t > 0.9 && !h.yw) { h.yw = true; A.sfx('growl', 0.35, 0.7); }
+      if (t > 1.0 && !h.fr) { h.fr = true; this.hallLine('see? he’s friendly 🙂', 1800); W.wave = 1; }
+      if (t > 2.5 && !h.th2) { h.th2 = true; UI.thought('friendly.', 1600); }
+      if (t > 2.9) { h.st = 'pass'; h.t = 0; UI.remove('qte'); UI.skipChip(true).addEventListener('click', () => this.skip()); }
+    } else if (h.st === 'pass') {
+      // she walks him on past you; you squeeze by and make for 2004
+      const t = h.t, T = 3.0;
+      h.wz = HALL.w + t * 1.35; h.dz = h.wz + 0.75; h.dx = -0.3 + Math.sin(t * 2) * 0.03; h.gait += dt * 12; dp = { gait: h.gait, stride: 0.9, angry: 0, tail: 0.3, wag: 1, crouch: 0, jaw: jawBark * 0.6, headYaw: clamp(0.9 * smooth(seg(t, 0.3, 1.2)) * (1 - smooth(seg(t, 1.6, 2.4))), -1, 1), t: this.t };
+      wWalk = true;
+      if (t > 1.0 && !h.boof) { h.boof = true; this.bark(0.6); }
+      const u = easeInOut(seg(t, 0, T));
+      h.cz = lerp(HALL.c, Sets.DOOR_Z - 0.15, u); h.cx = lerp(HALL.cx, 0.62, smooth(seg(t, 0, 0.7))) * (1 - smooth(seg(t, 1.7, 2.6))) + 0.15 * smooth(seg(t, 1.7, 2.6));
+      cWalk = 1 - smooth(seg(t, T - 0.35, T)); cYaw = lerp(Math.PI, Math.PI / 2, smooth(seg(t, T - 0.5, T)));
+      camK = 'pass';
+      if (t > T + 0.15) return this.enterDoor();
+    }
+    // ---- the courier
+    const d = h.dodge;
+    if (d) {
+      d.t += dt;
+      const dx = DODGE_X[d.k] ?? 0, k = smooth(seg(d.t, 0, 0.16)) * (1 - smooth(seg(d.t, 0.75, 1.15)));
+      if (d.k === 'arrowup') { const u = seg(d.t, 0, 0.5); cDy = Math.sin(Math.PI * u) * 0.55; } else { cDx = dx * k; cTilt = -dx * 0.35 * Math.sin(Math.PI * seg(d.t, 0, 0.3)); }
+    }
+    const bitK = h.st === 'res' && h.bit ? 1 - smooth(seg(h.t, 0.6, 1.1)) : 0;
+    const pos = V(h.cx + cDx, cDy, h.cz + bitK * 0.18 * Math.sin(this.t * 34) * 0.15);
+    R.root.position.copy(pos); R.root.rotation.set(0, cYaw, 0);
+    if (cWalk > 0.05) R.walk(h.st === 'pass' ? 'jog' : 'walk', this.t * (h.st === 'pass' ? 1.05 : 1.0), { offset: V(0, 0, 0), yaw: 0 });
+    else if (bitK > 0) { R.C.root.position.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0); R.C.pose([['idle', this.t, 1], ['reaction', 0.25 + h.t * 1.4, 0.45 * bitK, false]]); }
+    else R.walk('idle', this.t, { offset: V(0, 0, 0), yaw: 0 });
+    R.root.rotateZ(cTilt);
+    if (bitK > 0) { R.root.rotateX(-0.12 * bitK); }
+    if (cDy > 0.02) { // tuck the feet up for the hop
+      R.C.root.updateMatrixWorld(true);
+      for (const [s, side] of [[1, 'Left'], [-1, 'Right']]) ik2(R.C.bone(side + 'UpLeg'), R.C.bone(side + 'Leg'), R.C.bone(side + 'Foot'), R.root.localToWorld(V(s * 0.12, 0.2 + cDy * 0.2, 0.12)), R.root.localToWorld(V(s * 0.12, 0.6, 1.2)));
+    }
+    R.C.root.updateMatrixWorld(true);
+    palmCup(this.cup, R.C);
+    // ---- the dog
+    D.root.position.set(h.dx, 0, h.dz); D.root.rotation.y = h.st === 'pass' ? 0 : (h.st === 'tele' || h.st === 'lunge' || h.st === 'res') ? dogYaw : toC * 0.6;
+    dp.fwd = (dp.fwd || 0) + dogFwd; D.pose(dp);
+    // ---- the neighbour, leash in her left hand
+    W.root.position.set(HALL.wx, 0, h.wz); W.root.rotation.set(0, 0, 0);
+    if (wWalk) W.pose([['walk', this.t * 1.1]]);
+    else if (W.wave) W.pose([['shrug', 0.3 + seg(h.t, 1.0, 2.2) * 1.2, 1, false]]);
+    else W.pose([['idle', this.t]]);
+    const clip = D.clip(), hand0 = W.root.localToWorld(V(0.2, 0.92, 0.34)), hand = hand0.clone().lerp(clip.clone().add(V(0, 0.35, 0)), 0.18 * wPull);
+    ik2(W.bone('LeftArm'), W.bone('LeftForeArm'), W.bone('LeftHand'), hand, W.root.localToWorld(V(0.7, 0.6, -0.5)));
+    if (wPull > 0.6) { const sp = W.bone('Spine'); sp.rotateX(0.12 * (wPull - 0.6)); sp.updateMatrixWorld(true); }
+    const grip = W.boneWorld('LeftHand'), len = grip.distanceTo(clip), sag = Math.max(0, 1.9 - len) * 0.45 + 0.03;
+    const mid = grip.clone().lerp(clip, 0.5); mid.y -= sag;
+    this.leash.geometry.dispose(); this.leash.geometry = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(grip, mid, clip), 18, 0.007, 5);
+    // ---- danger marker + ❗
+    const tele = h.st === 'tele' || h.st === 'lunge';
+    if (tele) { const a = h.atk; this.zoneM.position.set(a.side === 0 ? h.cx : a.target.x + a.side * 0.05, 0.012, a.side === 0 ? h.cz - 0.32 : h.cz); this.zoneM.scale.setScalar(a.side === 0 ? 1.15 : 0.8); }
+    this.zoneM.material.opacity = tele ? 0.38 + 0.22 * Math.sin(this.t * 40) : damp(this.zoneM.material.opacity, 0, 10, rdt);
+    this.bang.visible = h.st === 'tele'; if (this.bang.visible) { this.bang.position.copy(D.head.getWorldPosition(V())).add(V(0, 0.42, 0)); const p = 0.32 * (1 + 0.15 * Math.sin(this.t * 30)); this.bang.scale.set(p, p, 1); }
+    // ---- camera
+    const sh = h.shake * h.shake * 0.05, jit = V(Math.sin(this.t * 71) * sh, Math.sin(this.t * 53) * sh, 0);
+    let cp, cl, fov;
+    if (camK === 'follow') { cp = pos.clone().add(V(-0.55, 1.68, 2.0)); cl = pos.clone().add(V(0.15, 1.05, -3)); fov = 56; }
+    else if (camK === 'dogcu') { const hd = D.head.getWorldPosition(V()); cp = V(h.dx + 0.42, 0.52, h.dz + 1.3); cl = hd.add(V(0, -0.1, -0.12)); fov = 44; }
+    else if (camK === 'two') { cp = V(0.95, 1.3, (h.dz + h.cz) / 2 + 0.5); cl = V(-0.45, 0.7, h.dz - 0.3); fov = 52; }
+    else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, Sets.DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, Sets.DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
+    else { const push = h.st === 'lunge' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; this.camPush = damp(this.camPush || 0, push, 10, rdt); cp = V(-0.95, 1.78 - this.camPush * 0.1, HALL.c + 2.35 - this.camPush * 0.35); cl = V(-0.1, 0.62, HALL.c - 1.35); fov = 54 - this.camPush * 4; }
+    if (camK !== this.camK) { this.camK = camK; cam.position.copy(cp); } // hard cuts between shots, smooth within
+    cam.position.lerp(cp, 1 - Math.exp(-8 * rdt)); cam.position.add(jit);
+    cam.lookAt(cl); cam.fov = fov; cam.updateProjectionMatrix();
+  }
+  finishDog() {
+    const h = this.h, G = this.G, UI = this.UI, n = h.res.filter(Boolean).length;
+    const g = ['CHEW TOY', 'CHEWED', 'NICKED', 'UNTOUCHABLE'][n], pts = [0, 100, 250, 700][n];
+    G.score += pts; G.fin = { ...(G.fin || {}), dog: g, dogT: h.pen };
+    this.dui?.done(g); setTimeout(() => UI.remove('dogui'), 1600);
+    UI.pop(g, n === 3 ? `didn’t lay a tooth on you · +${pts}` : n ? `${3 - n} bite${3 - n > 1 ? 's' : ''} · +${pts}` : 'he had a great time', { top: 24 });
+    this.Audio.sfx(n === 3 ? 'jingle' : 'pop', 0.7);
+  }
+  enterDoor() {
+    const { UI, Audio, G } = this, R = G.R;
+    UI.remove('scene'); UI.remove('dogui'); UI.remove('qte'); clearTimeout(this.capT);
+    if (this.h && !G.fin?.dog) { this.h.res.length = 3; this.finishDog(); }
+    this.W.root.visible = false; this.dog.root.visible = false; this.leash.visible = false; this.zoneM.visible = false; this.bang.visible = false;
+    R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.set(0, Math.PI / 2, 0);
+    this.phase = 'door'; this.t = 0;
     UI.skipChip(true).addEventListener('click', () => this.skip());
-    const late = G.time + (G.stairTime || 10) > G.etaTotal + 11;
-    this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
-    Audio.music('tense'); Audio.sfx('creak', 0.9);
+    const late = G.time + (G.stairTime || 10) + (G.fin?.dogT || 0) > G.etaTotal + 11;
+    this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.fin?.dog === 'CHEW TOY' ? 'why is ur sleeve wet' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
+    Audio.sfx('creak', 0.9);
   }
   updateDoor(dt) {
     const t = (this.t += dt), R = this.G.R, K = this.K, cam = this.camera, A = this.Audio, UI = this.UI;
@@ -507,6 +721,7 @@ export class Finale {
     if (this.phase === 'arrive' && !this.G.akira?.res) this.toLocked();
     else if (this.phase === 'arrive' && this.sl?.hold > 0) this.sl.hold = 0.01;
     else if (this.phase === 'elevator') this.toStairs();
+    else if (this.phase === 'hall' && (this.h.st === 'bored' || this.h.st === 'pass')) this.enterDoor();
     else if (this.phase === 'door' && this.t < 3.6) { this.t = 3.6; this.UI.remove('scene'); this.cup.visible = false; this.Audio.sfx('boom', 0.4); }
     else if (this.phase === 'door' && this.t < 6.8) { this.t = 6.85; }
   }
@@ -515,6 +730,7 @@ export class Finale {
     else if (this.phase === 'locked') this.updateLocked(dt);
     else if (this.phase === 'elevator') this.updateElevator(dt);
     else if (this.phase === 'stairs') this.updateStairs(dt);
+    else if (this.phase === 'hall') this.updateHall(dt);
     else if (this.phase === 'door') this.updateDoor(dt);
     else if (this.phase === 'post') this.updatePost(dt);
   }
@@ -523,6 +739,7 @@ export class Finale {
     window.removeEventListener('keydown', this.keyH);
     const R = this.G.R; R.bike.visible = true; R.helm.visible = true; R.cup.visible = true; R.root.visible = true; R.bike.rotation.set(0, 0, 0); R.bag.visible = true; this.sl?.fx.g.removeFromParent();
     if (this.K) this.K.root.removeFromParent();
+    this.W?.root.removeFromParent(); this.UI.remove('dogui'); clearTimeout(this.capT);
     this.cup?.removeFromParent();
     this.active = false;
   }
