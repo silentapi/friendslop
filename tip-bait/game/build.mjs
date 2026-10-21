@@ -20,14 +20,29 @@ console.log('built', (html.length / 1024).toFixed(0), 'KB page');
 const site = join(here, 'dist-site');
 rmSync(site, { recursive: true, force: true }); mkdirSync(site, { recursive: true });
 execSync(`npx -y esbuild@0.24.0 ${join(here, 'src/game.js')} --bundle --format=esm --target=es2020 --minify --outfile=${join(site, 'game.js')}`, { stdio: 'inherit' });
+// Link previews (Discord, iMessage, Slack, X): crawlers need an absolute og:image URL, so pass the site's public
+// origin at build time: SITE_URL=https://tipbait.example node tip-bait/game/build.mjs
+const SITE = (process.env.SITE_URL || '').replace(/\/+$/, '');
+if (!SITE) console.warn('SITE_URL not set: og:image is relative, so Discord/iMessage previews will show no image');
+const ogImg = `${SITE}/assets/og.png?v=1`;
 const head = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Deliver Kyle S's Starbucks order across Downtown Orlando to Citi Tower, floor 20. Will he tip?">
-<meta property="og:title" content="TIP BAIT">
-<meta property="og:description" content="Deliver the order. Dodge the LYNX. Jump the SunRail. Kyle S promised a tip.">
+<meta name="description" content="Deliver Kyle S's iced coffee across Downtown Orlando to Citi Tower, floor 20. He promised a tip. He always promises a tip.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TIP BAIT">
+<meta property="og:title" content="TIP BAIT — he promised a tip 🛵">
+<meta property="og:description" content="Dodge the LYNX. Jump the SunRail. Outrun the other courier. Climb 20 floors. Kyle S still won't tip. Can you get the perfect run?">
+${SITE ? `<meta property="og:url" content="${SITE}/">\n` : ''}<meta property="og:image" content="${ogImg}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="TIP BAIT: a delivery courier mid-air over a LYNX bus in Downtown Orlando">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="TIP BAIT — he promised a tip 🛵">
+<meta name="twitter:description" content="Dodge the LYNX. Jump the SunRail. Climb 20 floors. Kyle S still won't tip.">
+<meta name="twitter:image" content="${ogImg}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚲</text></svg>">
 `;
 const page = head + readFileSync(join(here, 'index.html'), 'utf8')
