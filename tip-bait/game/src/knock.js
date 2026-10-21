@@ -260,7 +260,7 @@ export class Knock {
     const p = V(FACE_X - D, PY + 0.04, Sets.DOOR_Z + 0.02), l = V(FACE_X, PY + 0.02, Sets.DOOR_Z);
     p.x += Math.sin(this.T * 0.7) * 0.01 + (Math.random() - 0.5) * sh; p.y += Math.sin(this.T * 0.9) * 0.008 + (Math.random() - 0.5) * sh;
     this.camK = { p, l, fov };
-    const u = this.st === 'intro' ? easeInOut(clamp(this.t / 1.1)) : 1;
+    const u = this.st === 'intro' && this.c0.distanceTo(p) < 9 ? easeInOut(clamp(this.t / 1.1)) : 1; // glide in from the hall shot (cut if it came from elsewhere)
     if (u < 1) { const q1 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(p, l, cam.up)); cam.position.copy(this.c0).lerp(p, u); cam.quaternion.copy(this.q0).slerp(q1, u); cam.fov = lerp(this.f0, fov, u); }
     else { cam.position.copy(p); cam.lookAt(l); cam.fov = fov; }
     cam.updateProjectionMatrix(); cam.updateMatrixWorld();

@@ -512,14 +512,17 @@ export class Finale {
     const dT = h.downT;
     if (dT != null) { // collapsed: knees go, down onto the floor clutching the leg, a long beat, then a slow, wobbly get-up
       const sit = smooth(seg(dT, 0, 0.45)) * (1 - smooth(seg(dT, DOWN_T - 0.95, DOWN_T - 0.1))), rock = Math.sin(dT * 5) * 0.07 * sit;
-      R.C.root.position.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0);
+      R.root.updateMatrixWorld(true); R.C.root.position.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0);
       R.C.pose([['idle', this.t, 1 - sit], ['sitidle', 2, sit, true], ['defeated', 0.6 + dT * 0.3, 0.35 * smooth(seg(dT, DOWN_T - 1.2, DOWN_T - 0.6)) * (1 - smooth(seg(dT, DOWN_T - 0.3, DOWN_T))), false]]);
       const hp = R.C.boneWorld('Hips'); R.C.root.position.y = -(hp.y - lerp(hp.y, 0.16, sit)); R.C.root.position.z = 0.25 * sit; R.C.root.updateMatrixWorld(true);
-      if (sit > 0.3) { // both hands round the bitten shin
+      if (sit > 0.3) { // sat on the carpet: legs out front, the bitten one drawn up, torso rocked back, both hands round the shin
+        const ks = smooth(seg(sit, 0.3, 0.7));
+        for (const [s, side, z, kh] of [[1, 'Left', 0.62, 0.6], [-1, 'Right', 0.34, 1.1]]) ik2(R.C.bone(side + 'UpLeg'), R.C.bone(side + 'Leg'), R.C.bone(side + 'Foot'), R.root.localToWorld(V(s * 0.16, 0.07, lerp(0.25, z, ks))), R.root.localToWorld(V(s * 0.2, kh, 1.2)));
+        const sp = R.C.bone('Spine'); sp.rotateX(-0.12 * ks + rock); sp.updateMatrixWorld(true);
         const sh = R.C.boneWorld('RightLeg').lerp(R.C.boneWorld('RightFoot'), 0.35);
         for (const [s, side] of [[1, 'Left'], [-1, 'Right']]) ik2(R.C.bone(side + 'Arm'), R.C.bone(side + 'ForeArm'), R.C.bone(side + 'Hand'), sh.clone().add(R.root.localToWorld(V(s * 0.07, 0, 0)).sub(R.root.position)), R.root.localToWorld(V(s * 0.6, 0.6, -0.3)));
       }
-      R.root.rotateX(-rock - 0.3 * sit); R.root.rotateZ(Math.sin(dT * 23) * 0.025 * sit); // rocked back, shaking
+      R.root.rotateZ(Math.sin(dT * 23) * 0.012 * sit); // shaking
       if (dT > 0.6 && !h.ow) { h.ow = 1; this.UI.thought(['OW. ow ow ow.', 'my LEG', 'he got the bone. the BONE.'][Math.floor(Math.random() * 3)], 1800); A.sfx('growl', 0.4, 1.4); }
       if (dT > DOWN_T - 0.9 && h.ow === 1) { h.ow = 2; A.sfx('step', 0.8, 0.6); }
     } else if (cWalk > 0.05) R.walk(h.st === 'pass' ? (h.limp ? 'walk' : 'jog') : 'walk', this.t * (h.st === 'pass' ? (h.limp ? 0.8 : 1.05) : 1.0), { offset: V(0, 0, 0), yaw: 0 });
