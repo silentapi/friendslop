@@ -563,7 +563,7 @@ export class Finale {
     if (camK === 'follow') { cp = pos.clone().add(V(-0.55, 1.68, 2.0)); cl = pos.clone().add(V(0.15, 1.05, -3)); fov = 56; }
     else if (camK === 'dogcu') { const hd = D.head.getWorldPosition(V()); cp = V(h.dx + 0.42, 0.52, h.dz + 1.3); cl = hd.add(V(0, -0.1, -0.12)); fov = 44; }
     else if (camK === 'two') { cp = V(0.95, 1.3, (h.dz + h.cz) / 2 + 0.5); cl = V(-0.45, 0.7, h.dz - 0.3); fov = 52; }
-    else if (camK === 'down') { cp = V(h.cx + 0.95, 0.95, h.cz - 1.55); cl = V(h.cx - 0.05, 0.38, h.cz + 0.1); fov = 50; } // low, from in front: you on the floor holding your leg
+    else if (camK === 'down') { const up = smooth(seg(h.downT ?? DOWN_T, DOWN_T - 1.0, DOWN_T)); cp = V(h.cx + 0.95, lerp(0.95, 1.35, up), h.cz - lerp(1.55, 1.9, up)); cl = V(h.cx - 0.05, lerp(0.38, 0.95, up), h.cz + 0.1); fov = 50; } // low, from in front: you on the floor holding your leg
     else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, Sets.DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, Sets.DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
     else { const push = h.st === 'lunge' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; this.camPush = damp(this.camPush || 0, push, 10, rdt); cp = V(-0.95, 1.78 - this.camPush * 0.1, HALL.c + 2.35 - this.camPush * 0.35); cl = V(-0.1, 0.62, HALL.c - 1.35); fov = 54 - this.camPush * 4; }
     if (camK !== this.camK) { this.camK = camK; cam.position.copy(cp); } // hard cuts between shots, smooth within
