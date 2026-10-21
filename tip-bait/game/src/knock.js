@@ -11,7 +11,7 @@ import { KNOCK_BPM, KNOCK_INTRO, KNOCK_BARS, knockBeat } from './audio.js';
 const QA = typeof location !== 'undefined' && new URLSearchParams(location.search).has('qa');
 const TAU = Math.PI * 2;
 // the playfield on the door: u across (z), v up (y), both -1..1
-const FACE_X = 1.215, PY = 1.27, PH = 0.5, PW = 0.37;
+const FACE_X = 1.215, PY = 1.28, PH = 0.56, PW = 0.43;
 const onDoor = (u, v, o = V()) => o.set(FACE_X, PY + v * PH, Sets.DOOR_Z + u * PW);
 const COLS = [[255, 96, 160], [80, 196, 255], [255, 204, 60], [150, 240, 110]];
 const rgba = (c, a, k = 1) => `rgba(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)},${a})`;
@@ -42,7 +42,7 @@ export function buildMap(lvl, tut, seed = 1) {
     if (o.nc || ci < 0) { ci++; n = 0; } o.n = ++n; o.col = COLS[ci % COLS.length];
     if (tut && o.b < A0) { [o.u, o.v] = [[-0.5, 0.1], [0, -0.25], [0.5, 0.1]][o.n - 1]; x = o.u; y = o.v; prev = o; continue; }
     if (prev) {
-      const gap = o.b - (prev.b + prev.len), d = clamp(0.1 + gap * 0.5, 0.2, 0.95);
+      const gap = o.b - (prev.b + prev.len), d = clamp(0.2 + gap * 0.72, 0.36, 1.15);
       ang += o.nc ? 1.6 + (r() - 0.5) * 1.6 : (r() - 0.5) * 0.9 + (gap <= 0.5 ? 0.3 : 0.7);
       let nx = x, ny = y;
       for (let k = 0; k < 12; k++) { nx = x + Math.cos(ang) * d; ny = y + Math.sin(ang) * d; if (inside(nx, ny)) break; ang += 0.55; }
@@ -184,7 +184,7 @@ export class Knock {
     if (last) { this.forced = true; this.pen += 8; } else this.pen += 2.5;
     F.UI.timeCost?.(last ? 8 : 2.5, last ? 'kyle gave up on the knock' : 'wrong knock');
     this.big('WRONG KNOCK', last ? 'he’s opening anyway · <b>+8 s</b>' : `section restart · ${2 - this.fails} ${2 - this.fails === 1 ? 'retry' : 'retries'} left`);
-    this.shout(['WRONG KNOCK.', 'that is NOT the knock bro', 'omg. FINE. i’m coming'][Math.min(2, this.fails - 1)], true);
+    this.shout(['nah. that’s not the knock', 'that is NOT the knock bro', 'omg. FINE. i’m coming'][Math.min(2, this.fails - 1)], true);
   }
   restart(penalised = true) {
     const due = this.notes.find((o) => !o.done) || this.notes[this.notes.length - 1];

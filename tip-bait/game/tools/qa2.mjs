@@ -11,10 +11,12 @@ const ctx = await browser.newContext(VIEW ? { viewport: { width: VIEW[0], height
 await ctx.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**', (route) => { const p = route.request().url().replace('https://cdn.jsdelivr.net/npm/three@0.169.0/', ''); const f = join('/home/user/friendslop/tip-bait/node_modules/three', p); existsSync(f) ? route.fulfill({ body: readFileSync(f), contentType: 'application/javascript' }) : route.fulfill({ status: 404 }); });
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
+if (VIEW) await ctx.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const m = document.createElement('meta'); m.name = 'viewport'; m.content = 'width=device-width, initial-scale=1, viewport-fit=cover'; document.head.prepend(m); })); // the artifact host adds this tag; dist/ has none
 if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFail = true; });
 if (process.env.EQUIP) await ctx.addInitScript((eq) => { try { localStorage.setItem('tipbait:equipped', eq); } catch {} }, process.env.EQUIP); // e.g. EQUIP='{"bag":"bag_ufo","outfit":"fit_ceo","head":"head_fire"}'
 if (process.env.BP) await ctx.addInitScript((bp) => { try { localStorage.setItem('tipbait:bp', bp); } catch {} }, process.env.BP); // e.g. BP='{"xp":700,"premium":true,"claimed":{"free":[],"prem":[]}}'
 if (process.env.HALL_KIND) await ctx.addInitScript((k) => { globalThis.__hallKind = k; }, process.env.HALL_KIND);
+await ctx.addInitScript((c) => { globalThis.__crane = c; }, !!process.env.CRANE);
 await ctx.addInitScript((f) => { globalThis.__fail = f; }, { rail: !!process.env.FAIL_RAIL, mega: !!process.env.FAIL_MEGA, tech: !!process.env.FAIL_TECH }); // force QTE failures to review their consequences
 if (process.env.RIVAL) await ctx.addInitScript((m) => { globalThis.__rivalMode = m; }, process.env.RIVAL);
 const page = await ctx.newPage();
@@ -36,11 +38,13 @@ await page.click('#accept');
 await page.waitForTimeout(600); await shot('02_count');
 for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 if (mode === 'ramp') {
-  await page.evaluate((mega) => { const g = window.__G; g.refS = mega ? g.lv.ramps.find((r) => r.mega).s + 8 : g.rail.s; g.s = g.refS - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; for (const o of g.lv.obs) if (o.s > g.s && o.s < g.refS - 10 && o.kind !== 'bus') o.dead = true; }, !!process.env.MEGA);
-  for (let k = 0; k < 70; k++) {
+  await page.evaluate((mega) => { const g = window.__G; g.refS = globalThis.__crane ? (g.lv.events || []).find((e) => e.kind === 'crane').s + 30 : mega ? g.lv.ramps.find((r) => r.mega).s + 8 : g.rail.s; g.s = g.refS - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; for (const o of g.lv.obs) if (o.s > g.s && o.s < g.refS - 10 && o.kind !== 'bus') o.dead = true; }, !!process.env.MEGA);
+  if (process.env.TECH) { await tick(30); await page.evaluate(() => { const g = window.__G; const o = g.lv.obs.find((o) => o.kind === 'car' && !o.parked && !o.dead && o.s > g.s + 20); g.lane = g.LANES.indexOf(g.LANES.reduce((a, b) => Math.abs(b - o.lat) < Math.abs(a - o.lat) ? b : a)); g.lat = o.lat; g.s = o.s - 1.2; g.y = o.h + 0.5; g.vy = -1; g.rampT = g.time; g.refS = o.s + 40; }); }
+  for (let k = 0; k < 120; k++) {
     await tick(2);
     const r = await page.evaluate(() => { const g = window.__G; return { st: g.state, tum: +(g.tumbleT || 0).toFixed(2), ds: +(g.s - g.refS).toFixed(1), y: +g.y.toFixed(2), v: +g.v.toFixed(1), cab: g.trainCab == null ? null : +g.trainCab.toFixed(1), slow: +g.slowmo.toFixed(2), kind: g.crashKind }; });
     if (k % 3 === 0 || r.st !== 'run') console.log(JSON.stringify(r));
+    if (process.env.CRANE) await page.evaluate(() => { const g = window.__G, o = g.lv.obs.find((o) => o.drop && !o.dead && o.piece !== 'beam' && o.s > g.s && o.s - g.s < 16); if (o) g.lane = g.LANES.indexOf(g.LANES.reduce((a, b) => Math.abs(b - o.lat) < Math.abs(a - o.lat) ? b : a)); }); // steer into a falling piece
     if (process.env.FAIL_RAIL || process.env.FAIL_MEGA) { const q = await page.evaluate(() => window.__G.qte); if (q && q.idx === 1 && q.t > 0.2) await key(q.seq[1] === 'arrowup' ? 'ArrowDown' : 'ArrowUp'); else if (q && q.idx === 0 && q.t > 0.12) await key('Arrow' + q.seq[0].slice(5, 6).toUpperCase() + q.seq[0].slice(6)); }
     else { const q = await page.evaluate(() => window.__G.qte); if (q && q.t > 0.12 + q.idx * 0.1) await key('Arrow' + q.seq[q.idx].slice(5, 6).toUpperCase() + q.seq[q.idx].slice(6)); }
     if (process.env.FRAMES ? k % 1 === 0 && k >= 8 : [12, 18, 22, 26, 30].includes(k)) await shot(`ramp_${String(k).padStart(3, '0')}`);

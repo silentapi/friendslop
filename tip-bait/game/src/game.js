@@ -529,7 +529,7 @@ function update(dt, t) {
 // the rocket: everything you touch goes up in a fireball (short and capped: ~20 m more than riding)
 function tumble(d = 1.1, { kind = 'skid', label = 'wiped out' } = {}) {
   if (G.tumbleT > 0) return; G.tumbleT = d; G.tumbleDur = d; G.tumbleKind = kind; G.tumbleThud = 0; G.invT = d + 0.6;
-  UI.timeCost(d + 0.9, label); // the stop plus getting back up to speed
+  UI.timeCost(d + 1.3, label); // the stop plus getting back up to speed (measured in QA: ~d + 1.3 s behind a clean ride)
   Audio.sfx('crash', 0.8, 1.1); Audio.sfx('skid', 0.7); FX.burst(G.R.root.position.clone().setY(0.4), { color: 0xd8d2c6, n: 22, speed: 4, up: 1.5, life: 0.7, size: 0.5, grav: 3 }); navigator.vibrate?.(60); }
 function rocketSmash(o) {
   o.dead = true; G.smashes++;
@@ -776,6 +776,7 @@ function runCamera(dt) {
   G.akK = damp(G.akK || 0, G.akira ? 1 : 0, 3, dt);
   if (G.akK > 0.002) { const h = halfAt(G.s); shot = orbitMix(shot, { ds: 7, lat: -(h - 1.2), y: 0.9, lds: 1, llat: G.lat + 0.8, ly: 1.0, fov: baseFov() - 2 }, smooth(clamp(G.akK)), 5); }
   if (G.camK > 0.002) { G.lastAir = G.airKind || G.lastAir; shot = orbitMix(shot, jumpShot(), smooth(clamp(G.camK)), 4.5); }
+  G.barsK = damp(G.barsK || 0, G.tumbleT > 0 && G.tumbleKind === 'bars' ? 1 : 0, 4, dt); if (G.barsK > 0.01) shot = { ...shot, lds: shot.lds + 2.4 * G.barsK, ly: shot.ly - 0.4 * G.barsK, ds: shot.ds + (shot.ds > 0 ? 2.4 : -1) * G.barsK }; // keep the thrown rider in frame, not just the bike
   const ec = EV.camera(); if (ec.shot) G.evShot = ec.shot; G.evK = damp(G.evK || 0, ec.w, 2.4, dt);
   if (G.evK > 0.002 && G.evShot) shot = orbitMix(shot, G.evShot, smooth(clamp(G.evK)), 4.5);
   applyCam(shot, dt, G.camK > 0.002 ? { scale: 1.8, lookScale: 0.5 } : G.evK > 0.002 ? { scale: 1.3, lookScale: 0.8 } : {});
