@@ -43,7 +43,7 @@ const res = await page.evaluate(async ([N, order]) => {
     // coins: none inside solids
     for (const c of lv.coins) for (const o of lv.obs) if (!o.v && Math.abs(o.s - c.s) < o.len / 2 + 0.3 && Math.abs(o.lat - c.lat) < o.w / 2 && c.y < o.h + 0.3) probs.push(`coin in ${o.kind} @${c.s.toFixed(0)}`);
     // pacing: the longest stretch with nothing to dodge, jump or hit
-    const ev = [...lv.obs.map((o) => o.meet ?? o.s), ...lv.ramps.map((o) => o.s), ...lv.pads.map((o) => o.s), ...lv.groups.map((o) => o.s)].filter((x) => x > 30 && x < L - 30).sort((a, b) => a - b);
+    const ev = [...lv.obs.map((o) => o.meet ?? o.s), ...lv.ramps.map((o) => o.s), ...lv.pads.map((o) => o.s), ...lv.groups.map((o) => o.s), ...(lv.events || []).flatMap((e) => e.kind === 'rival' ? Array.from({ length: Math.ceil(e.len / 20) }, (_, k) => e.s + k * 20) : [e.s])].filter((x) => x > 30 && x < L - 30).sort((a, b) => a - b);
     let gap = 0, at = 0; for (let k = 1; k < ev.length; k++) if (ev[k] - ev[k - 1] > gap) { gap = ev[k] - ev[k - 1]; at = ev[k - 1]; }
     const kinds = lv.slots.map((q) => q.kind).join(',');
     out.push({ seed, gap: Math.round(gap), gapAt: Math.round(at), probs: probs.slice(0, 4), n: probs.length, coins: lv.coins.length, obs: lv.obs.length, kinds: kinds.slice(0, 160) });

@@ -1,5 +1,6 @@
 // Level content along a route: obstacles, boost pads, ramps, ice cubes, tourist crossings, the SunRail crossing.
 // Everything lives in route space (s along the street, lat across it: lanes at -2.6 / 0 / +2.6).
+import { planEvents, buildEvents } from './events.js';
 import { THREE, BGU, V, mat, lam, mesh, box, cyl, mulberry, loadGLB, canvasTex, clamp, floatGeo } from './core.js';
 import { character } from './chars.js';
 import { coinParts, rampParts, padParts, pickupMesh } from './props3d.js';
@@ -95,8 +96,8 @@ const TIER = { cars: 1, cones: 1, rampcar: 1, bus: 2, merge: 2, chicane: 2, wall
 export async function buildLevel(scene, route, { order, seed = order, cross, rail = null, storm = false }) {
   const r = mulberry(1000 + order * 77 + seed * 7919);
   const ri = (n) => Math.floor(r() * n);
-  const d = clamp(0.12 + (order - 1) / 5); // difficulty 0..1
-  const L = route.length, vb = Math.min(18.5, 13.2 + (order - 1) * 0.9); // the player's base speed this order
+  const d = clamp(0.38 + (order - 1) / 5); // difficulty 0..1 (starts mid: the city is busy from the first order)
+  const L = route.length, vb = Math.min(21, 15.2 + (order - 1) * 1.0); // the player's base speed this order
   const obs = [], pads = [], ramps = [], ice = [], puddles = [], groups = [], coins = [], pickups = [], slots = [];
   const railS = rail ? rail.s : -999;
   const start = 40, end = L - 50;
@@ -113,7 +114,7 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
   const free = (s0, s1) => s0 > start - 1 && s1 < end + 1 && !slots.some((q) => s0 < q.s1 + 2 && s1 > q.s0 - 2);
   for (const c of cross.filter((c) => c > start + 30 && c < end && Math.abs(c - railS) > 50).slice(0, 1 + Math.round(d * 2))) { const safe = ri(3); groups.push({ s: c, n: 3 + Math.round(r() + d * 2), seed: r(), safe }); ground(c - 14, safe, 13); reserve(c - 16, c + 16, 'tourists', safe); }
   if (rail) { ramps.push({ s: railS - 13, lat: 0, rail: true }); pads.push({ s: railS - 40, lat: 0 }); obs.push({ kind: 'gate', s: railS - 6, lat: 0, len: 0.6, w: 9, h: 1.25, v: 0 }); arc(railS - 13 + 1.7, 1, PHYS.RAMP, 1.1, vb, 14, 0.09); ground(railS - 36, 1, 8); ground(railS + 8, 1, 8); pickups.push({ s: railS + 20, lat: LANES[r() < 0.5 ? 0 : 2], kind: ['magnet', 'x2', 'cool'][ri(3)] }); reserve(railS - 46, railS + 14 + vb * 1.1, 'rail', 1); }
-  let megaS = start + (end - start) * (0.42 + r() * 0.2);
+  let megaS = start + (end - start) * (0.4 + r() * 0.1);
   const megaEnd = 32 + vb * 1.4; // landing (~20-30 m out) plus a clear runway to react
   for (let k = 0; k < 8 && !free(megaS - 36, megaS + megaEnd); k++) megaS += 37;
   if (free(megaS - 36, megaS + megaEnd)) {
@@ -121,11 +122,13 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
     pads.push({ s: s - 22, lat: 0 });
     ramps.push({ s, lat: 0, mega: true, len: 5, h: 1.8 });
     obs.push({ kind: 'bus', s: s + 14, lat: 0, len: 12, w: 2.6, h: 3.1, v: 0, pull: 0, parked: true });
-    for (const li of [0, 2]) obs.push({ kind: 'jersey', s: s + 10, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 }, { kind: 'jersey', s: s + 18, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 });
+    for (const li of [0, 2]) obs.push({ kind: 'jersey', s: s + 10, lat: LANES[li], len: 0.8, w: 2.2, h: 2.5, v: 0 }, { kind: 'jersey', s: s + 18, lat: LANES[li], len: 0.8, w: 2.2, h: 2.5, v: 0 });
     ground(s - 34, 1, 5); arc(s + 2.5, 1, PHYS.MEGA, 1.8, vm, 16, 0.075); ground(s + 36, 1, 8);
     pickups.push({ s: s + 44, lat: LANES[r() < 0.5 ? 0 : 2], kind: ['magnet', 'x2', 'shield'][ri(3)] }); // a reward on the landing runway
     reserve(s - 36, s + megaEnd, 'mega', 1);
   }
+  // --- the rival courier duel and the crane drop: always planned, each reserves its stretch
+  const events = planEvents({ r, start, end, vb, d, free, reserve, obs, ground, arc, PHYS });
   // --- the pattern library. Each returns its footprint length and the lane that is safe the whole way through.
   const P = {
     cars(s, safe) { const n = r() < 0.5 + d * 0.4 ? 2 : 1, lanes = [0, 1, 2].filter((l) => l !== safe).sort(() => r() - 0.5).slice(0, n), v = 3 + r() * 3; lanes.forEach((li, k) => mover(s + k * 7, li, v)); ground(s - 2, safe, 8); return 12; },
@@ -133,16 +136,16 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
     rampcar(s, safe) { const li = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; ramps.push({ s, lat: LANES[li] }); obs.push({ ...CAR, s: s + 7.2, lat: LANES[li], v: 0 }); /* inside the jump's clearance at base speed */ arc(s + 1.7, li, PHYS.RAMP, 1.1, vb, 14, 0.07); ground(s - 12, li, 4); if (d > 0.3 && r() < 0.5) obs.push({ kind: 'cone', s: s + 4, lat: LANES[3 - li - safe], len: 0.6, w: 1.2, h: 0.75, v: 0 }); return 16; },
     bus(s, safe) { const li = safe === 0 ? 2 : safe === 2 ? 0 : (r() < 0.5 ? 0 : 2); obs.push({ kind: 'bus', s, lat: LANES[li] + (li ? 1.2 : -1.2), len: 12, w: 2.6, h: 3.1, v: 4, pull: LANES[li], t0: null }); ground(s - 6, safe, 7); return 22; },
     merge(s, safe) { const a = safe === 1 ? (r() < 0.5 ? 0 : 2) : safe; const v = 4 + r() * 1.5; const ru = runUp(s, v); obs.push({ ...CAR, merge: true, s: s - ru.drift, act: ru.act, lat: LANES[a], to: LANES[1], v, t0: null, meet: s }); if (r() < 0.3 + d * 0.5) mover(s + 4, 2 - a, 4); ground(s + 7, a, 5); return 14; },
-    chicane(s, safe) { const b = safe === 1 ? (r() < 0.5 ? 0 : 2) : (r() < 0.3 + d * 0.4 ? 2 - safe : 1), gap = lerpN(18, 13, d) * vb / 13.2; for (const [row, keep] of [[s, safe], [s + gap, b]]) for (let li = 0; li < 3; li++) if (li !== keep) obs.push({ kind: 'jersey', s: row, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 }); ground(s - 4, safe, 3); ground(s + gap - 3, b, 3); return { len: gap + 2, exit: b }; },
+    chicane(s, safe) { const b = safe === 1 ? (r() < 0.5 ? 0 : 2) : (r() < 0.3 + d * 0.4 ? 2 - safe : 1), gap = lerpN(18, 13, d) * vb / 13.2; for (const [row, keep] of [[s, safe], [s + gap, b]]) for (let li = 0; li < 3; li++) if (li !== keep) obs.push({ kind: 'jersey', s: row, lat: LANES[li], len: 0.8, w: 2.2, h: 2.5, v: 0 }); ground(s - 4, safe, 3); ground(s + gap - 3, b, 3); return { len: gap + 2, exit: b }; },
     wall(s, safe) { for (let li = 0; li < 3; li++) obs.push({ kind: 'barrier', s, lat: LANES[li], len: 0.6, w: 1.2, h: 0.8, v: 0, wall: true }); const carL = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; obs.push({ ...CAR, s: s + 17, lat: LANES[carL], v: 0 }); arc(s - 3.6, safe, PHYS.JUMP, 0, vb, 8, 0.075); ground(s + 8, safe, 5); return 22; },
     slalom(s, safe) { const gap = lerpN(17, 13, d) * vb / 13.2; [safe, 2 - safe, safe].forEach((fl, k) => { for (let li = 0; li < 3; li++) if (li !== fl) obs.push({ kind: k === 1 ? 'barrier' : 'cone', s: s + k * gap, lat: LANES[li], len: 0.6, w: 1.2, h: 0.75, v: 0 }); ground(s + k * gap - 2, fl, 2); }); return { len: gap * 2 + 2, exit: safe }; },
   };
   // --- walk the street: breather (coins lead you to the next safe lane) → pattern → breather → ...
   let s = start, lane = 1, last = '', sinceSet = 99, count = 0;
-  const pool = (p) => { const tmax = p < 0.15 ? 1 : p < 0.45 ? 2 : 3; return Object.keys(TIER).filter((k) => TIER[k] <= tmax + (d > 0.5 ? 1 : 0) && k !== last); };
+  const pool = (p) => { const tmax = p < 0.08 ? 1 : p < 0.3 ? 2 : 3; return Object.keys(TIER).filter((k) => TIER[k] <= tmax + (d > 0.5 ? 1 : 0) && k !== last); };
   for (let guard = 0; s < end && guard < 500; guard++) { // guard: the walk must always end
     const p = (s - start) / (end - start);
-    let breath = (lerpN(19, 12, clamp(d + p * 0.4)) + r() * 4) * vb / 13.2;
+    let breath = (lerpN(17, 10.5, clamp(d + p * 0.4)) + r() * 3.5) * vb / 13.2;
     let kind = pool(p)[ri(pool(p).length)];
     // a set piece coming up: squeeze in a short pattern rather than leaving a hole before it
     const nxt = slots.filter((q) => q.s0 > s).sort((a, b) => a.s0 - b.s0)[0];
@@ -190,7 +193,7 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
     const stat = obs.filter((o) => !o.v);
     for (let i = 0; i < stat.length; i++) for (let j = i + 1; j < stat.length; j++) { const a = stat[i], b = stat[j]; if (a.kind !== 'gate' && b.kind !== 'gate' && Math.abs(a.s - b.s) < (a.len + b.len) / 2 && Math.abs(a.lat - b.lat) < (a.w + b.w) / 2 - 0.2) console.warn('[level] overlap', a.kind, b.kind, a.s.toFixed(1)); }
   }
-  return { obs, pads, ramps, ice, puddles, groups, rail, coins: coinsOk, pickups: okPick, slots };
+  return { obs, pads, ramps, ice, puddles, groups, rail, coins: coinsOk, pickups: okPick, slots, events };
 }
 const lerpN = (a, b, t) => a + (b - a) * t;
 
@@ -235,6 +238,18 @@ export async function populate(scene, route, lv) {
   const jim = new THREE.InstancedMesh(jG, new THREE.MeshLambertMaterial({ map: jTex }), Math.max(1, jers.length));
   jers.forEach((o, i) => jim.setMatrixAt(i, place(o.s, o.lat)));
   jim.castShadow = true; scene.add(jim); out.jersey = { mesh: jim, list: jers };
+  // a chain-link panel on every jersey: reads at a glance as "too tall to jump"
+  const linkTex = canvasTex('chainlink', 128, 128, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#c9ced4'; c.lineWidth = 3; for (let k = -w; k < w * 2; k += 16) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k + h, h); c.stroke(); c.beginPath(); c.moveTo(k + h, 0); c.lineTo(k, h); c.stroke(); } });
+  const lt = linkTex.clone(); lt.needsUpdate = true; lt.wrapS = lt.wrapT = THREE.RepeatWrapping; lt.repeat.set(4, 2.2);
+  const fenceG = BGU.mergeGeometries([new THREE.PlaneGeometry(2.2, 1.15).translate(0, 1.88, 0)]);
+  const fim = new THREE.InstancedMesh(fenceG, new THREE.MeshLambertMaterial({ map: lt, alphaTest: 0.4, side: THREE.DoubleSide }), Math.max(1, jers.length));
+  const railG = BGU.mergeGeometries([new THREE.CylinderGeometry(0.03, 0.03, 2.2, 6).rotateZ(Math.PI / 2).translate(0, 2.46, 0), new THREE.CylinderGeometry(0.035, 0.035, 1.2, 6).translate(-1.08, 1.88, 0), new THREE.CylinderGeometry(0.035, 0.035, 1.2, 6).translate(1.08, 1.88, 0), new THREE.BoxGeometry(2.0, 0.22, 0.02).translate(0, 2.2, 0.01)]);
+  const signTexJ = canvasTex('roadclosed', 256, 32, (c, w, h) => { c.fillStyle = '#ff5a00'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = '900 22px system-ui'; c.textAlign = 'center'; c.fillText('ROAD CLOSED', w / 2, 24); });
+  const rim = new THREE.InstancedMesh(railG, new THREE.MeshLambertMaterial({ color: 0xffffff, map: null }), Math.max(1, jers.length));
+  const sim = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.4, 0.2).translate(0, 2.2, 0.03), new THREE.MeshLambertMaterial({ map: signTexJ, side: THREE.DoubleSide }), Math.max(1, jers.length));
+  rim.material.color.set(0x9aa0a6);
+  jers.forEach((o, i) => { const m = place(o.s, o.lat); fim.setMatrixAt(i, m); rim.setMatrixAt(i, m); sim.setMatrixAt(i, m); });
+  fim.castShadow = true; rim.castShadow = true; scene.add(fim, rim, sim);
   // turn signals for merging cars (two per car, on the side it's turning toward)
   out.mergers = lv.obs.filter((o) => o.merge);
   out.blink = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.22, 0.34), new THREE.MeshBasicMaterial({ color: 0xffb030 }), Math.max(1, out.mergers.length * 2));
@@ -281,13 +296,19 @@ export async function populate(scene, route, lv) {
       // each tourist walks out from the curb and stops in one of the two blocked lanes to take a photo
       const lanesBlocked = [0, 1, 2].filter((l) => l !== g.safe), tl = lanesBlocked[k % 2];
       const from = LANES[tl] < 0 ? -1 : LANES[tl] > 0 ? 1 : (g.safe === 0 ? 1 : -1); // never walk through the open lane
+      c.root.traverse((o) => { if (o.isMesh) o.castShadow = false; }); // a soft blob instead: skinned shadow passes at every crossing were the turn-time frame drops
+      const blob = new THREE.Mesh(BLOB_G, blobMat()); blob.rotation.x = -Math.PI / 2; blob.position.y = 0.04; blob.renderOrder = 2; c.root.add(blob);
       out.walkers.push({ c, s: g.s + (k - g.n / 2) * 0.9 + (rr() - 0.5) * 0.6, lat0: from * (6 + rr() * 1.5), target: LANES[tl] + (rr() - 0.5) * 0.5, dir: -from, speed: 1.9 + rr() * 0.3, ph: rr() * 3, delay: rr() * 0.4, group: g });
     }
   }
   // the tourist who steps off the curb in front of Citi Tower (the reason for the Akira slide)
   { const c = await character('m/tourist_m.glb', { maps }); await c.load('walk', 'point'); c.attach('Head', mouseEars(), [0, 0.1, 0], [0, 0, 0], 1.5); c.root.visible = false; scene.add(c.root); out.stepper = { c, s: route.length - 14, lat0: 6.5, lat: 6.5, t: null }; }
+  out.events = await buildEvents(scene, route, lv);
   return out;
 }
+const BLOB_G = new THREE.CircleGeometry(0.42, 20);
+let blobM = null;
+function blobMat() { return (blobM ||= new THREE.MeshBasicMaterial({ map: canvasTex('blob', 64, 64, (c, w, h) => { const g = c.createRadialGradient(32, 32, 2, 32, 32, 31); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, w, h); }), transparent: true, depthWrite: false })); }
 function mouseEars() {
   const g = new THREE.Group(), blk = lam(0x0c0c0e);
   for (const sx of [-1, 1]) { const e = cyl(0.09, 0.09, 0.025, blk, 16, sx * 0.11, 0.13, 0, g); e.rotation.x = Math.PI / 2; }

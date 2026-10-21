@@ -6,59 +6,118 @@ const signTex = (key, text, { w = 1024, h = 256, font = '800 150px system-ui, sa
 const plane = (t, w, h, { emit = 0, transparent = true } = {}) => mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, transparent, emissive: emit ? 0xffffff : 0, emissiveMap: emit ? t : null, emissiveIntensity: emit }), { cast: false });
 export function lobby(ctx) {
   const g = new THREE.Group();
-  const marble = pbr('marble_01', { world: 2.5, rough: 0.12, color: 0xe2ddd4 });
-  const f = mesh(new THREE.PlaneGeometry(20, 20), marble, { cast: false }); f.rotation.x = -Math.PI / 2; g.add(f);
-  box(20, 0.2, 20, mat(0xf2efe8, { roughness: 0.8 }), 0, 4.2, 0, g);
-  const wall = pbr('wood_table_001', { world: 1.5, color: 0x8a6a4c, rough: 0.5 });
-  box(20, 4.2, 0.2, wall, 0, 2.1, -3, g);
-  const steel = new THREE.MeshPhysicalMaterial({ color: 0xb8bcc4, metalness: 1, roughness: 0.25 });
+  // CC0 photo materials (Poly Haven), tiled by real-world size so nothing stretches
+  const T = (p, rx, ry, srgb = true) => { const t = tex(p, { srgb }).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
+  const std = (p, n, rx, ry, o = {}) => new THREE.MeshStandardMaterial({ map: p ? T(p, rx, ry) : null, normalMap: n ? T(n, rx, ry, false) : null, normalScale: new THREE.Vector2(o.ns ?? 0.7, o.ns ?? 0.7), color: o.color ?? 0xffffff, roughness: o.rough ?? 0.8, metalness: o.metal ?? 0, envMapIntensity: o.env ?? 1 });
+  const W = 8; // side walls at x = ±W
+  const bronze = new THREE.MeshStandardMaterial({ color: 0x8a6a42, metalness: 1, roughness: 0.32 });
+  const darkBronze = new THREE.MeshStandardMaterial({ color: 0x2a2420, metalness: 0.7, roughness: 0.4 });
+  const brushTex = canvasTex('brushed', 256, 256, (c, w, h) => { c.fillStyle = '#9aa0a8'; c.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { const y = Math.random() * h, a = 0.04 + Math.random() * 0.1; c.fillStyle = Math.random() < 0.5 ? `rgba(255,255,255,${a})` : `rgba(0,0,0,${a})`; c.fillRect(0, y, w, 0.6 + Math.random()); } });
+  const steel = new THREE.MeshStandardMaterial({ map: brushTex, color: 0xd6dade, metalness: 0.95, roughness: 0.28 });
+  // floor: big polished limestone tiles with a dark granite border band
+  const f = mesh(new THREE.PlaneGeometry(20, 20), std('tex/lobby_floor.jpg', 'tex/lobby_floor_n.jpg', 20 / 1.5, 20 / 1.5, { rough: 0.22, ns: 0.35 }), { cast: false }); f.rotation.x = -Math.PI / 2; g.add(f);
+  const band = std('tex/lobby_stone.jpg', null, 12, 0.3, { rough: 0.3 });
+  for (const z of [-2.2, 3.4]) { const b = mesh(new THREE.PlaneGeometry(14, 0.35), band, { cast: false }); b.rotation.x = -Math.PI / 2; b.position.set(0, 0.003, z); g.add(b); }
+  // ceiling: plaster with recessed downlights and a warm cove along the elevator wall
+  const ceil = mesh(new THREE.PlaneGeometry(20, 20), std('tex/hall_ceiling.jpg', 'tex/hall_wall_n.jpg', 20 / 1.6, 20 / 1.6, { color: 0xf6f1ea, rough: 0.95, ns: 0.3 }), { cast: false }); ceil.rotation.x = Math.PI / 2; ceil.position.y = 4.2; g.add(ceil);
+  const down = emissive(0xfff2dc, 6);
+  for (let x = -6; x <= 6; x += 2) for (const z of [-1, 1.4]) { const d = cyl(0.11, 0.11, 0.02, down, 18, x, 4.19, z, g, { cast: false }); void d; cyl(0.16, 0.16, 0.012, darkBronze, 18, x, 4.195, z, g, { cast: false }); }
+  box(12, 0.06, 0.12, emissive(0xffd8a8, 2.2), 0, 4.1, -2.86, g, { cast: false });
+  // back (elevator) wall: walnut panelling with shadow gaps; the elevator bank set in dark granite
+  const wood = (L, h) => std('tex/lobby_wood.jpg', 'tex/lobby_wood_n.jpg', L / 1.2, h / 1.2, { rough: 0.45, ns: 0.5 });
+  box(20, 4.2, 0.2, wood(20, 4.2), 0, 2.1, -3.05, g);
+  for (let x = -9.6; x <= 9.6; x += 0.8) if (Math.abs(x) > 5.1) box(0.02, 4.2, 0.02, mat(0x1a120c), x, 2.1, -2.95, g);
+  const stone = (L, h) => std('tex/lobby_stone.jpg', 'tex/lobby_stone_n.jpg', L / 2.3, h / 2.3, { rough: 0.35, ns: 0.6 });
+  box(10.2, 4.2, 0.1, stone(10.2, 4.2), 0, 2.1, -2.92, g);
   for (let i = -1; i <= 1; i++) {
     const x = i * 3.2;
-    box(2.0, 2.9, 0.15, mat(0x16171b, { metalness: 0.6, roughness: 0.4 }), x, 1.45, -2.9, g);
-    box(0.84, 2.6, 0.06, steel, x - 0.43, 1.32, -2.82, g); box(0.84, 2.6, 0.06, steel, x + 0.43, 1.32, -2.82, g);
-    const ind = plane(signTex('ind' + i, i === 0 ? '20' : 'L', { w: 256, h: 64, font: '700 48px system-ui', color: '#ff9a3a', bg: '#080808' }), 0.5, 0.13, { emit: 1.4, transparent: false }); ind.position.set(x, 3.05, -2.82); g.add(ind);
+    box(2.2, 3.05, 0.08, bronze, x, 1.52, -2.86, g); // bronze portal
+    box(2.0, 2.9, 0.05, mat(0x16171b, { metalness: 0.6, roughness: 0.4 }), x, 1.45, -2.84, g);
+    box(0.84, 2.6, 0.04, steel, x - 0.43, 1.32, -2.81, g); box(0.84, 2.6, 0.04, steel, x + 0.43, 1.32, -2.81, g);
+    box(0.012, 2.6, 0.045, mat(0x0c0c0e), x, 1.32, -2.805, g); // door seam
+    const ind = plane(signTex('ind' + i, i === 0 ? '20' : 'L', { w: 256, h: 64, font: '700 48px system-ui', color: '#ff9a3a', bg: '#080808' }), 0.5, 0.13, { emit: 1.4, transparent: false }); ind.position.set(x, 3.25, -2.82); g.add(ind);
+    box(0.62, 0.2, 0.03, darkBronze, x, 3.25, -2.84, g);
   }
-  const ooo = canvasTex('ooo', 512, 380, (c, w, h) => { c.fillStyle = '#f4f1e8'; c.fillRect(0, 0, w, h); c.fillStyle = '#b01010'; c.font = '900 100px system-ui, sans-serif'; c.textAlign = 'center'; c.fillText('OUT OF', w / 2, 120); c.font = '900 124px system-ui, sans-serif'; c.fillText('ORDER', w / 2, 240); c.fillStyle = '#333'; c.font = 'italic 500 40px system-ui'; c.fillText('use stairs — mgmt', w / 2, 330); });
+  // elevator call panels between the cars (the one at x = 1.25 is added by the elevator scene)
+  box(0.14, 0.34, 0.03, bronze, -1.65, 1.2, -2.84, g);
+  // the OUT OF ORDER sign taped to the middle car
+  const ooo = canvasTex('ooo', 512, 380, (c, w, h) => { c.fillStyle = '#f4f1e8'; c.fillRect(0, 0, w, h); c.fillStyle = '#b01010'; c.font = '900 100px system-ui, sans-serif'; c.textAlign = 'center'; c.fillText('OUT OF', w / 2, 120); c.font = '900 124px system-ui, sans-serif'; c.fillText('ORDER', w / 2, 240); c.fillStyle = '#333'; c.font = 'italic 500 40px system-ui'; c.fillText('use stairs — mgmt', w / 2, 320); });
   const sg = plane(ooo, 0.62, 0.46, { rough: 0.9 }); sg.position.set(0, 1.55, -2.78); sg.rotation.z = 0.05; g.add(sg);
-  for (let i = -3; i <= 3; i++) box(0.2, 0.02, 0.2, emissive(0xfff2dc, 6), i * 2.2, 4.09, -1, g);
-  const sp = new THREE.SpotLight(0xffe2c0, 30, 12, 0.9, 0.6, 1.5); sp.position.set(0, 4, 1.5); sp.target.position.set(0, 1, -3); g.add(sp, sp.target);
+  for (const [x, y] of [[-0.29, 1.77], [0.31, 1.8]]) { const tp = box(0.14, 0.04, 0.004, mat(0xd8d0b0, { roughness: 0.9, transparent: true, opacity: 0.85 }), x, y, -2.775, g, { cast: false }); tp.rotation.z = 0.7; }
   g.userData.sign = V(0, 1.55, -2.78);
-  const frame = mat(0x16171b, { metalness: 0.6, roughness: 0.4 });
+  // logo wall (left of the elevators): bronze letters on stone, halo-lit
+  const logo = canvasTex('citilogo', 1024, 384, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#c9a46a'; c.shadowColor = 'rgba(255,214,150,.9)'; c.shadowBlur = 28; c.font = '300 150px Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('CITI TOWER', w / 2, 150); c.shadowBlur = 12; c.font = '500 52px system-ui'; c.fillText('1 0 1   L A K E   A V E', w / 2, 290); });
+  box(4.4, 4.2, 0.12, stone(4.4, 4.2), -7.2, 2.1, -2.9, g);
+  const lg = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.35), new THREE.MeshBasicMaterial({ map: logo, transparent: true, toneMapped: false })); lg.position.set(-7.2, 2.6, -2.83); g.add(lg);
+  // directory board (right of the elevators)
+  const dir = canvasTex('directory', 512, 640, (c, w, h) => { c.fillStyle = '#121416'; c.fillRect(0, 0, w, h); c.fillStyle = '#c9a46a'; c.font = '700 40px system-ui'; c.fillText('DIRECTORY', 36, 70); c.fillRect(36, 88, w - 72, 3); c.font = '500 26px system-ui'; c.fillStyle = '#e8e4dc'; const rows = [['20', 'Residences 2001–2008'], ['19', 'Residences'], ['15', 'Lake Partners LLP'], ['12', 'Orlando Capital Group'], ['8', 'Sunrail Holdings'], ['5', 'Fitness · Pool'], ['2', 'Management Office'], ['L', 'Concierge · Mail']]; rows.forEach(([a, b], i) => { c.fillStyle = '#c9a46a'; c.fillText(a, 40, 150 + i * 60); c.fillStyle = '#e8e4dc'; c.fillText(b, 110, 150 + i * 60); }); });
+  const db = plane(dir, 1.0, 1.25, { transparent: false }); db.position.set(6.4, 1.75, -2.94); g.add(db); box(1.1, 1.35, 0.04, bronze, 6.4, 1.75, -2.97, g);
+  // side walls: walnut panelling with framed art (left) and a long bench (right)
+  for (const sx of [-1, 1]) box(0.2, 4.2, 7.2, wood(7.2, 4.2), sx * W, 2.1, 0.6, g);
+  const art = canvasTex('lobbyart', 512, 320, (c, w, h) => { const gr = c.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#1d3b5a'); gr.addColorStop(0.55, '#d98c4a'); gr.addColorStop(1, '#f2d4a0'); c.fillStyle = gr; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(12,20,30,.75)'; c.beginPath(); c.moveTo(0, 230); for (let x = 0; x <= w; x += 32) c.lineTo(x, 230 - (Math.sin(x * 0.05) * 20 + (x % 96 === 0 ? 90 : 40))); c.lineTo(w, h); c.lineTo(0, h); c.fill(); c.fillStyle = 'rgba(255,240,210,.85)'; c.beginPath(); c.arc(380, 110, 34, 0, 7); c.fill(); });
+  const ap = plane(art, 2.6, 1.6, { transparent: false }); ap.position.set(-W + 0.12, 2.1, 1.0); ap.rotation.y = Math.PI / 2; g.add(ap); box(0.04, 1.7, 2.7, darkBronze, -W + 0.09, 2.1, 1.0, g);
+  // seating group: leather sofa + stone coffee table on a rug, right side
+  const leather = std('tex/lobby_leather.jpg', null, 2, 1, { color: 0x6a4a34, rough: 0.55 });
+  const rug = canvasTex('lobbyrug', 512, 512, (c, w, h) => { c.fillStyle = '#3a3f46'; c.fillRect(0, 0, w, h); c.strokeStyle = '#c9a46a'; c.lineWidth = 10; c.strokeRect(24, 24, w - 48, h - 48); c.strokeStyle = 'rgba(201,164,106,.5)'; c.lineWidth = 4; for (let i = 1; i < 6; i++) { c.beginPath(); c.arc(w / 2, h / 2, i * 38, 0, 7); c.stroke(); } for (let i = 0; i < 4000; i++) { c.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`; c.fillRect(Math.random() * w, Math.random() * h, 2, 2); } });
+  const rg = mesh(new THREE.PlaneGeometry(3.2, 2.4), new THREE.MeshStandardMaterial({ map: rug, roughness: 1 }), { cast: false }); rg.rotation.x = -Math.PI / 2; rg.position.set(5.3, 0.006, 0.9); g.add(rg);
+  const sofa = new THREE.Group(); sofa.position.set(6.6, 0, 0.9); sofa.rotation.y = -Math.PI / 2; g.add(sofa);
+  box(2.4, 0.42, 0.9, leather, 0, 0.21, 0, sofa); box(2.4, 0.5, 0.2, leather, 0, 0.62, -0.35, sofa); for (const x of [-1.1, 1.1]) box(0.2, 0.55, 0.9, leather, x, 0.4, 0, sofa);
+  for (const x of [-0.6, 0.6]) box(1.1, 0.12, 0.7, leather, x, 0.48, 0.05, sofa);
+  box(1.2, 0.06, 0.7, std('tex/lobby_stone.jpg', null, 0.5, 0.3, { rough: 0.25 }), 4.6, 0.42, 0.9, g); box(1.0, 0.39, 0.5, darkBronze, 4.6, 0.195, 0.9, g);
+  // planters: stone pots with fiddle-leaf figs
+  const leafM = new THREE.MeshStandardMaterial({ color: 0x2f5a2a, roughness: 0.6, side: THREE.DoubleSide });
+  const plant = (x, z, s = 1) => {
+    const p = new THREE.Group(); p.position.set(x, 0, z); p.scale.setScalar(s); g.add(p);
+    cyl(0.32, 0.26, 0.7, std('tex/lobby_stone.jpg', null, 1, 0.4, { rough: 0.4 }), 20, 0, 0.35, 0, p); cyl(0.29, 0.29, 0.02, mat(0x2a1e14, { roughness: 1 }), 20, 0, 0.69, 0, p);
+    cyl(0.025, 0.03, 1.4, mat(0x4a3a28), 6, 0, 1.35, 0, p);
+    const r = mulberry(Math.floor(x * 100 + z * 7) >>> 0);
+    for (let k = 0; k < 18; k++) { const a = r() * Math.PI * 2, y = 1.2 + r() * 1.0; const l = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), leafM); l.scale.set(1, 1.35, 0.18); l.position.set(Math.cos(a) * (0.15 + r() * 0.2), y, Math.sin(a) * (0.15 + r() * 0.2)); l.rotation.set(r() - 0.5, a, r() * 0.8 - 0.4); l.castShadow = true; p.add(l); }
+  };
+  plant(-4.2, 1.0); plant(4.6, -2.25, 0.9); plant(-5.3, -2.25, 0.9);
+  // warm practical lights
+  const sp = new THREE.SpotLight(0xffe2c0, 30, 12, 0.9, 0.6, 1.5); sp.position.set(0, 4, 1.5); sp.target.position.set(0, 1, -3); g.add(sp, sp.target);
+  const warm = new THREE.PointLight(0xffd2a0, 6, 9, 2); warm.position.set(-1.6, 3.4, 1.4); g.add(warm);
+  const frame = darkBronze;
   if (!ctx?.glass) {
-    // back wall: lobby entrance glazing onto Lake Ave (daylight)
-    box(20, 4.2, 0.2, wall, 0, 2.1, 4.2, g);
+    // front wall: lobby entrance glazing onto Lake Ave (daylight)
+    box(20, 4.2, 0.2, wood(20, 4.2), 0, 2.1, 4.2, g);
     const day = emissive(0xdfe9f2, 1.6);
     for (let i = -1; i <= 1; i++) { box(2.4, 3.0, 0.05, day, i * 2.8, 1.6, 4.08, g); box(0.12, 3.2, 0.12, frame, i * 2.8 - 1.26, 1.6, 4.05, g); }
-    return g;
+  } else {
+    // entrance seen from the sidewalk: a glass storefront with a pair of (locked) sliding doors
+    const glassM = new THREE.MeshPhysicalMaterial({ color: 0xb8dce8, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false });
+    box(20, 0.9, 0.2, stone(20, 0.9), 0, 3.75, 4.2, g);
+    for (const x of [-9.4, -6.2, -3.0, 3.0, 6.2, 9.4]) box(0.14, 3.3, 0.16, frame, x, 1.65, 4.2, g);
+    for (const x of [-7.8, -4.6, 4.6, 7.8]) box(3.05, 3.3, 0.03, glassM, x, 1.65, 4.2, g);
+    box(6.0, 0.08, 0.2, frame, 0, 3.3, 4.2, g); box(6.0, 0.05, 0.3, bronze, 0, 0.02, 4.2, g);
+    const doors = [];
+    for (const sx of [-1, 1]) {
+      const d = new THREE.Group(); d.position.set(sx * 0.75, 0, 4.22); g.add(d);
+      box(1.5, 3.2, 0.03, glassM, 0, 1.62, 0, d);
+      for (const x of [-0.72, 0.72]) box(0.06, 3.2, 0.06, frame, x, 1.62, 0, d);
+      box(1.5, 0.08, 0.06, frame, 0, 0.06, 0, d); box(1.5, 0.08, 0.06, frame, 0, 3.2, 0, d);
+      box(0.04, 0.5, 0.05, bronze, -sx * 0.6, 1.1, 0.06, d);
+      doors.push(d);
+    }
+    const decal = plane(signTex('citidoor', 'CITITOWER 101', { w: 1024, h: 128, font: '700 76px system-ui', color: '#e8eef2' }), 2.4, 0.3, { transparent: true }); decal.position.set(0, 2.95, 4.26); g.add(decal);
+    const hours = plane(signTex('hours', 'GUESTS PLEASE CHECK IN', { w: 1024, h: 96, font: '600 52px system-ui', color: '#e8eef2' }), 0.9, 0.085, { transparent: true }); hours.position.set(0.75, 1.32, 4.26); g.add(hours);
+    // sidewalk outside
+    const walk = mesh(new THREE.PlaneGeometry(20, 10), std('tex/sidewalk.jpg', null, 20 / 2.5, 10 / 2.5, { color: 0xd8d2c8, rough: 0.9 }), { cast: false }); walk.rotation.x = -Math.PI / 2; walk.position.set(0, 0.005, 9.3); g.add(walk);
+    g.userData.doors = doors;
   }
-  // entrance seen from the sidewalk: a glass storefront with a pair of (locked) sliding doors
-  const glassM = new THREE.MeshPhysicalMaterial({ color: 0xb8dce8, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.16, depthWrite: false });
-  box(20, 0.9, 0.2, frame, 0, 3.75, 4.2, g);
-  for (const x of [-9.4, -6.2, -3.0, 3.0, 6.2, 9.4]) box(0.14, 3.3, 0.16, frame, x, 1.65, 4.2, g);
-  for (const x of [-7.8, -4.6, 4.6, 7.8]) box(3.05, 3.3, 0.03, glassM, x, 1.65, 4.2, g);
-  box(6.0, 0.08, 0.2, frame, 0, 3.3, 4.2, g); box(6.0, 0.05, 0.3, frame, 0, 0.02, 4.2, g);
-  const doors = [];
-  for (const sx of [-1, 1]) {
-    const d = new THREE.Group(); d.position.set(sx * 0.75, 0, 4.22); g.add(d);
-    box(1.5, 3.2, 0.03, glassM, 0, 1.62, 0, d);
-    for (const x of [-0.72, 0.72]) box(0.06, 3.2, 0.06, frame, x, 1.62, 0, d);
-    box(1.5, 0.08, 0.06, frame, 0, 0.06, 0, d); box(1.5, 0.08, 0.06, frame, 0, 3.2, 0, d);
-    box(0.04, 0.5, 0.05, mat(0xd8dadc, { metalness: 1, roughness: 0.2 }), -sx * 0.6, 1.1, 0.06, d);
-    doors.push(d);
-  }
-  const decal = plane(signTex('citidoor', 'CITITOWER 101', { w: 1024, h: 128, font: '700 76px system-ui', color: '#e8eef2' }), 2.4, 0.3, { transparent: true }); decal.position.set(0, 2.95, 4.26); g.add(decal);
-  const hours = plane(signTex('hours', 'GUESTS PLEASE CHECK IN', { w: 1024, h: 96, font: '600 52px system-ui', color: '#e8eef2' }), 0.9, 0.085, { transparent: true }); hours.position.set(0.75, 1.32, 4.26); g.add(hours);
-  // sidewalk outside
-  const walk = mesh(new THREE.PlaneGeometry(20, 10), pbr('concrete', { color: 0xb8b2a8 }), { cast: false }); walk.rotation.x = -Math.PI / 2; walk.position.set(0, 0.005, 9.3); g.add(walk);
-  // front desk + monitor + plant
+  // front desk: walnut front with bronze reveals, granite top, backlit sign, monitor, lamp, orchid
   const desk = new THREE.Group(); desk.position.set(-1.6, 0, 2.5); g.add(desk); // close to the glass so you can read her
-  box(3.0, 1.08, 0.75, mat(0x2a221c, { roughness: 0.6 }), 0, 0.54, 0, desk);
-  box(3.1, 0.06, 0.85, pbr('marble', { color: 0xeeeae2 }), 0, 1.11, 0, desk);
-  box(2.8, 0.12, 0.02, emissive(0xffd8a8, 1.5), 0, 0.95, 0.39, desk);
+  box(3.0, 1.0, 0.75, wood(3, 1), 0, 0.54, 0, desk);
+  for (const x of [-1.0, 1.0]) box(0.03, 0.9, 0.012, bronze, x, 0.54, 0.38, desk);
+  box(3.04, 0.06, 0.79, darkBronze, 0, 0.03, 0, desk); // plinth shadow
+  box(3.1, 0.07, 0.85, std('tex/lobby_stone.jpg', 'tex/lobby_stone_n.jpg', 1.3, 0.4, { rough: 0.22, ns: 0.4 }), 0, 1.075, 0, desk);
+  box(2.8, 0.03, 0.02, emissive(0xffd8a8, 1.5), 0, 1.02, 0.39, desk);
   box(0.55, 0.36, 0.04, mat(0x101114, { roughness: 0.3 }), 0.8, 1.36, -0.1, desk); box(0.08, 0.2, 0.08, mat(0x101114), 0.8, 1.2, -0.1, desk);
-  const lbl = plane(signTex('desk', 'CONCIERGE', { w: 512, h: 96, font: '700 60px system-ui', color: '#d8b880' }), 0.9, 0.17, { transparent: true }); lbl.position.set(0, 0.7, 0.385); desk.add(lbl);
-  cyl(0.28, 0.22, 0.6, mat(0xe8e4dc), 14, -4.2, 0.3, 1.0, g);
-  g.userData.doors = doors; g.userData.desk = desk;
+  box(0.5, 0.33, 0.01, emissive(0x5a8ab0, 0.6), 0.8, 1.36, -0.12, desk);
+  cyl(0.012, 0.012, 0.42, bronze, 8, -1.2, 1.32, -0.15, desk); cyl(0.09, 0.12, 0.12, emissive(0xffe2b8, 2), 16, -1.2, 1.55, -0.15, desk, { cast: false });
+  cyl(0.06, 0.05, 0.1, mat(0xf4f1ea, { roughness: 0.3 }), 14, 1.3, 1.16, 0.15, desk); for (let k = 0; k < 5; k++) { const pe = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), mat(0xf2e6f4, { roughness: 0.5 })); pe.position.set(1.3 + Math.cos(k) * 0.05, 1.35 + k * 0.03, 0.15 + Math.sin(k) * 0.05); pe.scale.set(1, 0.6, 1); desk.add(pe); }
+  const lbl = plane(signTex('desk', 'CONCIERGE', { w: 512, h: 96, font: '600 56px Georgia, serif', color: '#e2c48a' }), 0.9, 0.17, { transparent: true }); lbl.position.set(0, 0.7, 0.385); desk.add(lbl);
+  g.userData.desk = desk;
   return g;
 }
 export const FH = 3.1;

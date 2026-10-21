@@ -252,6 +252,29 @@ export function deskUI() {
   };
 }
 // stairs rhythm climb: hit ↑ when the marker crosses the green zone
+// a set piece's banner on the ride: title, pips, the rule in one line (+ touch buttons)
+const KEYGLYPH = { arrowleft: '←', arrowright: '→', arrowup: '↑ JUMP', arrowdown: '↓' };
+export function evUI({ title, hint, pips = 0, keys = null }) {
+  remove('evui');
+  const el = layer('evui', `
+    <div class="dogui run">
+      <div class="dtitle">${title}</div>
+      ${pips ? `<div class="dpips">${'<i></i>'.repeat(pips)}</div>` : ''}
+      <div class="dhint">${hint}</div>
+      ${TOUCH && keys ? `<div class="stairs">${keys.map((k) => `<button data-k="${k}">${KEYGLYPH[k]}</button>`).join('')}</div>` : ''}
+    </div>`);
+  el.style.pointerEvents = 'none'; el.style.padding = 0;
+  return {
+    el,
+    bind(fn) { el.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(b.dataset.k); })); },
+    set(res) { el.querySelectorAll('.dpips i').forEach((p, i) => { p.className = res[i] === true ? 'ok' : res[i] === false ? 'bit' : res[i] === 'mid' ? 'mid' : ''; }); },
+    done(g) { const t = el.querySelector('.dtitle'); t.textContent = g; el.querySelector('.dogui').classList.add('fin', /CLONK|FLAT|BULLI/.test(g) ? 'bad' : 'good'); },
+  };
+}
+export function say(who, text, ttl = 2200) {
+  root().querySelectorAll('.say').forEach((p) => p.remove());
+  const el = h(`<div class="say"><b>${who}</b>${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl);
+}
 // the hallway pitbull: three bites, three pips
 export function dogUI() {
   const el = layer('dogui', `
@@ -290,27 +313,69 @@ export function climbUI() {
   };
 }
 export function notif(title, body) { return `<div class="notif"><div class="ic">g</div><div><b>${title}</b><small>${body}</small></div></div>`; }
-export function results({ next, nextN, tip, promised, pay, time, eta, ice, crashes, nearMiss, order, line, score: S, onNext, onShare }) {
-  const onTime = time <= eta;
+// ---------------------------------------------------------------- results: one row per section, a success bar + a badge
+// rate(section, d) → { pct 0..1, badge } | null (section not reached). d = G.fin merged with the run stats
+// ({ time, eta, timeLeft, ice, crashes, nearMiss, coins, coinsTotal, tricks }). The parent uses the same thresholds
+// to decide a perfect run (every reached section PERFECT).
+export const SECTIONS = [
+  ['ride', '🚲', 'Ride'], ['rival', '🛴', 'Rival courier'], ['crane', '🏗️', 'Crane drop'], ['akira', '🅿️', 'Parking slide'],
+  ['door', '🛎️', 'Front desk'], ['stairs', '🪜', 'Stairs'], ['hall', '🚪', 'Hallway'], ['time', '⏱️', 'Time'], ['ice', '🧊', 'Ice'],
+];
+const BADGES = [[0.95, 'PERFECT'], [0.75, 'GREAT'], [0.55, 'GOOD'], [0.3, 'OK'], [0, 'BAD']];
+const badgeOf = (pct) => BADGES.find(([t]) => pct >= t - 1e-9)[1];
+const GRADE_PCT = {
+  rival: { 'SENT HIM': 1, 'RIVAL DOWN': 0.8, 'HELD ON': 0.5, BULLIED: 0.15 },
+  crane: { UNTOUCHED: 1, CLEAN: 0.85, CLONKED: 0.4, FLATTENED: 0.1 },
+  akira: { NAILED: 1, WIPEOUT: 0.15 },
+  door: { PERFECT: 1, GOOD: 0.65, SLOW: 0.3 },
+  stairs: { PERFECT: 1, GOOD: 0.65, GASSED: 0.25 },
+  hall: { UNTOUCHABLE: 1, PERFECT: 1, FLAWLESS: 1, NICKED: 0.65, CHEWED: 0.35, 'CHEW TOY': 0.1 },
+};
+const c01 = (x) => Math.max(0, Math.min(1, x));
+export function rate(section, d = {}) {
+  let pct = null, label = null;
+  if (section === 'ride') {
+    if (d.coinsTotal == null) return null;
+    const coins = c01(d.coins / Math.max(1, d.coinsTotal * 0.75)), clean = d.crashes ? 0 : 1, nm = c01(d.nearMiss / 6), tr = c01(d.tricks / 2);
+    pct = (0.45 * coins + 0.25 * clean + 0.15 * nm + 0.15 * tr) * (d.crashes ? Math.max(0.35, 0.75 - 0.15 * (d.crashes - 1)) : 1);
+    label = `${d.coins} coins · ${d.crashes ? `${d.crashes} crash${d.crashes > 1 ? 'es' : ''}` : 'no crashes'}`;
+  } else if (section === 'time') {
+    if (d.eta == null) return null;
+    pct = d.time <= d.eta ? 0.6 + 0.4 * c01((d.timeLeft ?? d.eta - d.time) / (d.eta * 0.2)) : c01(0.45 - (d.time - d.eta) / d.eta);
+    label = `${fmtTime(d.time)} · ${d.time <= d.eta ? 'on time' : `${fmtTime(d.time - d.eta)} late`}`;
+  } else if (section === 'ice') {
+    if (d.ice == null) return null;
+    pct = c01(d.ice / 60); label = `${Math.round(d.ice)}% left`;
+  } else {
+    const g = section === 'hall' ? (d.hall ?? d.dog) : d[section];
+    if (!g) return null;
+    pct = section === 'hall' && d.hallPct != null ? c01(d.hallPct) : GRADE_PCT[section]?.[g] ?? 0.5;
+    label = g;
+  }
+  return { pct, badge: badgeOf(pct), label };
+}
+export function rateAll(d) {
+  const rows = SECTIONS.map(([k, icon, name]) => ({ k, icon, name, r: rate(k, d) }));
+  const reached = rows.filter((x) => x.r);
+  return { rows, perfect: reached.length >= 6 && reached.every((x) => x.r.badge === 'PERFECT') };
+}
+export function results({ next, nextN, tip, promised, pay, time, eta, ice, crashes, nearMiss, order, line, score: S, rows, onNext, onShare }) {
+  const onTime = time <= eta, perfect = !!S.perfect;
+  rows ||= rateAll({ ...(S.fin || {}), time, eta, ice, crashes, nearMiss, coins: S.coins, tricks: S.tricks }).rows;
+  const bar = (x, i) => x.r
+    ? `<div class="srow" style="--d:${(0.15 + i * 0.07).toFixed(2)}s"><span class="si">${x.icon}</span><span class="sn">${x.name}<small>${x.r.label}</small></span><span class="sb"><i style="--p:${Math.max(2, Math.round(x.r.pct * 100))}%;background-size:${Math.round(10000 / Math.max(2, x.r.pct * 100))}% 100%"></i></span><span class="bdg b-${x.r.badge.toLowerCase()}">${x.r.badge}</span></div>`
+    : `<div class="srow off" style="--d:${(0.15 + i * 0.07).toFixed(2)}s"><span class="si">${x.icon}</span><span class="sn">${x.name}</span><span class="sb"></span><span class="bdg">—</span></div>`;
   const el = layer('results', `
-    <div class="res">
-      <h2>Delivered${onTime ? ' on time' : ''}.<br><em>Tip: $0.00</em></h2>
-      <div class="scard">
+    <div class="res${perfect ? ' perfect' : ''}">
+      <h2>Delivered${onTime && !perfect ? ' on time' : ''}.<br>${perfect ? `<em class="won">Kyle actually tipped.</em>` : '<em>Tip: $0.00</em>'}</h2>
+      <div class="shead">
         <div class="grade g${S.grade}">${S.grade}</div>
         <div class="stot"><small>SCORE${S.newBest ? ' · <b>NEW BEST!</b>' : ` · best ${S.best.toLocaleString('en-US')}`}</small><span>${S.total.toLocaleString('en-US')}</span></div>
-        <div class="sparts">
-          <div><span>Ride, coins &amp; tricks</span><b>${S.run.toLocaleString('en-US')}</b></div>
-          <div><span>Time left bonus</span><b>+${S.timeB.toLocaleString('en-US')}</b></div>
-          <div><span>Ice left bonus</span><b>+${S.iceB.toLocaleString('en-US')}</b></div>
-          <div><span>No-crash bonus</span><b>${S.cleanB ? '+1,000' : '—'}</b></div>
-        </div>
+        ${perfect ? '<div class="bdg b-gold">PERFECT RUN</div>' : ''}
       </div>
-      <div class="ledger1">Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b> · you earned <b>${money(pay)}</b></div>
-      <div class="kv">
-        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS · TRICKS<b>${S.coins} · ${S.tricks}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div><div>ICE LEFT<b>${Math.round(ice)}%</b></div>
-        <div>SLIDE PARK<b>${S.akira || '—'}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div><div>HALLWAY DOG<b>${S.dog || '—'}</b></div>
-      </div>
-      <div class="small" style="color:#cfd6dc">Kyle S: “${line}” · ${crashes ? `${crashes} crash${crashes > 1 ? 'es' : ''}` : 'no crashes'} · ${nearMiss} near misses · ice ${Math.round(ice)}%</div>
+      <div class="ledger1">${perfect ? `Kyle promised ${money(promised ?? tip)} · tipped <b class="tipwon">${money(tip)}</b> 🤯` : `Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b>`} · you earned <b>${money(pay + (perfect ? tip : 0))}</b></div>
+      <div class="srows">${rows.map(bar).join('')}</div>
+      <div class="small rline">Kyle S: “${line}” · ${nearMiss} near misses · best combo x${S.bestMult}</div>
       <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>
       <div class="row"><button class="btn" id="next">NEXT ORDER${TOUCH ? '' : ' ⏎'}</button><button class="btn ghost" id="share" style="flex:.6">Copy score</button></div>
     </div>`);

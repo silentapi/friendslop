@@ -44,7 +44,7 @@ export function createFX(scene) {
     list.forEach((p, i) => { const a = (i / (list.length - 1)) * boostK; P.push(p.x, p.y - half, p.z, p.x, p.y + half, p.z); C.push(a, a, a, a, a, a); if (i) { const k = (i - 1) * 2; I.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } });
     const gg = mesh.geometry; gg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gg.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); gg.setIndex(I);
   }
-  function update(dt, { rider, boosting, speed, fwd, right }) {
+  function update(dt, { rider, boosting, speed, fwd, right, cruise = 0 }) {
     // particles
     for (let i = 0; i < N; i++) {
       const q = parts[i];
@@ -64,10 +64,10 @@ export function createFX(scene) {
         q.z -= dt * (speed * 1.8 + 20);
         if (q.z < -14) seedStreak(q);
         const p = base.clone().addScaledVector(fwd, q.z).addScaledVector(right, q.o.x).add(V(0, q.o.y, 0));
-        const tail = p.clone().addScaledVector(fwd, 2.2 + speed * 0.12), a = boostK * Math.min(1, (q.z + 14) / 6) * 0.9;
-        wpos.set([p.x, p.y, p.z, tail.x, tail.y, tail.z], i * 6); wcol.set([0.6 * a, 1 * a, 0.75 * a, 0, 0, 0], i * 6);
+        const tail = p.clone().addScaledVector(fwd, 2.2 + speed * 0.12), lvl = Math.max(boostK * 0.95, cruise * 0.38 * (i % 3 ? 1 : 0)), a = lvl * Math.min(1, (q.z + 14) / 6);
+        wpos.set([p.x, p.y, p.z, tail.x, tail.y, tail.z], i * 6); wcol.set([(0.85 - 0.25 * boostK) * a, a, (0.85 - 0.1 * boostK) * a, 0, 0, 0], i * 6);
       });
-      wgeo.attributes.position.needsUpdate = wgeo.attributes.color.needsUpdate = true; wind.visible = boostK > 0.02;
+      wgeo.attributes.position.needsUpdate = wgeo.attributes.color.needsUpdate = true; wind.visible = boostK > 0.02 || cruise > 0.05;
     }
   }
   return { burst, shock, update, dispose: () => g.removeFromParent(), group: g };

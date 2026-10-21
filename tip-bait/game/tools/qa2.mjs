@@ -11,6 +11,8 @@ await ctx.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**', (route) => { co
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
 if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFail = true; });
+if (process.env.HALL_KIND) await ctx.addInitScript((k) => { globalThis.__hallKind = k; }, process.env.HALL_KIND);
+if (process.env.RIVAL) await ctx.addInitScript((m) => { globalThis.__rivalMode = m; }, process.env.RIVAL);
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => { errors.push(e.message); console.log('[pageerror]', e.message, (e.stack || '').split('\n').slice(1, 3).join(' | ')); });
@@ -46,6 +48,7 @@ const pilot = () => page.evaluate((crashMode) => {
   if (g.state !== 'run' || crashMode) return null;
   const cap = (k) => 'Arrow' + k.slice(5, 6).toUpperCase() + k.slice(6);
   if (g.tech) return cap(g.tech.key);
+  { const E = window.__EV, ev = E?.cur; if (E?.locked && ev?.kind === 'rival') { if (ev.st === 'strike' && !ev.pressed) { const u = ev.t / ev.W; if (globalThis.__rivalMode === 'dodge') return u > 0.3 ? cap(ev.away) : null; if (globalThis.__rivalMode === 'miss' && ev.res.length === 1) return null; return u > 0.7 ? cap(ev.toward) : null; } if (globalThis.__rivalMode === 'flinch' && ev.st === 'feint' && ev.t > 0.1 && !ev.flinchCd) return cap(ev.toward); return null; } }
   if (g.akira && !g.akira.res) return globalThis.__akiraFail && g.akira.idx === 1 ? 'ArrowUp' === cap(g.akira.seq[1]) ? 'ArrowLeft' : 'ArrowUp' : cap(g.akira.seq[g.akira.idx]);
   if (g.qte) return (1 - g.qte.t / g.qte.dur) < 0.22 ? g.qte.key.replace('arrow', 'Arrow').replace('Arrowup', 'ArrowUp').replace('Arrowdown', 'ArrowDown').replace('Arrowleft', 'ArrowLeft').replace('Arrowright', 'ArrowRight') : null;
   { const m = g.lv.ramps.find((r) => r.mega && r.s - g.s > 0 && r.s - g.s < 45); if (m && g.lane !== 1) return g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; if (m) return null; }
@@ -75,6 +78,7 @@ while (i < 4000) {
   if (i % 90 === 0) { console.log(i, JSON.stringify(g)); }
   { const q = await page.evaluate(() => { const g = window.__G; return g.qte ? 'QTE ' + g.qte.kind + ' ' + g.qte.key : null; }); if (q && q !== globalThis.lastQ) { console.log(q); await shot('qte_' + i); } globalThis.lastQ = q; }
   if (i % 150 === 0) await shot(`run_${String(i).padStart(4, '0')}`);
+  { const es = await page.evaluate(() => { const c = window.__EV?.cur; return c ? c.kind + '_' + c.st : ''; }); if (es && (i % 6 === 0 || es !== globalThis.lastEs)) { await shot(`ev_${String(i).padStart(4, '0')}_${es}`); } if (es !== globalThis.lastEs) console.log('EV', es, '@', i); globalThis.lastEs = es; }
   if (mode === 'coach') { const c = await page.evaluate(() => document.querySelector('.coach')?.textContent || ''); if (c && !seen.has(c)) { seen.add(c); console.log('COACH', c); await shot(`coach_${seen.size}`); } if (i > 900) break; }
   if (g.st === 'crashing') { console.log('CRASH', await page.evaluate(() => window.__G.crashKind + ' @' + window.__G.s.toFixed(0))); await tick(12); await shot(`crash_${i}`); }
   if (g.st === 'crashed') {
@@ -105,7 +109,7 @@ if ((await G()).st === 'finale') {
   k = 0;
   while ((f = await F()).ph === 'stairs' && k < 1500) {
     if (f.haz) { if (f.haz[1] > 0.3) await key(f.haz[0].replace('arrow', 'Arrow').replace(/Arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
-    else if (Math.abs(f.u - 0.5) < 0.035 || (process.env.STAIR_MISS && k % 23 === 5)) await key('ArrowUp');
+    else if (k % 4 === 0) { globalThis.side = (globalThis.side ?? 0) ^ 1; if (process.env.STAIR_MISS && k % 92 === 40) globalThis.side ^= 1; await key(globalThis.side ? 'ArrowRight' : 'ArrowLeft'); } // ~7.5 taps/s, alternating
     await tick(1); k++;
     if (k % 60 === 20 || (f.haz && f.haz[1] < 0.05)) await shot(`fin_stairs_${String(k).padStart(4, '0')}`);
   }
@@ -113,12 +117,15 @@ if ((await G()).st === 'finale') {
   // hallway pitbull: react a human-ish 0.2 s after the wind-up starts (DOG_MISS: whiff the second one)
   for (let w = 0; w < 100 && (await F()).ph !== 'hall'; w++) { await page.waitForTimeout(60); await tick(1); }
   k = 0; let lastSt = '', n = 0;
-  const H = () => page.evaluate(() => { const h = window.__F.h; return h ? { ph: window.__F.phase, st: h.st, t: h.t, i: h.i, key: h.atk?.key, side: h.atk?.side, dodged: !!h.dodge } : { ph: window.__F.phase }; });
+  const H = () => page.evaluate(() => { const F = window.__F; if (F.enc) return { ph: F.phase, ...F.enc.state(), i: F.enc.state().i ?? 0 }; const h = F.h; return h ? { ph: window.__F.phase, st: h.st, t: h.t, i: h.i, key: h.atk?.key, side: h.atk?.side, dodged: !!h.dodge } : { ph: window.__F.phase }; });
   let hs;
   while ((hs = await H()).ph === 'hall' && k < 900) {
-    if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const miss = process.env.DOG_MISS && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
+    const cap = (kk) => kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase());
+    if (hs.kind === 'ladder') { if (hs.st === 'tele' && !hs.done && hs.t > 0.2) { const miss = process.env.DOG_MISS && !globalThis.__lm && hs.t > 0.2 && (globalThis.__lc = (globalThis.__lc || 0) + 1) === 2; if (miss) globalThis.__lm = 1; await key(cap(miss ? (hs.key === 'arrowup' ? 'arrowdown' : 'arrowup') : hs.key)); } }
+    else if (hs.kind === 'mop') { if (hs.st === 'slide') { if (hs.slip) { if (hs.slipT > 0.14) { globalThis.__sl = (globalThis.__sl || 0) + (hs.slipT < 0.2 ? 1 : 0); if (!(process.env.DOG_MISS && globalThis.__sl === 2)) await key(cap(hs.key)); } } else if (Math.abs(hs.b) > 0.33 && k % 3 === 0) await key(hs.b > 0 ? 'ArrowLeft' : 'ArrowRight'); } }
+    else if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const miss = process.env.DOG_MISS && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
     if (hs.st !== lastSt) { lastSt = hs.st; n = 0; }
-    if (n % 6 === 0 || (hs.st === 'lunge')) await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);
+    if (n % 6 === 0 || hs.st === 'lunge' || hs.st === 'swing') await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);
     await tick(1); k++; n++;
   }
   console.log('hall took', k, 'ticks', JSON.stringify(await page.evaluate(() => window.__G.fin)));

@@ -12,6 +12,7 @@ import * as UI from './ui.js';
 import { Finale } from './finale.js';
 import * as K from './kyle.js';
 import { createFX } from './fx.js';
+import { createEvents } from './events.js';
 
 // ---------------------------------------------------------------- persistent state
 const store = {
@@ -72,6 +73,7 @@ const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
 window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
 window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
+const EV = createEvents({ G, UI, Audio, FX, baseFov: () => baseFov(), halfAt: (s) => halfAt(s), addCombo, breakCombo, saveTut: () => store.set('tut', TUT) }); window.__EV = EV;
 window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
@@ -107,6 +109,8 @@ async function buildWorld(n) {
   G.seed = URLQ.has('seed') ? Number(URLQ.get('seed')) : QA ? n : Math.floor(Math.random() * 1e9);
   G.lv = await buildLevel(world, route, { order: n, seed: G.seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
   G.pop = await populate(world, route, G.lv);
+  G.tut = TUT; EV.bind(G.pop.events);
+  warmup(world);
   if (!G.R) { G.R = await rider(); }
   world.add(G.R.root);
   setWeather(G.def.storm);
@@ -135,9 +139,9 @@ function updateRain(t) {
 function resetRun(atS = 0) {
   G.s = atS; G.lat = 0; G.lane = 1; G.y = 0; G.vy = 0; G.v = 0; G.runT = 0; G.boostT = 0; G.slowT = 0; G.invT = 0; G.crashT = 0; G.slowmo = 1; G.cine = 0; G.camK = 0; G.airKind = null; G.qte = null; G.trick = null; G.trickGrade = null; G.qteAt = null; UI.remove('qte'); UI.remove('combo'); G.akira = null; G.akK = 0; G.tech = null;
   if (atS === 0) {
-    G.base = Math.min(18.5, 13.2 + (G.order - 1) * 0.9);
-    G.eta = Math.round(G.route.length / (G.base * 0.9) + 10); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
-    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {};
+    G.base = Math.min(21, 15.2 + (G.order - 1) * 1.0);
+    G.eta = Math.round(G.route.length / (G.base * 0.98) + 8); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
+    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0;
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
     for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.on = false; o.teched = false; }
     for (const ic of G.lv.ice) ic.got = false;
@@ -147,6 +151,7 @@ function resetRun(atS = 0) {
     G.trainCab = null; G.trainGone = false;
   }
   const R = G.R; R.C.root.rotation.set(0, 0, 0); R.bike.rotation.set(0, 0, 0); R.root.visible = true;
+  EV.reset(atS);
 }
 
 // ---------------------------------------------------------------- input: swipes, taps, keys
@@ -156,6 +161,7 @@ function onSwipe(dir) {
   if (G.tech) { techPress(dir); return; }
   if (G.akira && !G.akira.res) { akiraPress(dir); return; }
   if (G.qte) { qtePress(dir); return; }
+  if (EV.locked) { EV.key({ L: 'arrowleft', R: 'arrowright', U: 'arrowup', D: 'arrowdown' }[dir]); return; }
   if (dir === 'L') G.lane = Math.max(0, G.lane - 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'R') G.lane = Math.min(2, G.lane + 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'U' && G.y <= 0.02) { G.vy = 7.8; Audio.sfx('pop', 0.6, 0.7); }
@@ -186,6 +192,7 @@ window.addEventListener('keydown', (e) => {
   if (G.state === 'run' && G.tech) { if (techPress(k)) { e.preventDefault(); return; } }
   if (G.state === 'run' && G.akira && !G.akira.res) { if (akiraPress(k)) { e.preventDefault(); return; } }
   if (G.state === 'run' && G.qte) { if (qtePress(k)) { e.preventDefault(); return; } }
+  if (G.state === 'run' && EV.locked && QKEYS.includes(QALIAS[k] || k)) { e.preventDefault(); EV.key(QALIAS[k] || k); return; }
   if (['arrowleft', 'a'].includes(k)) onSwipe('L'); else if (['arrowright', 'd'].includes(k)) onSwipe('R');
   else if (['arrowup', 'w', ' '].includes(k)) onSwipe('U'); else if (['arrowdown', 's', 'shift'].includes(k)) onSwipe('D');
   if (G.state !== 'run' && k === ' ') e.preventDefault();
@@ -221,7 +228,7 @@ function startAkira() {
   const first = !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
   const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = QA ? mulberry(G.seed + 3) : Math.random;
   const seq = ['arrowdown']; for (let k = 1; k < (first ? 3 : 4); k++) { let n; do n = pool[Math.floor(rr() * 4)]; while (n === seq[k - 1]); seq.push(n); }
-  G.akira = { seq, idx: 0, t: 0, dur: first ? 3.2 : 2.2, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
+  G.akira = { seq, idx: 0, t: 0, dur: first ? 2.8 : 1.8, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
   const st = G.pop.stepper; if (st) { st.t = 0; st.c.root.visible = true; }
   Audio.sfx('skid', 1, 0.8); Audio.rate(0.7); UI.coach(null);
 }
@@ -246,7 +253,7 @@ function startTech(o) {
   const first = !TUT.tech; if (first) { TUT.tech = 1; store.set('tut', TUT); }
   let dir = Math.random() < 0.5 ? -1 : 1; if (G.lane + dir < 0 || G.lane + dir > 2) dir = -dir;
   const key = dir < 0 ? 'arrowleft' : 'arrowright';
-  G.tech = { o, dir, key, t: 0, dur: first ? 0.5 : 0.35, ui: UI.qte({ key, label: 'TECH IT!' }) };
+  G.tech = { o, dir, key, t: 0, dur: first ? 0.45 : 0.3, ui: UI.qte({ key, label: 'TECH IT!' }) };
   G.slowmo = 0.06; Audio.rate(0.6); Audio.sfx('skid', 0.9, 1.4); G.shake = 0.15;
 }
 function updateTech(dt) { const q = G.tech; q.t += dt; q.ui.set(1 - q.t / q.dur); if (q.t >= q.dur) endTech(false); }
@@ -266,7 +273,7 @@ const TRICKS = { arrowup: ['BACKFLIP', 'flip'], arrowleft: ['TAIL WHIP', 'whip']
 function startQTE(kind) {
   const key = QKEYS[Math.floor((QA ? G.s * 7 : Math.random() * 4)) % 4];
   const first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
-  G.qte = { kind, key, t: 0, dur: first ? 1.3 : 0.95, ui: UI.qte({ key, label: first ? 'press it when the ring turns <span style="color:var(--gobbl)">GREEN</span>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
+  G.qte = { kind, key, t: 0, dur: first ? 1.15 : 0.8, ui: UI.qte({ key, label: first ? 'press it when the ring turns <span style="color:var(--gobbl)">GREEN</span>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
   Audio.rate(0.7); Audio.sfx('whoosh', 0.8, 0.5); UI.coach(null);
 }
 function updateQTE(dt) { const q = G.qte; q.t += dt; q.ui.set(1 - q.t / q.dur); if (q.t >= q.dur) endQTE('MISS', 'too slow'); }
@@ -278,7 +285,7 @@ function qtePress(k) {
 }
 function endQTE(grade, why = '') {
   const q = G.qte; G.qte = null; G.trickGrade = grade;
-  if (grade === 'MISS') { q.ui.result('MISS', why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2); return; }
+  if (grade === 'MISS') { G.qteMisses = (G.qteMisses || 0) + 1; q.ui.result('MISS', why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2); return; }
   const [name, kind] = TRICKS[q.key], pts = grade === 'PERFECT' ? 500 : 250;
   const tLand = (G.vy + Math.sqrt(Math.max(0, G.vy * G.vy + 48 * G.y))) / 24;
   G.trick = { name, kind, t: 0, dur: Math.max(0.3, Math.min(0.7, tLand * 0.85)) };
@@ -345,7 +352,7 @@ function update(dt, t) {
   G.coachK = damp(G.coachK ?? 1, G.coachSlow > 0 ? 0.45 : 1, 6, dt); // tutorial slow-mo eases in and out
   const sdt = dt * G.slowmo * G.coachK;
   G.time += dt; G.eta -= dt;
-  if (!power('cool')) G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 0.9 : 1.15));
+  if (!power('cool')) G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 1.25 : 1.5));
   for (const p of G.powers) p.t -= sdt;
   G.powers = G.powers.filter((p) => p.t > 0);
   if (G.comboT > 0) { G.comboT -= sdt; if (G.comboT <= 0 && G.mult > 1) { G.mult--; G.combo = (G.mult - 1) * MULT_STEP; G.comboT = 2.5; } }
@@ -354,7 +361,7 @@ function update(dt, t) {
   if (!G.dmDone.has('fast') && G.s / G.route.length > 0.5 && G.eta > G.etaTotal * 0.55) { G.dmDone.add('fast'); UI.dm(K.pickLine(K.FAST_TEXTS)); }
   // speed
   G.boostT = Math.max(0, G.boostT - sdt); G.slowT = Math.max(0, G.slowT - sdt); G.invT = Math.max(0, G.invT - sdt);
-  const target = G.base * (G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * smooth(seg(G.runT, 0, 1.2));
+  const target = G.base * (G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * EV.speedK * smooth(seg(G.runT, 0, 1.2));
   G.runT += sdt;
   G.v = damp(G.v, target, G.boostT > 0 ? 6 : 2.5, sdt);
   const prevS = G.s;
@@ -381,6 +388,7 @@ function update(dt, t) {
   if (G.tech) { G.slowmo = 0.06; updateTech(dt); }
   else if (G.akira && !G.akira.res) G.slowmo = damp(G.slowmo, 0.12, 10, dt);
   else if (G.qte) { G.slowmo = damp(G.slowmo, 0.26, 14, dt); updateQTE(dt); }
+  else if (EV.slow != null) { G.slowmo = damp(G.slowmo, EV.slow, 9, dt); Audio.rate(0.75 + 0.25 * G.slowmo); }
   else if (G.slowmo < 1) { G.slowmo = damp(G.slowmo, 1, 5, dt); if (G.slowmo > 0.98) { G.slowmo = 1; Audio.rate(1); } }
   G.camK = damp(G.camK, G.airKind && (G.y > 0.25 || G.qte || G.qteAt != null) ? 1 : 0, G.airKind ? 3 : 1.8, dt);
   // pads, ice, puddles
@@ -403,6 +411,7 @@ function update(dt, t) {
   for (const p of G.lv.pickups) if (!p.got && Math.abs(G.s - p.s) < 1.4 && Math.abs(G.lat - p.lat) < 1.2 && G.y < 2.2) grabPower(p);
   for (const ic of G.lv.ice) if (!ic.got && Math.abs(G.s - ic.s) < 1.0 && Math.abs(G.lat - ic.lat) < 0.9 && Math.abs(G.y + 0.9 - ic.y) < 1.0) { ic.got = true; G.ice = Math.min(100, G.ice + 6); G.boostCharge = Math.min(1, G.boostCharge + 0.06); Audio.sfx('ice', 0.7, 1 + Math.random() * 0.2); }
   for (const p of G.lv.puddles) if (Math.abs(G.s - p.s) < 1.4 && Math.abs(G.lat - p.lat) < 1.2 && G.y < 0.2 && G.slowT <= 0) { G.slowT = 0.8; Audio.sfx('splash', 0.8); UI.pop('SPLASH', 'slowed down'); }
+  EV.update(dt, sdt); // the rival duel + the crane drop
   // obstacles: moving traffic, buses pulling out, tourists crossing, the train
   for (const o of G.lv.obs) {
     if (o.dead) continue;
@@ -432,11 +441,12 @@ function update(dt, t) {
   if (G.invT <= 0 && !G.tech) {
     const hit = (o, len, w, h) => Math.abs(o.s - G.s) < len / 2 + 0.7 && Math.abs(o.lat - G.lat) < w / 2 + 0.32 && G.y < h - 0.08;
     for (const o of G.lv.obs) {
-      if (o.dead) continue;
+      if (o.dead || (o.drop && !o.landed)) continue;
       if (hit(o, o.len, o.w, o.h)) {
         if (G.boostT > 0 && (o.kind === 'cone' || o.kind === 'barrier')) { o.dead = true; G.smashes++; FX.burst(G.R.root.position.clone().setY(0.6).addScaledVector(V(route.at(G.s).fx, 0, route.at(G.s).fz), 1), { color: 0xff7a1a, n: 22, speed: 6, up: 4, life: 0.7, size: 0.32, grav: 12 }); addScore(25); addCombo(2); G.boostT = Math.min(3.5, G.boostT + 0.4); UI.pop('SMASH!', `+${25 * G.mult} · boost +`); Audio.sfx('crash', 0.5, 1.6); continue; }
         if ((o.kind === 'car' || o.kind === 'bus') && !o.parked && G.y > 0.12 && G.time - (G.rampT ?? -9) < 2.2 && !G.tech && !o.teched) { o.teched = true; startTech(o); continue; } // landing on a car off a ramp: tech it
         const sh = power('shield'); if (sh) { sh.t = 0; o.dead = true; G.invT = 1.2; G.shake = 0.4; UI.pop('SHIELD!', 'helmet saved you'); Audio.sfx('crash', 0.7, 1.2); continue; }
+        if (o.drop) { EV.clonk(o); continue; }
         return crash(o.kind);
       }
       if (!o.passed && o.s < G.s - o.len / 2 - 0.7) { o.passed = true; const dl = Math.abs(o.lat - G.lat); if ((o.kind === 'car' || o.kind === 'bus') && !o.parked && dl < 3.0) { G.nearMiss++; G.boostCharge = Math.min(1, G.boostCharge + 0.34); addScore(50); addCombo(4); if (G.boostT > 0) G.boostT = Math.min(3.5, G.boostT + 0.6); UI.pop('NEAR MISS', `+${50 * G.mult}${G.boostT > 0 ? ' · boost extended' : ' · +boost'}`); Audio.sfx('whoosh', 0.9, 1.2); } }
@@ -468,7 +478,8 @@ function update(dt, t) {
     if (tr.kind === 'whip') R.bike.rotation.y = e * Math.PI * 2;
     if (tr.t >= tr.dur && tr.kind !== 'nohand') { R.bike.rotation.y = 0; G.trick = null; } }
   const nh = tr && tr.kind === 'nohand' ? Math.sin(Math.PI * clamp(tr.e)) : 0;
-  R.ride(G.dist, { lean: 0.42 + (G.boostT > 0 ? 0.12 : 0) - nh * 0.5, bank: clamp(-latV * 0.05 - curve * G.v * G.v * 0.012, -0.45, 0.45), stand: G.y > 0.3 ? 0.6 + nh * 0.4 : 0, look: G.y > 0.3 ? 0.15 + nh * 0.3 : 0 });
+  R.ride(G.dist, { lean: 0.42 + (G.boostT > 0 ? 0.12 : 0) - nh * 0.5, bank: clamp(-latV * 0.05 - curve * G.v * G.v * 0.012 + EV.bank(), -0.45, 0.45), stand: G.y > 0.3 ? 0.6 + nh * 0.4 : 0, look: G.y > 0.3 ? 0.15 + nh * 0.3 : 0 });
+  EV.pose(R);
   R.root.visible = G.invT <= 0 || Math.floor(G.invT * 12) % 2 === 0;
 }
 function crash(kind) {
@@ -585,7 +596,8 @@ function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (
 const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
 function chaseShot() {
   const b = G.boostT > 0 ? 1 : 0, wide = camera.aspect >= 1;
-  return { ds: -((wide ? 7.2 : 8.2) + b * 1.4), lat: G.lat * 0.7, y: (wide ? 3.3 : 4.1) + G.y * 0.45, lds: wide ? 9 : 7, llat: G.lat * 0.55, ly: (wide ? 1.4 : 1.0) + G.y * 0.5, fov: baseFov() + b * 12 };
+  const cruise = clamp(G.v / G.base);
+  return { ds: -((wide ? 7.2 : 8.2) - cruise * 0.5 + b * 1.6), lat: G.lat * 0.7, y: (wide ? 3.3 : 4.1) - cruise * 0.25 + G.y * 0.45, lds: wide ? 9 : 7, llat: G.lat * 0.55, ly: (wide ? 1.4 : 1.0) + G.y * 0.5, fov: baseFov() + cruise * 5 + b * 11 };
 }
 function jumpShot() { // big jumps: a low side angle inside the street (SunRail: train side; mega ramp: over the bus)
   const mega = (G.airKind || G.lastAir) === 'mega', side = mega ? -1 : 1, h = halfAt(G.s);
@@ -617,6 +629,7 @@ function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {})
   route.world(G.s + p.ds, p.lat, Math.max(0.6, p.y), camera.position);
   route.world(G.s + p.lds, p.llat, p.ly, tmp2);
   if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt); const k = G.shake * 0.35; camera.position.x += Math.sin(T * 41) * k; camera.position.y += Math.sin(T * 33 + 1) * k; camera.position.z += Math.sin(T * 29 + 2) * k; } // smooth rumble, not white noise
+  if (G.state === 'run') { const r = 0.014 * clamp(G.v / G.base) + (G.boostT > 0 ? 0.03 : 0); camera.position.y += Math.sin(T * 57) * r + Math.sin(T * 89 + 1) * r * 0.6; camera.position.x += Math.sin(T * 71 + 2) * r * 0.5; } // road buzz: more the faster you go
   camera.lookAt(tmp2);
   camera.fov = p.fov; camera.updateProjectionMatrix();
   updateShadowCam(G.R.root.position);
@@ -626,7 +639,9 @@ function runCamera(dt) {
   G.akK = damp(G.akK || 0, G.akira ? 1 : 0, 3, dt);
   if (G.akK > 0.002) { const h = halfAt(G.s); shot = orbitMix(shot, { ds: 7, lat: -(h - 1.2), y: 0.9, lds: 1, llat: G.lat + 0.8, ly: 1.0, fov: baseFov() - 2 }, smooth(clamp(G.akK)), 5); }
   if (G.camK > 0.002) { G.lastAir = G.airKind || G.lastAir; shot = orbitMix(shot, jumpShot(), smooth(clamp(G.camK)), 4.5); }
-  applyCam(shot, dt, G.camK > 0.002 ? { scale: 1.8, lookScale: 0.5 } : {});
+  const ec = EV.camera(); if (ec.shot) G.evShot = ec.shot; G.evK = damp(G.evK || 0, ec.w, 2.4, dt);
+  if (G.evK > 0.002 && G.evShot) shot = orbitMix(shot, G.evShot, smooth(clamp(G.evK)), 4.5);
+  applyCam(shot, dt, G.camK > 0.002 ? { scale: 1.8, lookScale: 0.5 } : G.evK > 0.002 ? { scale: 1.3, lookScale: 0.8 } : {});
 }
 // the countdown is the title shot handing over to the chase shot: it swings round the rider's side, never through him
 function introCamera(dt, u) {
@@ -673,22 +688,26 @@ function arrive() {
   finale = new Finale({ renderer, scene, camera, G, Audio, UI, sun, onDone: showResults }); window.__F = finale;
   finale.start();
 }
+window.__showResults = (line = 'kinda melted ngl') => showResults(line); // QA: preview the results screen
 function showResults(line) {
   G.state = 'results';
   G.delivered++; store.set('delivered', G.delivered);
   if (!G.best || G.time < G.best) { G.best = Math.round(G.time); store.set('best', G.best); }
   // delivery bonuses on top of the live score
-  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.dogT || 0));
+  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.hallT ?? G.fin?.dogT ?? 0));
   const run = Math.round(G.score), timeB = Math.round(timeLeft * 25), iceB = Math.round(G.ice * 8), cleanB = G.crashes ? 0 : 1000;
   const total = run + timeB + iceB + cleanB;
   const per = total / G.route.length, grade = per >= 26 ? 'S' : per >= 18 ? 'A' : per >= 11 ? 'B' : per >= 6 ? 'C' : 'D';
   const newBest = total > (G.bestScore || 0); if (newBest) { G.bestScore = total; store.set('bestScore', total); }
   G.lastTotal = total; G.lastGrade = grade;
   Audio.music('chill');
-  UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line,
-    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog },
+  // per-section success bars + badges (same thresholds decide a perfect run, where Kyle keeps the tip)
+  const rated = UI.rateAll({ ...(G.fin || {}), time: G.time, eta: G.etaTotal, timeLeft, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, coins: G.coins, coinsTotal: G.lv?.coins?.length ?? 0, tricks: G.tricks });
+  const perfect = G.fin?.perfect ?? rated.perfect;
+  UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line, rows: rated.rows,
+    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, perfect, fin: G.fin, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog, rival: G.fin?.rival, crane: G.fin?.crane },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
-    onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. He tipped $0.00. Again. 🙄 #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
+    onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. ${perfect ? `PERFECT RUN. He actually tipped ${UI.money(G.tip)}. 🤯` : 'He tipped $0.00. Again. 🙄'} #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
 }
 
 // ---------------------------------------------------------------- title: slow orbit at the start of the route
@@ -722,12 +741,26 @@ function step(dt, draw) {
   if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
-  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && G.boostT > 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
-  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, G.boostT * 2) : 0, score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
+  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && G.boostT > 0, cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
+  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.22 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);
+  // ambience follows where you are: the city while riding (louder + brighter with speed), then the building's rooms
+  if (G.state === 'run') { Audio.ambience('city', 1); Audio.ambienceLevel(clamp(G.v / (G.base * 1.75) + (G.boostT > 0 ? 0.25 : 0))); }
+  else if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused' || G.state === 'count') Audio.ambience('city', 0.6);
+  else if (G.state === 'title' || G.state === 'order') Audio.ambience('city', 0.45);
+  else if (G.state === 'finale' && finale) { const ph = finale.phase; Audio.ambience(ph === 'arrive' ? 'city' : /locked|elevator|Locked/.test(ph) ? 'lobby' : ph === 'stairs' ? 'stair' : 'hall', ph === 'arrive' ? 0.7 : 1); if (ph === 'arrive') Audio.ambienceLevel(0.15); }
+  else if (G.state === 'results') Audio.ambience('hall', 0.5);
   if (draw && G.state !== 'loading') (finale?.active ? finale.render() : renderer.render(scene, camera));
 }
 
+// compile every shader and upload every texture up front, including things that stay hidden until you reach them
+// (tourists at intersections, the rival, crane pieces): otherwise the first sight of each costs a hitch mid-turn
+function warmup(root) {
+  const hidden = []; root.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+  try { renderer.compile(scene, camera); } catch (e) { console.warn('warmup', e); }
+  const seen = new Set(); root.traverse((o) => { for (const m of [].concat(o.material || [])) for (const k of ['map', 'normalMap', 'emissiveMap', 'alphaMap']) { const t = m[k]; if (t && !seen.has(t) && t.image) { seen.add(t); renderer.initTexture(t); } } });
+  for (const o of hidden) o.visible = false;
+}
 // ---------------------------------------------------------------- boot
 async function boot() {
   resize();

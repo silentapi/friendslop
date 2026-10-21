@@ -5,9 +5,11 @@ import { character, ik2, coldCup } from './chars.js';
 import * as Sets from './sets.js';
 import * as KY from './kyle.js';
 import { pitbull, prefetchDog } from './dog.js';
+import { buildEncounter, prefetchHallFolks, hallWindows, HALL_KINDS } from './hallqte.js';
 
 // floor-20 hallway blocking (corridor runs along -z, x ∈ ±1.24): courier walks in from the stairs, she walks the dog toward him
 const HALL = { c0: 3.0, c: -1.5, cx: 0.25, d0: -6.4, d: -2.95, dx: -0.3, w0: -7.2, w: -3.75, wx: -0.64 };
+const STEP_FLIGHTS = 0.6; // flights per clean step: 63 alternating taps to the 20th floor
 const LUNGE = 0.17, DODGE_X = { arrowleft: -0.52, arrowright: 0.52, arrowup: 0 };
 
 const KYLE_LOOK = { maps: { casualsuit06: 'tex/kyle_fit.jpg', shoes05: 'tex/kyle_shoes.jpg' } };
@@ -48,7 +50,7 @@ export class Finale {
   start() {
     const { G, UI, Audio } = this;
     UI.skipChip(true).addEventListener('click', () => this.skip());
-    prefetchKyle(); prefetchReceptionist(); prefetchWalker(); prefetchDog(); G.R.root.visible = true;
+    prefetchKyle(); prefetchReceptionist(); prefetchWalker(); prefetchDog(); prefetchHallFolks(); G.R.root.visible = true;
     Audio.music('chill'); Audio.sfx('skid', 0.9);
     this.c0 = this.camera.position.clone(); this.l0 = new THREE.Vector3(); this.camera.getWorldDirection(this.l0); this.l0.multiplyScalar(10).add(this.c0);
     const ud = G.citi.userData;
@@ -79,7 +81,7 @@ export class Finale {
     R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.8, 0, 5.0);
     this.cup = coldCup(); s.add(this.cup);
     this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 42; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
-    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 0 ? 0.55 : 0.8, glanceIn: null });
+    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 0 ? 0.45 : 0.7, glanceIn: null });
     this.bui = UI.deskUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (this.phase === 'locked') { if (k === 'arrowleft' || k === 'a') this.wave(0); else if (k === 'arrowright' || k === 'd') this.wave(1); else if (k === ' ' || k === 'arrowup' || k === 'w' || k === 'enter') { e.preventDefault(); this.knock(); } } else if (this.phase === 'stairs') this.stairKey(k, e); };
     window.addEventListener('keydown', this.keyH);
@@ -88,7 +90,7 @@ export class Finale {
   wave(side) {
     if (!this.inputOn || this.buzzed != null || side === this.lastSide) return;
     this.lastSide = side; this.waveT = 0.3; this.wavePh = side; this.Audio.sfx('whoosh', 0.2, 1.8);
-    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.075); if (this.notice >= 1 && this.glanceIn == null) this.glanceIn = 0.25 + Math.random() * 1.3; } // full: she'll glance up at some point — keep waving
+    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.065); if (this.notice >= 1 && this.glanceIn == null) this.glanceIn = 0.25 + Math.random() * 1.6; } // full: she'll glance up at some point — keep waving
   }
   knock() {
     if (!this.inputOn || this.buzzed != null || this.knockCd > 0) return;
@@ -223,47 +225,55 @@ export class Finale {
     Object.assign(this, { flights: 0, sCur: 0, beat: 0, stumble: 0, perfects: 0, misses: 0, haz: null, hazT: 0, dodge: 0 });
     UI.skipChip(false);
     Audio.music('full');
-    this.ui = UI.climbUI(); this.ui.bind(() => this.step());
+    this.nextSide = null;
+    this.ui = UI.stairsUI({ onTap: (side) => this.stairKey(side ? 'arrowright' : 'arrowleft') });
     if (!this.keyH) { this.keyH = (e) => { if (!e.repeat && this.phase === 'stairs') this.stairKey(e.key.toLowerCase(), e); }; window.addEventListener('keydown', this.keyH); }
     UI.dm(KY.pickLine(KY.STAIRS_TEXTS[0][1]), { ttl: 2600 });
   }
   stairKey(k, e) {
-    if (this.haz) { const map = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup', s: 'arrowdown' }; k = map[k] || k; if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) { e?.preventDefault(); this.hazPress(k); } return; }
-    if (k === 'arrowup' || k === 'w' || k === ' ' || k === 'enter') { e?.preventDefault(); this.step(); }
+    const map = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup', s: 'arrowdown' }; k = map[k] || k;
+    if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) return;
+    e?.preventDefault();
+    if (this.haz) { this.hazPress(k); return; }
+    if (k === 'arrowleft' || k === 'arrowright') this.step(k === 'arrowright' ? 1 : 0);
   }
-  // the beat marker ping-pongs across the bar; hit it in the green
-  zone() { const f = Math.min(1, this.flights / 38); return { zone: 0.11 - f * 0.04, perfect: 0.03 - f * 0.008 }; }
-  step() {
-    if (this.phase !== 'stairs' || this.climbed || this.stumble > 0 || this.tripT > 0) return;
-    if (this.haz) return;
-    const u = this.u ?? 0.5, d = Math.abs(u - 0.5), { zone, perfect } = this.zone(), A = this.Audio, G = this.G;
-    if (d <= perfect) { this.flights = Math.min(38, this.flights + 3); this.perfects++; this.ui.flash('perf'); A.sfx('step', 1, 1.2); A.sfx('ice', 0.4, 1.4); G.score += 60; this.UI.pop('PERFECT', 'two at a time', { top: 20 }); }
-    else if (d <= zone) { this.flights = Math.min(38, this.flights + 2); this.ui.flash('hit'); A.sfx('step', 1, 0.9 + Math.random() * 0.2); G.score += 25; }
-    else { this.misses++; this.trip(); this.ui.flash('miss'); G.ice = Math.max(0, G.ice - 3); this.UI.pop('TRIPPED', 'off the beat · get up!', { top: 20 }); } // spamming costs time, never progress
+  // mash ← → alternately; the same foot twice (or a wrong key on a landing) and you go down a floor
+  step(side) {
+    if (this.phase !== 'stairs' || this.climbed || this.tripT > 0 || this.haz) return;
+    const A = this.Audio, G = this.G;
+    if (this.nextSide != null && side !== this.nextSide) { this.misstep('same foot twice'); return; }
+    this.nextSide = 1 - side; this.flights = Math.min(38, this.flights + STEP_FLIGHTS); G.score += 8;
+    this.combo = (this.combo || 0) + 1; if (this.combo % 20 === 0) { A.sfx('ice', 0.4, 1.4); this.UI.pop(`${this.combo} CLEAN`, 'keep the rhythm', { top: 20 }); G.score += 50; }
+    A.sfx('step', 0.9, 0.85 + side * 0.15 + Math.random() * 0.08); this.ui.flash?.('hit');
+  }
+  misstep(why) {
+    const G = this.G; this.misses++; this.combo = 0;
+    const floorBefore = Math.floor(this.flights / 2);
+    this.flights = Math.max(0, Math.min(this.flights, floorBefore * 2) - 2); // back to the start of the floor below
+    this.nextSide = null; this.trip(1.1); G.ice = Math.max(0, G.ice - 3);
+    this.UI.pop('TRIPPED', `${why} · down a floor`, { top: 20 });
   }
   // fall over on the steps where you are, lie there a beat, get back up — costs time, keeps your progress
   trip(dur = 1.4) { if (this.tripT > 0) return; this.tripT = dur; this.tripDur = dur; this.stumble = dur; this.Audio.sfx('crash', 0.45, 1.5); this.Audio.sfx('step', 1.2, 0.5); navigator.vibrate?.(40); }
   hazPress(k) {
-    const h = this.haz, q = this.hq; if (!h) return;
-    const ok = k === h.key && this.hazT > 0.12;
-    this.endHaz(ok, ok ? '' : k === h.key ? 'too early' : 'wrong way');
+    const h = this.haz; if (!h) return;
+    if (this.hazT < 0.09) return; // a mash already in flight when the prompt pops doesn't count
+    const ok = k === h.key;
+    this.endHaz(ok, ok ? '' : 'wrong way');
   }
   endHaz(ok, why = '') {
     const h = this.haz, G = this.G, A = this.Audio; this.haz = null; h.done = true;
     const NAMES = { dog: ['STEPPED AROUND THE DOG', 'the dog got you'], wet: ['HOPPED THE WET FLOOR', 'slipped on the wet floor'], bucket: ['DODGED THE MOP BUCKET', 'kicked the mop bucket'] };
     if (ok) { this.hq.result('NICE', NAMES[h.kind][0]); G.score += 200; A.sfx('ding', 0.6, 1.4); this.dodge = 1; this.dodgeDir = h.key === 'arrowleft' ? -1 : h.key === 'arrowright' ? 1 : 0; }
-    else { this.hq.result('MISS', why || NAMES[h.kind][1]); this.trip(1.8); this.misses++; G.ice = Math.max(0, G.ice - 6); if (h.kind === 'dog') A.sfx('horn', 0.2, 2.4); }
+    else { this.hq.result('MISS', why || NAMES[h.kind][1]); this.misstep(NAMES[h.kind][1]); this.tripT = this.tripDur = 1.6; G.ice = Math.max(0, G.ice - 4); if (h.kind === 'dog') A.sfx('bark', 0.8); }
+    this.nextSide = null;
   }
   updateStairs(dt) {
     const R = this.G.R, cam = this.camera, UI = this.UI;
     this.t += dt;
     this.stumble = Math.max(0, this.stumble - dt); this.dodge = Math.max(0, this.dodge - dt * 1.5); this.tripT = Math.max(0, (this.tripT || 0) - dt);
-    // marker speed rises as you climb
-    const f = Math.min(1, this.flights / 38);
-    if (!this.haz) this.beat += dt * (2.0 + f * 1.0);
-    this.u = Math.abs((this.beat % 2) - 1);
     const target = this.flights;
-    this.sCur = damp(this.sCur, target, this.stumble > 0 ? 2 : 6, dt);
+    this.sCur = damp(this.sCur, target, this.sCur > target ? 5 : 9, dt);
     const { p, dir } = Sets.stairPath(Math.min(37.999, this.sCur));
     const side = this.dodge > 0 ? Math.sin(Math.PI * this.dodge) * 0.45 * (this.dodgeDir || 0) : 0;
     R.root.position.copy(p).add(V(side, 0.04 + (this.dodge > 0 && !this.dodgeDir ? Math.sin(Math.PI * this.dodge) * 0.4 : 0), 0)); R.root.rotation.set(0, Math.atan2(dir.x, dir.z), 0);
@@ -291,14 +301,14 @@ export class Finale {
       this.hq = UI.qte({ key: hz.key, label: LBL[hz.kind] });
       if (hz.kind === 'dog') this.Audio.sfx('pop', 0.8, 0.6);
     }
-    if (this.haz) { this.hazT += dt; this.hq.set(1 - this.hazT / 1.05); if (this.hazT > 1.05) this.endHaz(false, 'too slow'); }
+    const hw = 0.78 - Math.min(1, this.flights / 38) * 0.16;
+    if (this.haz) { this.hazT += dt; this.hq.set(1 - this.hazT / hw); if (this.hazT > hw) this.endHaz(false, 'too slow'); }
     for (const h of this.hazards) if (h.kind === 'dog') h.m.rotation.y = Math.sin(this.t * 6) * 0.15;
-    const { zone, perfect } = this.zone();
-    this.ui.set({ floor, u: this.u, zone, perfect, hide: !!this.haz });
+    this.ui.set({ floor, next: this.haz ? -1 : this.nextSide ?? -1, time: 1 - Math.min(1, this.t / 14) });
     for (const [fl, arr] of KY.STAIRS_TEXTS.slice(1)) if (floor >= fl && !this['st' + fl]) { this['st' + fl] = true; UI.dm(KY.pickLine(arr)); this.Audio.sfx('pop', 0.7); }
     if (this.sCur >= 37.9 && !this.climbed) {
       this.climbed = true; this.G.stairTime = this.t; this.Audio.sfx('ding', 1);
-      const g = this.misses === 0 && this.t < 9 ? 'PERFECT' : this.misses <= 2 && this.t < 13 ? 'GOOD' : 'GASSED';
+      const g = this.misses === 0 && this.t < 11 ? 'PERFECT' : this.misses <= 2 && this.t < 15 ? 'GOOD' : 'GASSED';
       const pts = { PERFECT: 800, GOOD: 400, GASSED: 100 }[g];
       this.G.score += pts; this.G.fin = { ...(this.G.fin || {}), stairs: g, stairT: this.t };
       UI.pop('FLOOR 20', `${g === 'GASSED' ? 'gassed 😮‍💨' : g + ' climb 💪'} · +${pts}`); setTimeout(() => this.toDoor(), 900);
@@ -309,16 +319,22 @@ export class Finale {
     if (this.phase !== 'stairs') return;
     const { UI, G } = this;
     window.removeEventListener('keydown', this.keyH);
-    UI.remove('climbui'); UI.remove('qte');
+    UI.remove('climbui'); UI.remove('stairsui'); UI.remove('qte');
     this.phase = 'loadingDoor';
     const s = interiorScene(this.world.environment); s.environmentIntensity = 0.5;
     const hall = Sets.hallway(); s.add(hall);
     this.hall = hall; this.d = hall.userData.doors[2004];
-    const [K, W, dog] = await Promise.all([prefetchKyle(), prefetchWalker(), pitbull()]);
+    // one of three floor-20 encounters each run: the pitbull, the ladder guy, or the freshly mopped floor
+    const kind = this.hallKind = globalThis.__hallKind || HALL_KINDS[Math.floor(Math.random() * HALL_KINDS.length)];
+    this.enc = null;
+    const K = await prefetchKyle();
     s.add(K.root); K.root.visible = false; this.K = K;
-    s.add(W.root); W.root.visible = true; this.W = W;
-    this.dog = dog; s.add(dog.root);
-    this.leash = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.6 })); s.add(this.leash);
+    if (kind === 'dog') {
+      const [W, dog] = await Promise.all([prefetchWalker(), pitbull()]);
+      s.add(W.root); W.root.visible = true; this.W = W;
+      this.dog = dog; s.add(dog.root);
+      this.leash = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: 0.6 })); s.add(this.leash);
+    } else this.enc = await buildEncounter(kind, this, s);
     // the red "it's coming here" floor marker + a ❗ over the dog while he winds up
     this.zoneM = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0, depthWrite: false }));
     this.zoneM.rotation.x = -Math.PI / 2; this.zoneM.renderOrder = 3; s.add(this.zoneM);
@@ -332,7 +348,13 @@ export class Finale {
   }
   startHall() {
     const { UI, Audio } = this;
-    this.phase = 'hall'; this.t = 0; this.W.wave = 0; this.camK = null;
+    this.phase = 'hall'; this.t = 0; this.camK = null; this.palmCup = palmCup;
+    if (this.enc) {
+      this.keyH = (e) => { if (!e.repeat && this.phase === 'hall') this.enc.key(e.key.toLowerCase(), e); };
+      window.addEventListener('keydown', this.keyH);
+      UI.skipChip(false); this.enc.start(); return;
+    }
+    this.W.wave = 0;
     // three attacks, never the same side twice in a row, each faster than the last
     const sides = []; for (let i = 0; i < 3; i++) { const opts = [-1, 0, 1].filter((v) => v !== sides[i - 1]); sides.push(opts[Math.floor(Math.random() * opts.length)]); }
     this.h = { st: 'intro', t: 0, i: 0, sides, res: [], pen: 0, slow: 1, cx: HALL.cx, cz: HALL.c0, dx: HALL.dx, dz: HALL.d0, wz: HALL.w0, gait: 0, barkT: 9, nextBark: 0, shake: 0, jawK: 0, dodge: null, atk: null, look: 0, bit: 0 };
@@ -342,6 +364,7 @@ export class Finale {
     UI.skipChip(false);
   }
   hallKey(k, e) {
+    if (this.enc) return this.enc.key(k, e);
     const h = this.h, map = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup' }; k = map[k] || k;
     if (!['arrowleft', 'arrowright', 'arrowup'].includes(k)) return;
     e?.preventDefault();
@@ -367,6 +390,7 @@ export class Finale {
   }
   hallLine(text, ttl = 1700) { const UI = this.UI; UI.sceneCap(`<span style="color:#ffb3c1">neighbour:</span> “${text}”`); clearTimeout(this.capT); this.capT = setTimeout(() => this.phase === 'hall' && UI.remove('scene'), ttl); }
   updateHall(rdt) {
+    if (this.enc) return this.enc.update(rdt);
     const h = this.h, R = this.G.R, D = this.dog, W = this.W, cam = this.camera, UI = this.UI, A = this.Audio;
     h.slow = damp(h.slow, 1, 2.2, rdt); const dt = rdt * h.slow;
     this.t += dt; h.t += dt; h.barkT += dt; h.shake = Math.max(0, h.shake - rdt * 2.5);
@@ -397,7 +421,7 @@ export class Finale {
       if (h.t > h.wait) {
         const side = h.sides[h.i], key = side === 0 ? 'arrowup' : side < 0 ? 'arrowright' : 'arrowleft';
         const target = V(h.cx + side * 0.24, side === 0 ? 0.25 : 0.95, h.cz);
-        h.atk = { side, key, target, tele: [0.6, 0.48, 0.4][h.i], from: V(h.dx, 0, h.dz) };
+        h.atk = { side, key, target, tele: hallWindows(this.G)[h.i], from: V(h.dx, 0, h.dz) };
         h.st = 'tele'; h.t = 0; h.dodge = null;
         const LBL = { '-1': 'he’s going for your <b>LEFT</b> — dodge right', 0: 'going <b>LOW</b> for your ankles — jump', 1: 'he’s going for your <b>RIGHT</b> — dodge left' };
         this.hq = UI.qte({ key, label: LBL[side] }); A.sfx('growl', 1, 1.15); A.sfx('pop', 0.7, 0.6);
@@ -514,7 +538,7 @@ export class Finale {
   finishDog() {
     const h = this.h, G = this.G, UI = this.UI, n = h.res.filter(Boolean).length;
     const g = ['CHEW TOY', 'CHEWED', 'NICKED', 'UNTOUCHABLE'][n], pts = [0, 100, 250, 700][n];
-    G.score += pts; G.fin = { ...(G.fin || {}), dog: g, dogT: h.pen };
+    G.score += pts; G.fin = { ...(G.fin || {}), dog: g, dogT: h.pen, hall: g, hallT: h.pen, hallKind: 'dog', hallPerfect: n === 3 };
     this.dui?.done(g); setTimeout(() => UI.remove('dogui'), 1600);
     UI.pop(g, n === 3 ? `didn’t lay a tooth on you · +${pts}` : n ? `${3 - n} bite${3 - n > 1 ? 's' : ''} · +${pts}` : 'he had a great time', { top: 24 });
     this.Audio.sfx(n === 3 ? 'jingle' : 'pop', 0.7);
@@ -522,16 +546,26 @@ export class Finale {
   enterDoor() {
     const { UI, Audio, G } = this, R = G.R;
     UI.remove('scene'); UI.remove('dogui'); UI.remove('qte'); clearTimeout(this.capT);
-    if (this.h && !G.fin?.dog) { this.h.res.length = 3; this.finishDog(); }
-    this.W.root.visible = false; this.dog.root.visible = false; this.leash.visible = false; this.zoneM.visible = false; this.bang.visible = false;
+    UI.remove('evui');
+    if (this.enc) { this.enc.finish(); this.enc.hide(); }
+    else if (this.h && !G.fin?.dog) { this.h.res.length = 3; this.finishDog(); }
+    if (this.W) this.W.root.visible = false; if (this.dog) this.dog.root.visible = false; if (this.leash) this.leash.visible = false; this.zoneM.visible = false; this.bang.visible = false;
     R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.set(0, Math.PI / 2, 0);
     this.phase = 'door'; this.t = 0;
     UI.skipChip(true).addEventListener('click', () => this.skip());
-    const late = G.time + (G.stairTime || 10) + (G.fin?.dogT || 0) > G.etaTotal + 11;
-    this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.fin?.dog === 'CHEW TOY' ? 'why is ur sleeve wet' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
+    const late = G.time + (G.stairTime || 10) + (G.fin?.hallT || 0) > G.etaTotal + 11;
+    this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.fin?.dog === 'CHEW TOY' ? 'why is ur sleeve wet' : G.fin?.hall === 'MOPPED UP' ? 'why r u wet. it’s not raining' : G.fin?.hall === 'LADDER’D' ? 'why is there a bump on ur head' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
     Audio.sfx('creak', 0.9);
   }
+  // the perfect run: every section nailed, on time, never crashed → Kyle, for once, keeps the tip
+  isPerfect() {
+    const G = this.G, f = G.fin || {};
+    return !G.crashes && !G.qteMisses && G.time + (f.doorT || 0) + (f.stairT || 0) * 0.5 + (f.akiraT || 0) + (f.hallT ?? f.dogT ?? 0) <= G.etaTotal
+      && f.akira === 'NAILED' && f.door === 'PERFECT' && f.stairs === 'PERFECT' && (f.hallPerfect || f.dog === 'UNTOUCHABLE')
+      && (f.rival == null || f.rival === 'SENT HIM' || f.rival === 'RIVAL DOWN') && (f.crane == null || f.crane === 'UNTOUCHED' || f.crane === 'CLEAN');
+  }
   updateDoor(dt) {
+    if (this.perfect == null) { this.perfect = this.isPerfect(); this.G.fin = { ...(this.G.fin || {}), perfect: this.perfect }; if (this.perfect) this.line = 'ok… that was actually insane. respect 🫡'; }
     const t = (this.t += dt), R = this.G.R, K = this.K, cam = this.camera, A = this.Audio, UI = this.UI;
     const open = 0.05, take = 0.6, sip = 1.95, line = 2.35, close = 3.2, tipT = 3.6;
     if (t < tipT) {
@@ -564,12 +598,18 @@ export class Finale {
       // the courier in the hall, looking at his phone … the tip changes
       const u = t - tipT;
       R.root.rotation.set(0, Math.PI - 0.35, 0);
-      R.walk(u < 0.9 ? 'idle' : 'facepalm', u < 0.9 ? 1 + u : (u - 0.9) * 1.3 + 0.3, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
+      if (this.perfect) R.walk(u < 0.9 ? 'idle' : 'reaction', u < 0.9 ? 1 + u : (u - 0.9) * 1.1 + 0.2, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
+      else R.walk(u < 0.9 ? 'idle' : 'facepalm', u < 0.9 ? 1 + u : (u - 0.9) * 1.3 + 0.3, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.9 });
       const base = R.root.position;
       cam.position.copy(base.clone().add(V(0.55, 1.5, -1.9).lerp(V(0.4, 1.55, -1.35), easeInOut(clamp(u / 3))))); cam.lookAt(base.clone().add(V(0, 1.4, 0))); cam.fov = 56; cam.updateProjectionMatrix();
       K.root.visible = false; this.cup.visible = false; this.d.leaf.rotation.y = 0;
+      if (this.perfect) {
+        if (!this.tp) { this.tp = true; R.bag.visible = false; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'ok fine. you earned it 🫡') }); }
+        if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('jingle', 1); A.sfx('ding', 0.8, 1.5); UI.sceneCap('wait. <em class="kept">he actually tipped.</em>', { extra: UI.notif('Kyle S changed your tip', 'ok fine. you earned it 🫡') + `<div class="tipchg kept"><b>${UI.money(this.G.tip)}</b></div>` }); }
+      } else {
       if (!this.tp) { this.tp = true; R.bag.visible = false; /* set the bag down at the cut so the facepalm can't swing it through his head */ A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') }); }
       if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('trombone', 1); UI.sceneCap('every. single. <em>time.</em>', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') + `<div class="tipchg"><s>${UI.money(this.G.tip)}</s><b>$0.00</b></div>` }); }
+      }
       if (u > 3.3 && !this.fin) { this.fin = true; UI.remove('scene'); UI.skipChip(false); this.phase = 'post'; this.onDone(this.line); }
     }
   }
@@ -721,7 +761,7 @@ export class Finale {
     if (this.phase === 'arrive' && !this.G.akira?.res) this.toLocked();
     else if (this.phase === 'arrive' && this.sl?.hold > 0) this.sl.hold = 0.01;
     else if (this.phase === 'elevator') this.toStairs();
-    else if (this.phase === 'hall' && (this.h.st === 'bored' || this.h.st === 'pass')) this.enterDoor();
+    else if (this.phase === 'hall' && (this.enc ? this.enc.skippable() : (this.h.st === 'bored' || this.h.st === 'pass'))) this.enterDoor();
     else if (this.phase === 'door' && this.t < 3.6) { this.t = 3.6; this.UI.remove('scene'); this.cup.visible = false; this.Audio.sfx('boom', 0.4); }
     else if (this.phase === 'door' && this.t < 6.8) { this.t = 6.85; }
   }
@@ -737,6 +777,7 @@ export class Finale {
   render() { this.renderer.render(this.scene, this.camera); }
   dispose() {
     window.removeEventListener('keydown', this.keyH);
+    this.enc?.dispose(); this.UI.remove('evui');
     const R = this.G.R; R.bike.visible = true; R.helm.visible = true; R.cup.visible = true; R.root.visible = true; R.bike.rotation.set(0, 0, 0); R.bag.visible = true; this.sl?.fx.g.removeFromParent();
     if (this.K) this.K.root.removeFromParent();
     this.W?.root.removeFromParent(); this.UI.remove('dogui'); clearTimeout(this.capT);
