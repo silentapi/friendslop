@@ -848,8 +848,8 @@ window.__startDaily = startDaily;
 const SQ = { PERFECT: '🟩', GREAT: '🟦', GOOD: '🟨', OK: '🟧', BAD: '🟥' };
 // the copy-paste brag, four lines: title + date, points + grade, one square per stage, link with a call to action
 function shareText({ total, grade, rows, daily }) {
-  return [daily ? `TIP BAIT Daily ${daily.label}` : `TIP BAIT #${G.order}`, `${total.toLocaleString('en-US')} pts · ${grade}`,
-    rows.filter((x) => x.r).map((x) => SQ[x.r.badge] || '⬛').join(''), `Beat me: ${SHARE_URL}`].join('\n');
+  return [daily ? `🛵 TIP BAIT Daily ${daily.label}` : `🛵 TIP BAIT #${G.order}`, `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}`,
+    rows.filter((x) => x.r).map((x) => SQ[x.r.badge] || '⬛').join(''), `👉 Beat me: ${SHARE_URL}`].join('\n');
 }
 window.__shareText = () => G.lastShare;
 window.__showResults = (line = 'kinda melted ngl') => showResults(line); // QA: preview the results screen
