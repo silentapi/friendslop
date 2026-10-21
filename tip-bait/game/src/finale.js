@@ -62,7 +62,7 @@ export class Finale {
     const R = G.R; s.add(R.root); R.bike.visible = false; R.helm.visible = false; R.cup.visible = false;
     R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.05, 0, 5.0);
     this.cup = coldCup(); s.add(this.cup);
-    this.scene = s; this.phase = 'locked'; this.t = 0;
+    this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 48; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
     Object.assign(this, { meter: 0, look: 0, glanceT: 0, nextGlance: 1.4 + Math.random(), lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0 });
     this.bui = UI.buzzUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (this.phase === 'locked') { if (k === 'arrowleft' || k === 'a') this.wave(0); else if (k === 'arrowright' || k === 'd') this.wave(1); else if (k === ' ' || k === 'arrowup' || k === 'w' || k === 'enter') { e.preventDefault(); this.knock(); } } else if (this.phase === 'stairs') this.stairKey(k, e); };

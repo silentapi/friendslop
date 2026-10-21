@@ -11,7 +11,7 @@ const page = await ctx.newPage(); page.on('pageerror', (e) => console.log('[page
 await page.goto('http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 await page.click('#play'); await page.waitForSelector('#accept'); await page.click('#accept');
-await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
+for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 const kind = process.argv[4] || 'mega';
 await page.evaluate((kind) => { const g = window.__G; const r = g.lv.ramps.find((r) => r[kind]); g.s = r.s - 30; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; }, kind);
 let pressed = false;

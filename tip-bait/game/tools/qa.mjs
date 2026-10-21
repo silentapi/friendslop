@@ -41,7 +41,7 @@ if (script === 'run' || script === 'crash') {
   for (let i = 0; i < 14; i++) {
     await wait(script === 'crash' ? 700 : 900);
     const st = await state(); console.log(i, JSON.stringify(st));
-    if (st.st === 'crashed') { await shot(`crash_${i}`); await page.click('#ad'); await wait(800); await shot(`ad_${i}`); await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 }); await wait(300); await shot(`cont_${i}`); continue; }
+    if (st.st === 'crashed') { await shot(`crash_${i}`); await page.click('#ad'); await wait(800); await shot(`ad_${i}`); for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock await wait(300); await shot(`cont_${i}`); continue; }
     if (script === 'run') { const [dx, dy] = moves[i % moves.length]; await swipe(dx, dy); }
     if (i % 3 === 1) await shot(`run_${i}`);
   }

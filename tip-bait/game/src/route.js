@@ -40,7 +40,8 @@ export class Route {
     out.fx = Math.sin(yaw); out.fz = Math.cos(yaw); out.rx = -out.fz; out.rz = out.fx;
     return out;
   }
-  world(s, lateral = 0, y = 0, out = new THREE.Vector3()) { const f = this.at(s); return out.set(f.x + f.rx * lateral, y, f.z + f.rz * lateral); }
+  // past either end the street continues straight, so cameras behind the start never collapse onto it
+  world(s, lateral = 0, y = 0, out = new THREE.Vector3()) { const c = Math.min(Math.max(s, 0), this.length), f = this.at(c), ex = s - c; return out.set(f.x + f.fx * ex + f.rx * lateral, y, f.z + f.fz * ex + f.rz * lateral); }
   street(s) { return this.streets.find((st) => s >= st.s0 && s <= st.s1) || this.streets[this.streets.length - 1]; }
   // curvature (rad per metre) around s, for bank/lean
   curve(s) { const a = this.at(s - 3).yaw, b = this.at(s + 3).yaw; let d = b - a; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; return d / 6; }

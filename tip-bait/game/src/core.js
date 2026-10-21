@@ -51,7 +51,9 @@ function toGLB(j) {
   dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004e4942, true); out.set(bin, 28 + jl);
   return out.buffer;
 }
-export const loadGLB = (p) => once('glb:' + p, () => track(fetch(ASSETS + p.replace(/\.glb$/, '.json')).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }).then((j) => gltf.parseAsync(toGLB(j), ''))));
+export const loadGLB = (p) => once('glb:' + p, () => track(fetch(ASSETS + p.replace(/\.glb$/, '.json')).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }).then((j) => gltf.parseAsync(toGLB(j), '')).then(sharpen)));
+// filter model textures properly at grazing angles (cars, palms, people)
+function sharpen(g) { g.scene.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap']) if (m[k]) m[k].anisotropy = 16; }); return g; }
 export const loadJSON = (p) => once('json:' + p, () => track(fetch(ASSETS + p).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); })));
 const texLoader = new THREE.TextureLoader();
 export function tex(p, { srgb = true, repeat = true } = {}) {
@@ -60,7 +62,7 @@ export function tex(p, { srgb = true, repeat = true } = {}) {
     const t = texLoader.load(ASSETS + p, () => res(t), undefined, (e) => rej(e));
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.anisotropy = 4;
+    t.anisotropy = 16;
     t.userData.ready = track(ready);
     return t;
   });
@@ -75,7 +77,7 @@ export function mesh(geo, material, { cast = true, receive = true } = {}) { cons
 export function box(w, h, d, material, x = 0, y = 0, z = 0, parent, o) { const m = mesh(new THREE.BoxGeometry(w, h, d), material, o); m.position.set(x, y, z); parent?.add(m); return m; }
 export function cyl(rt, rb, h, material, seg = 16, x = 0, y = 0, z = 0, parent, o) { const m = mesh(new THREE.CylinderGeometry(rt, rb, h, seg), material, o); m.position.set(x, y, z); parent?.add(m); return m; }
 export function canvasTex(key, w, h, draw) {
-  return once('canvas:' + key, () => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; });
+  return once('canvas:' + key, () => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; });
 }
 export function plane(t, w, h, { emit = 0, transparent = true, side = THREE.FrontSide } = {}) {
   const m = new THREE.MeshStandardMaterial({ map: t, transparent, roughness: 0.7, emissive: emit ? 0xffffff : 0, emissiveMap: emit ? t : null, emissiveIntensity: emit, side });

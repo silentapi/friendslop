@@ -27,7 +27,7 @@ await tick(3); await shot('01_order');
 await page.click('#accept');
 
 await page.waitForTimeout(600); await shot('02_count');
-await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
+for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 if (mode === 'ramp') {
   await page.evaluate(() => { const g = window.__G; g.s = g.rail.s - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; });
   for (let k = 0; k < 70; k++) {
@@ -48,7 +48,7 @@ const pilot = () => page.evaluate((crashMode) => {
   const ahead = (li) => {
     let d = 999;
     for (const o of g.lv.obs) if (!o.dead && !o.parked && o.s > g.s - o.len / 2 - 1 && o.h > 1.0 && (Math.abs(o.lat - LANES[li]) < o.w / 2 + 0.5 || (o.merge && (o.mt == null || o.mt < 1) && Math.abs(o.to - LANES[li]) < 1.5))) d = Math.min(d, o.s - g.s);
-    for (const w of g.pop.walkers) if (Math.abs(w.lat - LANES[li]) < 2.2 && w.s > g.s - 1 && w.s - g.s < 30) d = Math.min(d, w.s - g.s);
+    for (const w of g.pop.walkers) if (Math.abs(w.lat - LANES[li]) < 1.1 && w.s > g.s - 1 && w.s - g.s < 30) d = Math.min(d, w.s - g.s);
     return d;
   };
   const cur = ahead(g.lane);
@@ -76,7 +76,7 @@ while (i < 4000) {
   if (g.st === 'crashed') {
     await shot(`crashui_${i}`);
     await page.click('#watchad'); await page.waitForTimeout(500); await shot(`ad_${i}`);
-    await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
+    for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
     await tick(2); await shot(`continue_${i}`);
     if (mode === 'crash' && crashedOnce) break;
     crashedOnce = true;

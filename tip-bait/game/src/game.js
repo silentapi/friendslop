@@ -6,7 +6,7 @@ import { Route } from './route.js';
 import * as City from './city.js';
 import { citiTower } from './citi.js';
 import { rider } from './rider.js';
-import { buildLevel, populate, LANES } from './level.js';
+import { buildLevel, populate, LANES, PHYS } from './level.js';
 import { Audio } from './audio.js';
 import * as UI from './ui.js';
 import { Finale } from './finale.js';
@@ -38,7 +38,7 @@ const hemi = new THREE.HemisphereLight(0xe2ecff, 0xa08c74, 1.7); scene.add(hemi)
 const sun = new THREE.DirectionalLight(0xffe2bc, 2.6);
 sun.castShadow = true; sun.shadow.mapSize.set(TOUCH_EARLY() ? 1024 : 2048, TOUCH_EARLY() ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20, near: 1, far: 400 });
-sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
+sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.07;
 scene.add(sun, sun.target);
 const SUN_DIR = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - 24), THREE.MathUtils.degToRad(222)).normalize();
 let quality = 1, frameMs = 16, lastQ = 0;
@@ -68,7 +68,8 @@ function addScore(pts) { G.score += pts * G.mult; }
 function breakCombo() { G.combo = 0; G.mult = 1; G.comboT = 0; }
 const power = (id) => G.powers.find((p) => p.id === id);
 function loseTip(frac, text) { const before = G.tip; G.tip = Math.max(0, Math.round((G.tip - G.def.tip * frac) * 100) / 100); if (G.tip < before && text) UI.dm(text, { tone: 'angry' }); }
-window.__G = G; G.LANES = LANES; // debug / QA hook
+window.__G = G; G.LANES = LANES; window.__camera = camera; window.__THREE = THREE; // debug / QA hook
+window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
 window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
@@ -131,11 +132,11 @@ function resetRun(atS = 0) {
     G.eta = Math.round(G.route.length / (G.base * 0.9) + 10); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
     G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {};
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
-    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; }
+    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.act = false; }
     for (const ic of G.lv.ice) ic.got = false;
     for (const c of G.lv.coins) { c.got = false; c.s0 ??= c.s; c.lat0 ??= c.lat; c.y0 ??= c.y; c.s = c.s0; c.lat = c.lat0; c.y = c.y0; }
     for (const p of G.lv.pickups) p.got = false;
-    for (const w of G.pop.walkers) w.t = null;
+    for (const w of G.pop.walkers) { w.t = null; w.gone = false; w.stopped = false; }
     G.trainCab = null; G.trainGone = false;
   }
   const R = G.R; R.C.root.rotation.set(0, 0, 0); R.bike.rotation.set(0, 0, 0); R.root.visible = true;
@@ -191,6 +192,12 @@ function useBoost() { if (G.boostCharge >= 1 && G.state === 'run') { G.boostChar
 function startBoost(label, dur = 2.2) { G.boostT = dur; UI.pop(label, '2× speed'); Audio.sfx('boom', 0.6); Audio.sfx('whoosh', 0.9, 0.8); navigator.vibrate?.(30); }
 
 const POWERS = { magnet: { icon: '🧲', dur: 8, name: 'MAGNET', sub: 'coins come to you' }, shield: { icon: '🪖', dur: 30, name: 'HELMET', sub: 'blocks one crash' }, cool: { icon: '❄️', dur: 10, name: 'COOLER BAG', sub: 'ice stops melting' }, x2: { icon: '✖2', dur: 10, name: 'DOUBLE COINS', sub: '2× tip coins' } };
+function followSpeed(o) {
+  let gap = 1e9;
+  for (const q of G.lv.obs) if (q !== o && !q.dead && q.s > o.s && Math.abs(q.lat - o.lat) < (q.w + o.w) / 2 + 0.2) gap = Math.min(gap, q.s - q.len / 2 - (o.s + o.len / 2));
+  for (const q of G.lv.ramps) if (q.s > o.s && Math.abs(q.lat - o.lat) < 2) gap = Math.min(gap, q.s - (q.len ?? 3.4) / 2 - (o.s + o.len / 2));
+  return Math.min(o.v, Math.max(0, (gap - 1.5) * 1.6));
+}
 function grabPower(p) {
   p.got = true; const d = POWERS[p.kind];
   G.powers = G.powers.filter((w) => w.id !== p.kind); G.powers.push({ id: p.kind, t: d.dur, dur: d.dur, icon: d.icon });
@@ -240,7 +247,7 @@ const COACH = {
   pad: { text: 'Ride over <b>green pads</b> for a speed boost' },
   ramp: { text: 'Hit the <b>ramp</b> to launch over traffic' },
   boost: { text: TOUCH_EARLY() ? 'BOOST is charged · tap the button' : 'BOOST is charged · press <b>Shift</b>' },
-  tourists: { text: 'Tourists don\'t look both ways. <b>Pick a gap.</b>' },
+  tourists: { text: 'Tourists stopping for photos. <b>Take the open lane.</b>' },
   merge: { text: '<b>Blinker</b> = that car is cutting over. Take the lane it leaves.', slow: true },
   chicane: { text: 'Too tall to jump · <b>weave</b> through the barriers', slow: true },
   wall: { text: 'Road closed · <b>jump</b> it, then dodge', slow: true },
@@ -253,6 +260,7 @@ function coach(key) {
   if (COACH[key].slow) { G.coachSlow = 1.1; }
 }
 function tutorial() {
+  if (G.airKind || G.qte || G.y > 0.3) return; // never on top of a jump or a trick prompt
   const LN = LANES[G.lane];
   const ahead = (pred, d) => G.lv.obs.some((o) => !o.dead && pred(o) && o.s - G.s > 0 && o.s - G.s < d && Math.abs(o.lat - LN) < 1.4);
   const near = (pred, d) => G.lv.obs.some((o) => !o.dead && pred(o) && o.s - G.s > 0 && o.s - G.s < d);
@@ -277,7 +285,8 @@ function update(dt, t) {
   G.coachT = Math.max(0, (G.coachT || 0) - dt);
   if (G.coachSlow > 0) G.coachSlow -= dt;
   tutorial();
-  const sdt = dt * G.slowmo * (G.coachSlow > 0 ? 0.45 : 1);
+  G.coachK = damp(G.coachK ?? 1, G.coachSlow > 0 ? 0.45 : 1, 6, dt); // tutorial slow-mo eases in and out
+  const sdt = dt * G.slowmo * G.coachK;
   G.time += dt; G.eta -= dt;
   if (!power('cool')) G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 0.9 : 1.15));
   for (const p of G.powers) p.t -= sdt;
@@ -314,7 +323,7 @@ function update(dt, t) {
   if (G.qteAt != null && G.time >= G.qteAt) { G.qteAt = null; startQTE(G.airKind); }
   if (G.qte) { G.slowmo = damp(G.slowmo, 0.26, 14, dt); updateQTE(dt); }
   else if (G.slowmo < 1) { G.slowmo = damp(G.slowmo, 1, 5, dt); if (G.slowmo > 0.98) { G.slowmo = 1; Audio.rate(1); } }
-  G.camK = damp(G.camK, G.airKind && (G.y > 0.25 || G.qte || G.qteAt != null) ? 1 : 0, G.airKind ? 5 : 2.5, dt);
+  G.camK = damp(G.camK, G.airKind && (G.y > 0.25 || G.qte || G.qteAt != null) ? 1 : 0, G.airKind ? 3 : 1.8, dt);
   // pads, ice, puddles
   for (const p of G.lv.pads) if (!p.hitAt || G.time - p.hitAt > 3) { if (Math.abs(G.s - p.s) < 2.5 && Math.abs(G.lat - p.lat) < 1.1 && G.y < 0.3) { p.hitAt = G.time; const perfect = Math.abs(G.lat - p.lat) < 0.45; startBoost(perfect ? 'PERFECT PAD!' : 'BOOST PAD!', perfect ? 3.0 : 2.2); if (perfect) { addScore(100); addCombo(3); } } }
   // tip coins (magnet pulls them in)
@@ -338,18 +347,22 @@ function update(dt, t) {
   // obstacles: moving traffic, buses pulling out, tourists crossing, the train
   for (const o of G.lv.obs) {
     if (o.dead) continue;
-    if (o.v && o.kind !== 'bus') { o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; }
+    if (o.v && o.kind !== 'bus') { // traffic waits until you're close, then drives — and brakes for anything ahead in its lane
+      if (!o.act && o.s - G.s < PHYS.ACT) o.act = true;
+      if (o.act) { o.s += followSpeed(o) * sdt; if (o.s > L - 40) o.dead = true; }
+    }
     if (o.merge) { // blinker on from far away; it cuts over with a fixed reaction window regardless of speed
       if (o.mt == null && o.s - G.s > 0 && o.s - G.s < (G.v - o.v) * 1.9 + 6) { o.mt = 0; Audio.sfx('skid', 0.25, 1.5); }
       if (o.mt != null) { o.mt += sdt; o.lat = lerp(o.lat0, o.to, smooth(seg(o.mt, 0, 1.0))); }
     }
-    if (o.kind === 'bus') { if (o.s - G.s < 42 && !o.t0) o.t0 = G.time; if (o.t0) { o.lat = lerp(o.lat0, o.pull, smooth(seg(G.time - o.t0, 0, 1.4))); o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; } }
+    if (o.kind === 'bus') { if (o.s - G.s < 42 && !o.t0) o.t0 = G.time; if (o.t0) { o.lat = lerp(o.lat0, o.pull, smooth(seg(G.time - o.t0, 0, 1.4))); o.s += followSpeed(o) * sdt; if (o.s > L - 40) o.dead = true; } }
   }
   for (const w of G.pop.walkers) {
-    if (w.t == null && w.s - G.s < 75) w.t = 0;
+    if (w.t == null && w.s - G.s < 130) w.t = 0;
     if (w.t != null) w.t += sdt;
     const k = w.t == null ? 0 : Math.max(0, w.t - w.delay);
-    w.lat = w.lat0 + w.dir * w.speed * k;
+    const reach = Math.abs(w.target - w.lat0);
+    w.lat = w.gone ? 40 : w.lat0 + w.dir * Math.min(reach, w.speed * k); w.stopped = w.speed * k >= reach;
   }
   if (G.rail) { // the SunRail is scripted to the player: its cab reaches the road just after you clear the tracks
     const rs = G.rail.s;
@@ -415,7 +428,7 @@ function continueRun() {
   let at = G.crashAt;
   if (G.crashKind === 'train' || (G.rail && Math.abs(at - G.rail.s) < 12)) { at = G.rail.s + 9; G.trainGone = true; }
   for (const o of G.lv.obs) if (o.s > at - 3 && o.s < at + 28) o.dead = true;
-  for (const w of G.pop.walkers) if (Math.abs(w.s - at) < 28) w.lat = 40;
+  for (const w of G.pop.walkers) if (Math.abs(w.s - at) < 28) w.gone = true;
   const keep = { time: G.time, eta: G.eta, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, boostCharge: G.boostCharge, dist: G.dist, dmDone: G.dmDone, trainCab: G.trainCab, trainGone: G.trainGone, score: G.score, coins: G.coins, lateT: G.lateT, tricks: G.tricks, smashes: G.smashes, bestMult: G.bestMult };
   resetRun(at); Object.assign(G, keep);
   G.invT = 2.0; G.runT = 0.6; G.v = G.base * 0.6;
@@ -471,9 +484,9 @@ function animateLevel(t, dt) {
     w.c.root.visible = near;
     if (!near) continue;
     const f = route.at(w.s); route.world(w.s, w.lat, 0, w.c.root.position);
-    const walking = w.t != null && w.t > w.delay;
+    const walking = w.t != null && w.t > w.delay && !w.stopped;
     w.c.root.rotation.y = f.yaw + (walking ? (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : Math.PI);
-    w.c.pose(walking ? [['walk', w.ph + (w.t || 0) * 0.85]] : [['point', 0.5 + (t % 2)]]);
+    w.c.pose(walking ? [['walk', w.ph + (w.t || 0) * 1.4]] : [['point', 0.5 + (t % 2)]]);
   }
   // SunRail: gates + train
   if (G.rail) {
@@ -488,30 +501,80 @@ function animateLevel(t, dt) {
   }
 }
 
-// ---------------------------------------------------------------- camera
-const camPos = V(), camLook = V();
-function runCamera(dt, snap = false) {
-  const route = G.route, b = G.boostT > 0 ? 1 : 0;
-  const wide = camera.aspect >= 1;
-  const back = (wide ? 7.2 : 8.2) + b * 1.4, up = (wide ? 3.3 : 4.1) + G.y * 0.45;
-  route.world(G.s - back, G.lat * 0.7, up, tmp);
-  route.world(G.s + (wide ? 9 : 7), G.lat * 0.55, (wide ? 1.4 : 1.0) + G.y * 0.5, tmp2);
-  if (G.camK > 0.002) { // big jumps: swing out to a low side angle and punch in (SunRail: train side; mega ramp: low, over the bus)
-    const k = smooth(clamp(G.camK)), mega = (G.airKind || G.lastAir) === 'mega';
-    G.lastAir = G.airKind || G.lastAir;
-    const side = mega ? route.world(G.s + 6, G.lat - 7.5, 0.7 + G.y * 0.35, V()) : route.world(G.s + 2, G.lat + 8, 1.4, V());
-    tmp.lerp(side, k); tmp2.lerp(route.world(G.s + (mega ? 1.5 : 0), G.lat, 1.0 + G.y, V()), k);
-  }
-  if (snap) { camPos.copy(tmp); camLook.copy(tmp2); }
-  camPos.x = damp(camPos.x, tmp.x, 9, dt); camPos.y = damp(camPos.y, tmp.y, 6, dt); camPos.z = damp(camPos.z, tmp.z, 9, dt);
-  camLook.lerp(tmp2, 1 - Math.exp(-12 * dt));
-  camera.position.copy(camPos);
-  if (G.shake > 0) { G.shake -= dt; camera.position.x += (Math.random() - 0.5) * G.shake * 0.6; camera.position.y += (Math.random() - 0.5) * G.shake * 0.6; }
-  camera.lookAt(camLook);
-  const fov = baseFov() + b * 12 - (G.camK || 0) * 12;
-  camera.fov = damp(camera.fov, fov, 5, dt); camera.updateProjectionMatrix();
-  // keep the sun's shadow frustum on the player
-  sun.target.position.copy(G.R.root.position); sun.position.copy(G.R.root.position).addScaledVector(SUN_DIR, 120);
+const COUNT = 2.4;
+function countdownTick() {
+  const n = Math.floor(G.introT / (COUNT / 3));
+  if (n >= G.countN && n < 3) { UI.countdown(3 - n); Audio.sfx('pop', 0.8, 0.8 + n * 0.15); G.countN = n + 1; }
+  if (G.introT >= COUNT) { UI.countdown('GO!'); Audio.sfx('boom', 0.7); Audio.music('full'); G.state = 'run'; G.runT = 0; setTimeout(() => hud?.hint(false), 4200); }
+}
+// ---------------------------------------------------------------- camera rig
+// The camera lives in route space (metres along the street, lane offset, height) so it can never cut a corner
+// into a building, and every parameter is eased by a critically damped spring so shots blend instead of snapping.
+const CAM = { p: null, v: {} }, CKEYS = ['ds', 'lat', 'y', 'lds', 'llat', 'ly', 'fov'];
+const SMOOTH = { ds: 0.22, lat: 0.2, y: 0.28, lds: 0.14, llat: 0.16, ly: 0.18, fov: 0.35 };
+function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x), ch = cur - tgt, t = ((CAM.v[k] || 0) + o * ch) * dt; CAM.v[k] = ((CAM.v[k] || 0) - o * t) * e; return tgt + (ch + t) * e; }
+const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
+function chaseShot() {
+  const b = G.boostT > 0 ? 1 : 0, wide = camera.aspect >= 1;
+  return { ds: -((wide ? 7.2 : 8.2) + b * 1.4), lat: G.lat * 0.7, y: (wide ? 3.3 : 4.1) + G.y * 0.45, lds: wide ? 9 : 7, llat: G.lat * 0.55, ly: (wide ? 1.4 : 1.0) + G.y * 0.5, fov: baseFov() + b * 12 };
+}
+function jumpShot() { // big jumps: a low side angle inside the street (SunRail: train side; mega ramp: over the bus)
+  const mega = (G.airKind || G.lastAir) === 'mega', side = mega ? -1 : 1, h = halfAt(G.s);
+  // mega: from ahead and below, looking back as he sails over the bus; rail: side-on, the train in the background
+  return mega ? { ds: 4.5, lat: side * (h - 1.0), y: 1.4 + G.y * 0.7, lds: 0, llat: G.lat, ly: 0.9 + G.y, fov: baseFov() - 4 }
+    : { ds: 4.0, lat: side * (h - 0.8), y: 1.8 + G.y * 0.5, lds: 0.3, llat: G.lat, ly: 0.9 + G.y, fov: baseFov() - 2 };
+}
+function titleShot(t) { // front three-quarter on the rider at the start, drifting gently across the street
+  return { ds: 6.2, lat: 2.6 * Math.sin(t * 0.18 + 0.6), y: 1.7 + 0.25 * Math.sin(t * 0.11), lds: 0, llat: 0, ly: 1.15, fov: baseFov() - 4 };
+}
+const mixShot = (a, b, k) => Object.fromEntries(CKEYS.map((c) => [c, a[c] + (b[c] - a[c]) * k]));
+// blend two shots by swinging round the rider (polar around him) instead of cutting a straight line past him
+function orbitMix(a, b, k, minR = 5.5) {
+  const m = mixShot(a, b, k), c = G.lat;
+  const ra = Math.hypot(a.ds, a.lat - c), rb = Math.hypot(b.ds, b.lat - c), ta = Math.atan2(a.lat - c, a.ds), tb = Math.atan2(b.lat - c, b.ds);
+  let dt = tb - ta; if (dt > Math.PI) dt -= 2 * Math.PI; if (dt < -Math.PI) dt += 2 * Math.PI;
+  const th = ta + dt * k, r = Math.max(minR, ra + (rb - ra) * k);
+  m.ds = r * Math.cos(th); m.lat = c + r * Math.sin(th);
+  return m;
+}
+function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {}) {
+  const route = G.route, h = halfAt(G.s + shot.ds);
+  // keep the lens inside the street and out of anything solid (raise it over buses, cars and barriers)
+  shot.lat = clamp(shot.lat, -h + 0.5, h - 0.5);
+  if (G.lv) for (const o of G.lv.obs) if (!o.dead && Math.abs(o.s - (G.s + shot.ds)) < o.len / 2 + 1.2 && Math.abs(o.lat - shot.lat) < o.w / 2 + 0.9) shot.y = Math.max(shot.y, o.h + 1.0);
+  if (snap || !CAM.p) { CAM.p = { ...shot }; CAM.v = {}; }
+  else for (const k of CKEYS) CAM.p[k] = smoothDamp(CAM.p[k], shot[k], k, SMOOTH[k] * (k[0] === 'l' && k !== 'lat' ? lookScale : scale), dt);
+  const p = CAM.p;
+  route.world(G.s + p.ds, p.lat, Math.max(0.6, p.y), camera.position);
+  route.world(G.s + p.lds, p.llat, p.ly, tmp2);
+  if (G.shake > 0) { G.shake = Math.max(0, G.shake - dt); const k = G.shake * 0.35; camera.position.x += Math.sin(T * 41) * k; camera.position.y += Math.sin(T * 33 + 1) * k; camera.position.z += Math.sin(T * 29 + 2) * k; } // smooth rumble, not white noise
+  camera.lookAt(tmp2);
+  camera.fov = p.fov; camera.updateProjectionMatrix();
+  updateShadowCam(G.R.root.position);
+}
+function runCamera(dt) {
+  let shot = chaseShot();
+  if (G.camK > 0.002) { G.lastAir = G.airKind || G.lastAir; shot = orbitMix(shot, jumpShot(), smooth(clamp(G.camK)), 4.5); }
+  applyCam(shot, dt, G.camK > 0.002 ? { scale: 1.8, lookScale: 0.5 } : {});
+}
+// the countdown is the title shot handing over to the chase shot: it swings round the rider's side, never through him
+function introCamera(dt, u) {
+  const k = easeInOut(clamp(u)), a = titleShot(T), b = chaseShot();
+  // orbit: angle from the title's front three-quarter round to behind, radius kept ≥ 5.5 m, eyes on the rider
+  const ra = Math.hypot(a.ds, a.lat), rb = Math.hypot(b.ds, b.lat), th0 = Math.atan2(a.lat, a.ds), th1 = Math.atan2(b.lat, b.ds);
+  let dth = th1 - th0; if (a.lat >= 0 && dth < 0) dth += Math.PI * 2; if (a.lat < 0 && dth > 0) dth -= Math.PI * 2;
+  const th = th0 + dth * k, r = Math.max(5.5, ra + (rb - ra) * k);
+  const look = smooth(clamp((k - 0.55) / 0.45));
+  const shot = { ds: r * Math.cos(th), lat: r * Math.sin(th), y: a.y + (b.y - a.y) * k + Math.sin(Math.PI * k) * 0.6, lds: b.lds * look, llat: b.llat * look, ly: a.ly + (b.ly - a.ly) * look, fov: a.fov + (b.fov - a.fov) * k };
+  applyCam(shot, dt, { scale: 0.4 });
+}
+// sun shadows follow the player, snapped to whole shadow-map texels so they don't crawl as you move
+const _sp = V(), _sm = new THREE.Matrix4(), _si = new THREE.Matrix4();
+function updateShadowCam(at) {
+  const cam = sun.shadow.camera, texel = (cam.right - cam.left) / sun.shadow.mapSize.x;
+  _sm.lookAt(V(0, 0, 0), SUN_DIR.clone().negate(), V(0, 1, 0)); _si.copy(_sm).invert();
+  _sp.copy(at).applyMatrix4(_si); _sp.x = Math.round(_sp.x / texel) * texel; _sp.y = Math.round(_sp.y / texel) * texel; _sp.applyMatrix4(_sm);
+  sun.target.position.copy(_sp); sun.position.copy(_sp).addScaledVector(SUN_DIR, 120);
 }
 
 // ---------------------------------------------------------------- flow
@@ -531,8 +594,7 @@ function countdownGo() {
   if (G.rail) marks.push([G.rail.s / G.route.length, 'SunRail']);
   G.state = 'count'; hud = UI.hud(marks); hud.onBoost(useBoost); hud.hint(true);
   hud.update({ eta: G.eta, prog: 0, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: 0 });
-  let n = 3; const step = () => { if (n > 0) { UI.countdown(n); Audio.sfx('pop', 0.8, 0.8 + (3 - n) * 0.15); n--; setTimeout(step, 600); } else { UI.countdown('GO!'); Audio.sfx('boom', 0.7); Audio.music('full'); G.state = 'run'; G.runT = 0; setTimeout(() => hud?.hint(false), 4200); } };
-  step();
+  G.introT = 0; G.countN = 0; // the countdown runs on the game clock (see step) so the camera hand-off always lands on GO
 }
 let finale = null;
 function arrive() {
@@ -559,14 +621,12 @@ function showResults(line) {
 }
 
 // ---------------------------------------------------------------- title: slow orbit at the start of the route
-function titleCamera(t) {
-  const route = G.route, p = route.world(2, 0, 0);
-  const a = t * 0.12 + 2.2;
-  camera.position.set(p.x + Math.sin(a) * 7.5, 2.6, p.z + Math.cos(a) * 7.5); camera.lookAt(p.x, 2.9, p.z);
-  camera.fov = baseFov(); camera.updateProjectionMatrix();
-  sun.target.position.copy(p); sun.position.copy(p).addScaledVector(SUN_DIR, 120);
-  const f = route.at(2); G.R.root.position.copy(p); G.R.root.rotation.set(0, f.yaw, 0);
+function titleCamera(t, dt) {
+  const route = G.route, f = route.at(0);
+  G.s = 0; G.lat = 0; G.y = 0;
+  route.world(0, 0, 0, G.R.root.position); G.R.root.rotation.set(0, f.yaw, 0);
   G.R.ride(0, { lean: 0.28, footDown: 1, look: -0.2 });
+  applyCam(titleShot(t), dt, { scale: 2.5 });
 }
 
 // ---------------------------------------------------------------- main loop
@@ -585,10 +645,10 @@ function step(dt, draw) {
   const now = performance.now();
   if (!QA) frameMs = frameMs * 0.95 + (dt * 1000) * 0.05;
   if (!QA && now - lastQ > 2500 && G.state === 'run') { lastQ = now; const nq = frameMs > 24 ? Math.max(0.55, quality - 0.15) : frameMs < 15 && quality < 1 ? Math.min(1, quality + 0.1) : quality; if (nq !== quality) { quality = nq; resize(); } }
-  if (G.state === 'title' || G.state === 'order') titleCamera(T);
-  else if (G.state === 'count') { titleCamera(T); }
+  if (G.state === 'title' || G.state === 'order') { titleCamera(T, dt); G.introT = 0; }
+  else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
-  else if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); runCamera(dt * 0.3); }
+  else if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, G.boostT * 2) : 0, score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);

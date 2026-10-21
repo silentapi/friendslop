@@ -12,6 +12,6 @@ page.on('pageerror', (e) => console.log('[pageerror]', e.message));
 await page.goto('http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 await page.click('#play'); await page.waitForSelector('#accept'); await page.click('#accept');
-await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
+for (let i = 0; i < 400 && (await page.evaluate(() => window.__G.state)) !== 'run'; i++) await page.evaluate(() => window.__tick(3, 1 / 30, false)); // countdown runs on the game clock
 console.log(JSON.stringify(await page.evaluate((e) => { const g = window.__G; return eval(e); }, expr)));
 await browser.close();

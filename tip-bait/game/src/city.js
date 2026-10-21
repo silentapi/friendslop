@@ -22,25 +22,36 @@ function facadeMaterial() {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         varying vec3 vWP; varying vec3 vWN; varying vec4 vStyle; varying vec3 vTint;
-        float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`)
+        float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        // anti-aliased step: the edge is blurred over one pixel's worth of the (continuous) pattern coordinate
+        float aa(float e, float x, float w){ return smoothstep(e - w, e + w, x); }
+        float band(float a, float b, float x, float w){ return aa(a, x, w) * (1.0 - aa(b, x, w)); }`)
       .replace('#include <map_fragment>', `
         vec3 nW = normalize(vWN);
+        // per-building ids: interpolated varyings wobble by ~1e-7, so round before hashing (else every pixel hashes differently)
+        float idR = floor(vTint.r * 40.0 + 0.5), idG = floor(vTint.g * 31.0 + 0.5), idB = floor(vTint.b * 50.0 + 0.5), kindI = floor(vStyle.w + 0.5);
         float isRoof = step(0.6, nW.y);
         vec2 wd = normalize(vec2(-nW.z, nW.x) + 1e-5);
         float u = dot(vWP.xz, wd), v = vWP.y;
         float fh = vStyle.x, bw = vStyle.y, gr = vStyle.z, kind = vStyle.w;
         vec2 cell = vec2(u / bw, (v - 0.4) / fh); vec2 f = fract(cell);
-        float rid = h21(floor(cell) + vStyle.w * 7.0 + floor(vTint.r * 40.0));
-        float wx = kind > 1.5 ? step(0.04, f.x) * step(f.x, 0.96) : step(0.5 - gr * 0.5, f.x) * step(f.x, 0.5 + gr * 0.5);
-        float wy = kind > 1.5 ? step(0.05, f.y) * step(f.y, 0.96) : kind > 0.5 ? step(0.3, f.y) * step(f.y, 0.9) : step(0.25, f.y) * step(f.y, 0.85);
-        float ground = 1.0 - step(4.4, v);
-        float store = ground * step(0.6, v) * step(0.05, fract(u / 4.5)) * step(fract(u / 4.5), 0.95);
-        float glass = (1.0 - isRoof) * max(wx * wy * (1.0 - ground), store * step(0.35, h21(vec2(floor(u / 4.5), vTint.g * 31.0))));
+        vec2 fw = max(fwidth(cell), vec2(1e-4));            // pattern units per pixel (from the continuous coordinate)
+        float far = smoothstep(0.18, 0.55, max(fw.x, fw.y)); // windows smaller than ~3 px fade to their average
+        float rid = mix(h21(floor(cell) + kindI * 7.0 + idR), 0.5, far);
+        vec2 x0 = kind > 1.5 ? vec2(0.04, 0.96) : vec2(0.5 - gr * 0.5, 0.5 + gr * 0.5);
+        vec2 y0 = kind > 1.5 ? vec2(0.05, 0.96) : kind > 0.5 ? vec2(0.3, 0.9) : vec2(0.25, 0.85);
+        float wx = band(x0.x, x0.y, f.x, fw.x * 0.8), wy = band(y0.x, y0.y, f.y, fw.y * 0.8);
+        float cover = (x0.y - x0.x) * (y0.y - y0.x);
+        float win = mix(wx * wy, cover, far);
+        float ground = 1.0 - aa(4.4, v, fwidth(v));
+        float su = u / 4.5, sw = max(fwidth(su), 1e-4);
+        float store = ground * aa(0.6, v, fwidth(v)) * mix(band(0.05, 0.95, fract(su), sw), 0.9, smoothstep(0.2, 0.5, sw));
+        float glass = (1.0 - isRoof) * max(win * (1.0 - ground), store * step(0.35, h21(vec2(floor(su), idG))));
         vec3 sky = mix(vec3(0.55, 0.62, 0.70), vec3(0.95, 0.78, 0.6), clamp(v / 90.0, 0.0, 1.0));
         vec3 glassC = mix(vec3(0.07, 0.1, 0.12), sky * 0.55, 0.35 + 0.4 * rid) * (kind > 1.5 ? vec3(0.85, 1.0, 1.05) : vec3(1.0));
-        float reveal = (1.0 - isRoof) * (1.0 - ground) * (1.0 - glass) * wx * step(0.2, f.y) * step(f.y, 0.92) * (kind < 1.5 ? 1.0 : 0.0);
+        float reveal = (1.0 - isRoof) * (1.0 - ground) * (1.0 - glass) * mix(wx * band(0.2, 0.92, f.y, fw.y * 0.8), 0.0, far) * (kind < 1.5 ? 1.0 : 0.0);
         vec3 roofC = vec3(0.45, 0.45, 0.47);
-        diffuseColor.rgb = isRoof > 0.5 ? roofC : mix(vTint * (1.0 - reveal * 0.3) * (0.92 + 0.08 * h21(floor(vWP.xz * 0.3))), glassC, glass);`)
+        diffuseColor.rgb = isRoof > 0.5 ? roofC : mix(vTint * (1.0 - reveal * 0.3) * (0.92 + 0.08 * h21(floor(vec2(u, v) * 0.3) + idB)), glassC, glass);`)
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += (1.0 - isRoof) * glass * sky * 0.12;');
   };
   m.customProgramCacheKey = () => 'facade-lambert';
@@ -55,20 +66,24 @@ function styleFor(b, h) {
 }
 export function buildings(scene, city) {
   const geos = [];
-  for (const b of city.buildings) {
-    if (HERO.has(String(b.id))) continue;
-    const h = heightOf(b), base = b.min || 0;
-    const shape = new THREE.Shape(b.pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-    let g; try { g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1, h - base), bevelEnabled: false }); } catch { continue; }
+  // OSM often has an outline plus building:parts sharing the same walls and roofs; coplanar faces in different
+  // colours z-fight into crawling grain. Every building gets its own small inset and roof offset so none coincide.
+  city.buildings.forEach((b, i) => {
+    if (HERO.has(String(b.id))) return;
+    const g6 = (i * 0.6180339887) % 1, h = heightOf(b) + g6 * 0.3, base = b.min || 0, inset = 0.03 + g6 * 0.25; // unique per building
+    let cx = 0, cz = 0; for (const [x, z] of b.pts) { cx += x; cz += z; } cx /= b.pts.length; cz /= b.pts.length;
+    const pts = b.pts.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1, k = Math.max(0.5, 1 - inset / d); return [cx + dx * k, cz + dz * k]; });
+    const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
+    let g; try { g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1, h - base), bevelEnabled: false }); } catch { return; }
     g.rotateX(-Math.PI / 2); g.translate(0, base, 0); g.deleteAttribute('uv');
     g = g.index ? g.toNonIndexed() : g;
     const n = g.attributes.position.count, { style, tint } = styleFor(b, h);
     g.setAttribute('aStyle', new THREE.Float32BufferAttribute(new Array(n).fill(style).flat(), 4));
     g.setAttribute('aTint', new THREE.Float32BufferAttribute(new Array(n).fill(tint).flat(), 3));
     geos.push(g);
-  }
+  });
   const merged = BGU.mergeGeometries(geos, false); merged.computeVertexNormals();
-  const m = mesh(merged, facadeMaterial(), { cast: true, receive: true });
+  const m = mesh(merged, facadeMaterial(), { cast: true, receive: false }); // facades don't self-shadow: acne at grazing angles reads as crawling grain
   scene.add(m);
   return m;
 }
@@ -83,7 +98,7 @@ function ribbon(pts, w, y, uvScale = 0) {
     if (i) run += Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]);
     const nx = -dz * w / 2, nz = dx * w / 2;
     pos.push(p[0] + nx, y, p[1] + nz, p[0] - nx, y, p[1] - nz);
-    uv.push(0, run / (uvScale || 1), w / (uvScale || 1), run / (uvScale || 1));
+    const k = uvScale || 1; uv.push((p[0] + nx) / k, (p[1] + nz) / k, (p[0] - nx) / k, (p[1] - nz) / k);
     if (i) { const k = (i - 1) * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
   }
   const g = new THREE.BufferGeometry();
@@ -101,7 +116,7 @@ export function streets(scene, city, route) {
   // the level street: at least 10.4 m wide so three lanes always sit on the road, surface per real street
   for (const st of route.streets) {
     const pts = []; for (let s = st.s0; s <= st.s1 + 0.01; s += 2) { const f = route.at(s); pts.push([f.x, f.z]); }
-    if (pts.length > 1) (st.surface === 'bricks' ? brick : asph).push(ribbon(pts, Math.max(10.4, st.w), 0.035, 6));
+    if (pts.length > 1) (st.surface === 'bricks' ? brick : asph).push(ribbon(pts, Math.max(10.4, st.w), 0.045, 6));
   }
   const am = asphaltM(), bm = brickM();
   am.polygonOffset = bm.polygonOffset = true; am.polygonOffsetFactor = bm.polygonOffsetFactor = -1;
@@ -144,7 +159,7 @@ export function streets(scene, city, route) {
 
 export function ground(scene, center) {
   const t = tex('tex/concrete.jpg'); t.repeat.set(600, 600);
-  const g = mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: 0xd2ccc2, map: t }), { cast: false });
+  const g = mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshLambertMaterial({ color: 0xd2ccc2, map: t, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 }), { cast: false });
   g.rotation.x = -Math.PI / 2; g.position.set(center.x, 0, center.z); scene.add(g);
   return g;
 }
