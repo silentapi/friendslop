@@ -264,14 +264,16 @@ export function deskUI() {
 // stairs rhythm climb: hit ↑ when the marker crosses the green zone
 // a set piece's banner on the ride: title, pips, the rule in one line (+ touch buttons)
 const KEYGLYPH = { arrowleft: '←', arrowright: '→', arrowup: '↑', arrowdown: '↓' };
+// touch: the whole screen is the controller (swipe ← → ↑ ↓, or tap the left / right half), so hints talk gestures
+const touchHint = (h) => h.replace(/tap <b>←<\/b> <b>→<\/b>/g, 'tap <b>left</b> / <b>right</b> side').replace(/<b>opposite<\/b> key/g, '<b>opposite</b> side')
+  .replace(/<b>←\/→<\/b>/g, 'swipe <b>←/→</b>').replace(/(·\s*)<b>([↑↓])<\/b>/g, '$1swipe <b>$2</b>');
 export function evUI({ title, hint, pips = 0, keys = null }) {
-  remove('evui');
+  remove('evui'); if (TOUCH && !/swipe|tap/.test(hint)) hint = touchHint(hint); else if (TOUCH) hint = hint.replace(/tap <b>←<\/b> <b>→<\/b>/g, 'tap <b>left</b> / <b>right</b> side').replace(/<b>opposite<\/b> key/g, '<b>opposite</b> side');
   const el = layer('evui', `
     <div class="dogui run">
       <div class="dtitle">${title}</div>
       ${pips ? `<div class="dpips">${'<i></i>'.repeat(pips)}</div>` : ''}
       <div class="dhint">${hint}</div>
-      ${TOUCH && keys ? `<div class="stairs">${keys.map((k) => `<button data-k="${k}">${KEYGLYPH[k]}</button>`).join('')}</div>` : ''}
     </div>`);
   el.style.pointerEvents = 'none'; el.style.padding = 0;
   return {
@@ -329,8 +331,7 @@ export function dogUI() {
     <div class="dogui">
       <div class="dtitle">🐕 DODGE THE DOG</div>
       <div class="dpips"><i></i><i></i><i></i></div>
-      <div class="dhint">${TOUCH ? 'bite at your <b>LEFT</b>: tap <b>→</b> · <b>RIGHT</b>: tap <b>←</b> · <b>LOW</b>: tap <b>↑</b>' : 'bite at your <b>LEFT</b>: press <b>→</b> &nbsp;·&nbsp; at your <b>RIGHT</b>: press <b>←</b> &nbsp;·&nbsp; <b>LOW</b>: press <b>↑</b> to jump'}</div>
-      ${TOUCH ? '<div class="stairs"><button data-k="arrowleft">←</button><button data-k="arrowup">↑ JUMP</button><button data-k="arrowright">→</button></div>' : ''}
+      <div class="dhint">${TOUCH ? 'bite at your <b>LEFT</b>: swipe <b>→</b> · <b>RIGHT</b>: swipe <b>←</b> · <b>LOW</b>: swipe <b>↑</b>' : 'bite at your <b>LEFT</b>: press <b>→</b> &nbsp;·&nbsp; at your <b>RIGHT</b>: press <b>←</b> &nbsp;·&nbsp; <b>LOW</b>: press <b>↑</b> to jump'}</div>
     </div>`);
   return {
     el,

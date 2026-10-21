@@ -173,6 +173,11 @@ function resetRun(atS = 0) {
 
 // ---------------------------------------------------------------- input: swipes, taps, keys
 const input = { x0: 0, y0: 0, t0: 0, active: false };
+// inside the building every scene listens for arrow keys, so a touch gesture becomes the same key press:
+// swipe ← → ↑ ↓ anywhere, or tap the left / right half (stairs mashing, desk waving, balance nudges)
+const ARROW = { L: 'ArrowLeft', R: 'ArrowRight', U: 'ArrowUp', D: 'ArrowDown' };
+const finaleTouch = () => G.state === 'finale' && !document.querySelector('.kn-on'); // the knock has its own pointer input
+function finaleGesture(dir) { window.dispatchEvent(new KeyboardEvent('keydown', { key: ARROW[dir] })); }
 function onSwipe(dir) {
   if (G.state !== 'run') return;
   if (G.tech) { techPress(dir); return; }
@@ -185,15 +190,16 @@ function onSwipe(dir) {
   if (dir === 'D') useBoost();
   G.hintT = 0; G.swiped = true; G.coachSlow = 0; UI.coach(null);
 }
-canvas.parentElement.addEventListener('pointerdown', (e) => { Audio.unlock(); if (e.pointerType === 'mouse') return; input.active = true; input.x0 = e.clientX; input.y0 = e.clientY; input.t0 = performance.now(); input.fired = false; }, { passive: true });
+canvas.parentElement.addEventListener('pointerdown', (e) => { Audio.unlock(); if (e.pointerType === 'mouse' || e.target.closest?.('button')) return; input.active = true; input.x0 = e.clientX; input.y0 = e.clientY; input.t0 = performance.now(); input.fired = false; }, { passive: true });
 canvas.parentElement.addEventListener('pointermove', (e) => {
   if (!input.active || input.fired) return;
   const dx = e.clientX - input.x0, dy = e.clientY - input.y0, th = Math.max(26, Math.min(window.innerWidth, 500) * 0.06);
-  if (Math.hypot(dx, dy) > th) { input.fired = true; onSwipe(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'L' : 'R') : (dy < 0 ? 'U' : 'D')); }
+  if (Math.hypot(dx, dy) > th) { input.fired = true; const dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'L' : 'R') : (dy < 0 ? 'U' : 'D'); if (finaleTouch()) finaleGesture(dir); else onSwipe(dir); }
 }, { passive: true });
 canvas.parentElement.addEventListener('pointerup', (e) => {
   if (!input.active) return; input.active = false;
   if (!input.fired && performance.now() - input.t0 < 260 && G.state === 'run' && e.target === canvas) onSwipe(e.clientX < window.innerWidth / 2 ? 'L' : 'R'); // tap left/right half
+  else if (!input.fired && performance.now() - input.t0 < 300 && finaleTouch()) finaleGesture(e.clientX < window.innerWidth / 2 ? 'L' : 'R');
 }, { passive: true });
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
