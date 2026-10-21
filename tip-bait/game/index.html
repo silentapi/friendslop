@@ -960,6 +960,8 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   .buzz { bottom: calc(var(--sb) + 12px); }
   .bhint { font-size: var(--t2); }
   .score { font-size: 26px; }
+  .prog .mk { font-size: 9px; } .prog .mk:nth-of-type(even) { top: 26px; } .prog .mk:nth-of-type(even) b { height: 22px; top: -26px; } /* stagger street names so neighbours don't overlap */
+  .thought { top: auto; bottom: calc(var(--sb) + 132px); left: var(--sl); max-width: calc(100% - 140px); } /* clear of the score + Kyle's texts */
   .pill { font-size: 18px; padding: 6px 10px; }
 }
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) {
@@ -983,7 +985,7 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .tcost b { font: 900 17px var(--display); color: var(--danger); font-variant-numeric: tabular-nums; }
 .tcost span { font: 700 11px var(--body); color: var(--paper); text-transform: lowercase; letter-spacing: .02em; }
 .tcost { transform: translate(-50%, 0); animation: tcostA 1.7s cubic-bezier(.5,0,.75,1) forwards; }
-@keyframes tcostA { 0% { transform: translate(-50%, 0) scale(.6); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.12); opacity: 1; } 62% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--tx, 0px)), var(--ty, -60px)) scale(.45); opacity: var(--to, 0); } }
+@keyframes tcostA { 0% { transform: translate(-50%, 0) scale(.75); opacity: 1; } 12% { transform: translate(-50%, 0) scale(1.12); opacity: 1; } 62% { transform: translate(-50%, 0) scale(1); opacity: 1; } 100% { transform: translate(calc(-50% + var(--tx, 0px)), var(--ty, -60px)) scale(.45); opacity: var(--to, 0); } }
 #eta.hit { background: var(--danger); transition: background .1s; }
 /* ---- end penalty chip ---- */
 /* ---- osu knock ---- */
