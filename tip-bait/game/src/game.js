@@ -406,7 +406,7 @@ function update(dt, t) {
   G.onRamp = rh > 0; G.lastRh = rh;
   // quick-time trick: slow-mo while the prompt is up, then ease back to full speed
   if (G.qteAt != null && G.time >= G.qteAt) { G.qteAt = null; startQTE(G.airKind); }
-  if (G.tech) { G.slowmo = 0.06; updateTech(dt); }
+  if (G.tech) { G.slowmo = 0.06; updateTech(dt); if (G.state !== 'run') return; } // a missed tech already crashed you: don't also run into the car this frame
   else if (G.akira && !G.akira.res) G.slowmo = damp(G.slowmo, 0.12, 10, dt);
   else if (G.qte) { G.slowmo = damp(G.slowmo, 0.26, 14, dt); updateQTE(dt); }
   else if (EV.slow != null) { G.slowmo = damp(G.slowmo, EV.slow, 9, dt); Audio.rate(0.75 + 0.25 * G.slowmo); }
@@ -615,7 +615,7 @@ function updateCrash(dt) {
     const roof = G.crashRoof; // botched tech: the front wheel catches the roof edge and you're both flung off the side of the car onto the road
     R.bike.rotation.set(-0.35 * Math.sin(Math.PI * Math.min(1, G.crashT / 0.35)), 0, smooth(clamp((G.crashT - 0.1) / 0.45)) * 1.4 * (roof ? -G.techSide || 1 : 1));
     const uu = easeOut(u), fwd = uu * (roof ? 2.2 : 3.8), y = (0.85 + 1.6 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
-    const off = roof ? -G.techSide * 2.5 * easeOut(seg(u, 0, 0.6)) : 0; // root-local +x is the street's left
+    const off = roof ? -G.techSide * 1.7 * easeOut(seg(u, 0, 0.5)) : 0; // root-local +x is the street's left
     const drop = G.crashY0 * smooth(roof ? seg(u, 0.2, 0.7) : seg(u, 0, 0.6)); // airborne crashes come down to the road, never hang in the air
     R.root.position.y = G.crashY0 - drop; R.bike.position.set(off * 0.75, 0, roof ? uu * 0.8 : 0);
     if (roof) { if (u >= 1 && !G.crashThud) { G.crashThud = 1; G.shake = 0.5; Audio.sfx('crash', 0.8, 0.8); FX.burst(R.root.localToWorld(V(0, 0.2, 0.2 + fwd)), { color: 0xd8d2c6, n: 24, speed: 4, up: 1.5, life: 0.8, size: 0.6, grav: 3 }); } }

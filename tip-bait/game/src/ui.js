@@ -426,5 +426,5 @@ export function timeCost(sec, label = '') {
   const tgt = eta && eta.width ? { x: eta.left + eta.width / 2 - (r.left + r.width / 2), y: eta.top + eta.height / 2 - (r.top + r.height / 2) } : { x: 0, y: -60 };
   el.style.setProperty('--tx', `${tgt.x}px`); el.style.setProperty('--ty', `${tgt.y}px`); el.style.setProperty('--to', eta ? 0.85 : 0);
   el.addEventListener('animationend', () => { el.remove(); document.getElementById('eta')?.classList.add('hit'); setTimeout(() => document.getElementById('eta')?.classList.remove('hit'), 420); });
-  setTimeout(() => el.remove(), 2200); // never strand a chip
+  setTimeout(() => el.remove(), /[?&]qa=1/.test(location.search) ? 7000 : 2200); // never strand a chip (QA steps the clock slowly: keep it long enough to screenshot)
 }

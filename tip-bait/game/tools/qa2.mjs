@@ -112,6 +112,7 @@ if ((await G()).st === 'finale') {
   let k = 0, f;
   if (process.env.HALL_ONLY) { await page.evaluate(() => { const f = window.__F; f.phase = 'stairs'; f.toDoor(); }); for (let w = 0; w < 100 && (await F()).ph !== 'hall'; w++) await page.waitForTimeout(100); }
   while ((f = await F()).ph === 'locked' && k < 400) {
+    if (process.env.DESK_EARLY && f.on && !globalThis.__de && !f.look) { globalThis.__de = 1; await key(' '); await tick(2); await shot('fin_desk_early'); } // knock before she looks: −1 s
     if (f.on) { if (f.look) await key(' '); else await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); } // wave until she looks up, then knock
     await tick(4); k++; // ~7.5 waves/s: a human mash rate
     if (k % 8 === 4) await shot(`fin_locked_${String(k).padStart(3, '0')}`);
