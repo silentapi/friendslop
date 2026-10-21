@@ -629,7 +629,7 @@ function updateCrash(dt) {
 function continueRun() {
   // respawn where you crashed; clear what's right ahead; 2 s of invulnerability
   let at = G.crashAt;
-  if (G.crashKind === 'train' || (G.rail && Math.abs(at - G.rail.s) < 12)) { at = G.rail.s + 9; G.trainGone = true; }
+  if (G.crashKind === 'train' || (G.rail && Math.abs(at - G.rail.s) < 12)) { at = G.rail.s + 9; G.trainGone = true; G.trainCab = Math.min(G.trainCab ?? -300, -300); } // the train has long gone by the time you're back up
   for (const o of G.lv.obs) if (o.s > at - 3 && o.s < at + 28) o.dead = true;
   for (const w of G.pop.walkers) if (Math.abs(w.s - at) < 28) w.gone = true;
   const keep = { time: G.time, eta: G.eta, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, boostCharge: G.boostCharge, dist: G.dist, dmDone: G.dmDone, trainCab: G.trainCab, trainGone: G.trainGone, score: G.score, coins: G.coins, lateT: G.lateT, tricks: G.tricks, smashes: G.smashes, bestMult: G.bestMult };
@@ -724,6 +724,10 @@ const CAM = { p: null, v: {} }, CKEYS = ['ds', 'lat', 'y', 'lds', 'llat', 'ly', 
 const SMOOTH = { ds: 0.22, lat: 0.2, y: 0.28, lds: 0.14, llat: 0.16, ly: 0.18, fov: 0.35 };
 function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x), ch = cur - tgt, t = ((CAM.v[k] || 0) + o * ch) * dt; CAM.v[k] = ((CAM.v[k] || 0) - o * t) * e; return tgt + (ch + t) * e; }
 const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
+function clipShot() { // train clip: from up the road looking back, so the cab sweeps through behind you as you're thrown at the lens
+  const sd = -Math.sign(G.clip.vl || 1), h = halfAt(G.s);
+  return { ds: 8.5, lat: clamp(G.lat + sd * 2.5, -h + 0.8, h - 0.8), y: 2.6 + G.y * 0.4, lds: -1.5, llat: G.lat, ly: 0.7 + G.y * 0.7, fov: baseFov() + 4 };
+}
 function chaseShot() {
   const rk = power('rocket') ? 1 : 0, b = G.boostT > 0 || rk ? 1 : 0, wide = camera.aspect >= 1;
   const cruise = clamp(G.v / G.base);
@@ -890,7 +894,7 @@ function step(dt, draw) {
   else if (G.state === 'shop') { titleCamera(T, dt); G.introT = 0; }
   else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
-  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(G.clip ? { ...chaseShot(), ds: -10, lat: G.lat * 0.85, y: 4.2 + G.y * 0.5, llat: G.lat, lds: 2, ly: 0.8 + G.y * 0.6 } : chaseShot(), dt, { scale: G.clip ? 1.2 : 3 }); }
+  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(G.clip ? clipShot() : chaseShot(), dt, { scale: G.clip ? 1.2 : 3, snap: !!G.clip && !G.clip.cut && (G.clip.cut = true) });  }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
   FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes
