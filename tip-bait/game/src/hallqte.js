@@ -264,7 +264,9 @@ async function buildLadder(F, scene) {
       // ---- camera
       const push = h.st === 'swing' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; F.camPush = damp(F.camPush || 0, push, 10, rdt);
       let cp, cl, fov;
-      if (camK === 'follow') { cp = V(cx - 0.55, 1.68, cz + 2.0); cl = V(cx + 0.15, 1.15, cz - 3); fov = 56; }
+      if (h.flatT != null && h.flatT > 0.3) camK = 'flat';
+      if (camK === 'flat') { cp = V(cx + 1.0, 1.45, cz - 1.5); cl = V(cx - 0.1, 0.35, cz + 0.55); fov = 52; } // side-on: laid out on the carpet, stars and all
+      else if (camK === 'follow') { cp = V(cx - 0.55, 1.68, cz + 2.0); cl = V(cx + 0.15, 1.15, cz - 3); fov = 56; }
       else if (camK === 'guycu') { const hp = guy.boneWorld('Head'); cp = V(G0.gx + 1.05, 1.5, h.gz + 1.15); cl = hp.add(V(-0.1, -0.15, 0)); fov = 42; }
       else if (camK === 'two') { const mz = (h.gz + HC.c) / 2; cp = V(1.02, 1.5, mz + 0.35); cl = V(-0.45, 1.2, mz - 0.5); fov = 54; }
       else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
