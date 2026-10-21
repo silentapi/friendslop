@@ -36,13 +36,22 @@ export const STAIRS_TEXTS = [
   [10, ['hello?? halfway?', 'u coming or what']],
   [16, ['i can hear u breathing in the stairwell', 'almost there. dont spill it']],
 ];
+// what Kyle says at the door: always an excuse to report it. A situational jab when he's got one, otherwise the
+// refund-hunting classics (it's never cold enough, never right, never his fault)
 export const DOOR_LINES = {
-  soup: 'it’s literally soup',
-  late: 'took u long enough',
-  crashed: 'why does it look like u fell',
-  fast: 'hm. ok. that was fast i guess',
-  meh: 'kinda melted ngl',
+  soup: ['it’s literally soup', 'this is coffee-flavored water', 'i ordered ICED. this is lukewarm', 'the ice is gone. like gone gone', 'this is a hot beverage now. reporting'],
+  late: ['took u long enough', 'my zoom already started bro', 'i aged a year waiting', 'the app said 10 min. the app lied. u lied'],
+  crashed: ['why does it look like u fell', 'the lid is dented. that’s a refund', 'why is the cup sticky', 'it’s shaken. i didn’t order it shaken'],
+  fast: ['suspiciously fast. did u even go to starbucks', 'ok fast but the foam is flat', 'too fast. it didn’t have time to get cold'],
+  scam: ['kinda melted ngl', 'this feels warm. is it warm? it’s warm', 'hm. the ice looks tired', 'where’s my extra caramel drizzle', 'i said oat milk. this tastes like oat milk', 'there’s condensation on the cup. that’s a spill', 'the straw wrapper is ripped. need a refund', 'this is 40% ice. i’m being scammed', 'it’s cold but not COLD cold', 'the bag smells like bike', 'did u breathe on it', 'hold it up for a pic. for the refund', 'the vibes are off. reporting'],
 };
+let lastDoor = '';
+export function doorLine({ ice = 100, late = false, crashes = 0, fast = false, extra = null } = {}) {
+  const sit = [...(ice < 25 ? DOOR_LINES.soup : []), ...(late ? DOOR_LINES.late : []), ...(crashes >= 2 ? DOOR_LINES.crashed : []), ...(fast ? DOOR_LINES.fast : []), ...(extra || [])];
+  let line;
+  for (let k = 0; k < 6 && (!line || line === lastDoor); k++) { const pool = sit.length && Math.random() < 0.6 ? sit : DOOR_LINES.scam; line = pool[Math.floor(Math.random() * pool.length)]; }
+  return (lastDoor = line);
+}
 export const THOUGHTS = {
   rail: ['the gates are coming down… ramp it.', 'do NOT stop for the train. kyle won’t care.'],
   bus: ['LYNX bus pulling out. classic.'],

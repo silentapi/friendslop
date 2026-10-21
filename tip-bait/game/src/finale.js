@@ -554,7 +554,8 @@ export class Finale {
     this.phase = 'door'; this.t = 0;
     UI.skipChip(true).addEventListener('click', () => this.skip());
     const late = G.time + (G.stairTime || 10) + (G.fin?.hallT || 0) > G.etaTotal + 11;
-    this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.fin?.dog === 'CHEW TOY' ? 'why is ur sleeve wet' : G.fin?.hall === 'MOPPED UP' ? 'why r u wet. it’s not raining' : G.fin?.hall === 'LADDER’D' ? 'why is there a bump on ur head' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
+    const extra = G.fin?.dog === 'CHEW TOY' ? ['why is ur sleeve wet'] : G.fin?.hall === 'MOPPED UP' ? ['why r u wet. it’s not raining'] : G.fin?.hall === 'LADDER’D' ? ['why is there a bump on ur head'] : null;
+    this.line = KY.doorLine({ ice: G.ice, late, crashes: G.crashes, fast: !late && G.time < G.etaTotal * 0.8, extra });
     Audio.sfx('creak', 0.9);
   }
   // the perfect run: every section nailed, on time, never crashed → Kyle, for once, keeps the tip
