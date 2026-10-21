@@ -1,0 +1,21 @@
+import { chromium } from 'playwright';
+import { writeFileSync } from 'node:fs';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage();
+page.on('console', (m) => console.log('[c]', m.text().slice(0, 200)));
+await page.goto('http://localhost:8124/tip-bait/stage.html?mode=lab');
+const b64 = await page.evaluate(async () => {
+  const THREE = await import('three');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+  const r = new THREE.WebGLRenderer();
+  const k = new KTX2Loader().setTranscoderPath('./node_modules/three/examples/jsm/libs/basis/').detectSupport(r);
+  const g = await new GLTFLoader().setKTX2Loader(k).setMeshoptDecoder(MeshoptDecoder).loadAsync('./assets/models/palm_tall.glb');
+  const buf = await new GLTFExporter().parseAsync(g.scene, { binary: true, maxTextureSize: 1024 });
+  let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode(...u.subarray(i, i + 8192));
+  return btoa(s);
+});
+writeFileSync(process.argv[2], Buffer.from(b64, 'base64'));
+await browser.close();
