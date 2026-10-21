@@ -435,7 +435,7 @@ export function createEvents(ctx) {
     o.dead = true; ctx.tumble?.(1.2, { label: 'clonked off the bike' }); G.ice = Math.max(0, G.ice - 10); ctx.breakCombo(); G.shake = 0.6;
     const lost = loseCoins(10, G.R.root.position.clone().setY(1)); if (ev) ev.hits = (ev.hits || 0) + 1;
     const f = G.route.at(G.s), side = Math.sign(o.lat - G.lat) || (Math.random() < 0.5 ? -1 : 1); o.flung = 0; // bounce it up and off to the side it came from
-    o.flV = V(f.fx * 5 + f.rx * side * 4, 7, f.fz * 5 + f.rz * side * 4);
+    o.flV = V(f.fx * 6 + f.rx * side * 2.2, 7, f.fz * 6 + f.rz * side * 2.2);
     FX.burst(G.R.root.position.clone().setY(1), { color: 0xffffff, n: 30, speed: 6, up: 3, life: 0.6, size: 0.4 });
     UI.pop('CLONK!', `${lost ? `−${lost} coins · ` : ''}ice −10`, { top: 30 }); Audio.sfx('crash', 0.9, 0.8); navigator.vibrate?.(70);
   };

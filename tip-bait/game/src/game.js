@@ -156,7 +156,7 @@ function resetRun(atS = 0) {
     for (const w of G.pop.walkers) { w.t = null; w.gone = false; w.stopped = false; }
     G.trainCab = null; G.trainGone = false;
   }
-  const R = G.R; R.C.root.rotation.set(0, 0, 0); R.bike.rotation.set(0, 0, 0); R.root.visible = true;
+  const R = G.R; R.C.root.rotation.set(0, 0, 0); R.bike.rotation.set(0, 0, 0); R.bike.position.set(0, 0, 0); R.root.visible = true;
   EV.reset(atS);
 }
 
@@ -269,7 +269,7 @@ function updateTech(dt) { const q = G.tech; q.t += dt; q.ui.set(1 - q.t / q.dur)
 function techPress(k) { k = QALIAS[k] || k; if (!QKEYS.includes(k)) return false; endTech(k === G.tech.key); return true; }
 function endTech(ok) {
   const q = G.tech; G.tech = null;
-  if (!ok) { q.ui.result('MISS', 'ate the car'); G.slowmo = 1; Audio.rate(1); G.techMiss = true; crash(q.o.kind); UI.pop('ATE THE CAR', 'missed the tech'); return; }
+  if (!ok) { q.ui.result('MISS', 'ate the car'); G.slowmo = 1; Audio.rate(1); G.techMiss = true; G.techSide = q.dir; crash(q.o.kind); UI.pop('ATE THE CAR', 'missed the tech'); return; }
   q.ui.result('PERFECT', 'TECH! +300');
   G.lane = clamp(G.lane + q.dir, 0, 2); G.vy = 6.5; G.y = Math.max(G.y, q.o.h + 0.15); G.invT = 0.6; G.airKind = null;
   addScore(300); addCombo(6); G.boostCharge = Math.min(1, G.boostCharge + 0.5); Audio.sfx('boom', 0.6, 1.5); Audio.sfx('ding', 0.8, 1.6);
@@ -612,14 +612,15 @@ function updateCrash(dt) {
   let done = G.crashT > 1.0;
   if (G.clip) done = updateClip(dt);
   else {
-    const roof = G.crashRoof; // came down on a car: the bike stays up there, you flip off its front edge onto the road
-    R.bike.rotation.set(-0.35 * Math.sin(Math.PI * Math.min(1, G.crashT / 0.35)), 0, smooth(clamp((G.crashT - 0.1) / 0.45)) * 1.4);
-    const uu = easeOut(u), fwd = uu * (roof ? 5.6 : 3.8), y = (0.85 + 1.6 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
-    const drop = G.crashY0 * smooth(roof ? seg(u, 0.3, 0.85) : seg(u, 0, 0.6)); // airborne crashes come down to the road, never hang in the air
-    R.root.position.y = G.crashY0 - drop; R.bike.position.y = roof ? drop : 0;
+    const roof = G.crashRoof; // botched tech: the front wheel catches the roof edge and you're both flung off the side of the car onto the road
+    R.bike.rotation.set(-0.35 * Math.sin(Math.PI * Math.min(1, G.crashT / 0.35)), 0, smooth(clamp((G.crashT - 0.1) / 0.45)) * 1.4 * (roof ? -G.techSide || 1 : 1));
+    const uu = easeOut(u), fwd = uu * (roof ? 2.2 : 3.8), y = (0.85 + 1.6 * 4 * u * (1 - u)) * (1 - u) + 0.12 * u;
+    const off = roof ? -G.techSide * 2.5 * easeOut(seg(u, 0, 0.6)) : 0; // root-local +x is the street's left
+    const drop = G.crashY0 * smooth(roof ? seg(u, 0.2, 0.7) : seg(u, 0, 0.6)); // airborne crashes come down to the road, never hang in the air
+    R.root.position.y = G.crashY0 - drop; R.bike.position.set(off * 0.75, 0, roof ? uu * 0.8 : 0);
     if (roof) { if (u >= 1 && !G.crashThud) { G.crashThud = 1; G.shake = 0.5; Audio.sfx('crash', 0.8, 0.8); FX.burst(R.root.localToWorld(V(0, 0.2, 0.2 + fwd)), { color: 0xd8d2c6, n: 24, speed: 4, up: 1.5, life: 0.8, size: 0.6, grav: 3 }); } }
-    R.walk('falling', 0.3 + G.crashT * 1.4, { offset: V(0, y, 0.2 + fwd), yaw: 0 });
-    R.C.root.rotation.x = uu * Math.PI * 2.5;
+    R.walk('falling', 0.3 + G.crashT * 1.4, { offset: V(off, y, 0.2 + fwd), yaw: 0 });
+    R.C.root.rotation.x = uu * Math.PI * 2.5; if (roof) R.C.root.rotation.z = -G.techSide * uu * 1.2;
   }
   if (done && G.state === 'crashing') {
     G.state = 'crashed';
