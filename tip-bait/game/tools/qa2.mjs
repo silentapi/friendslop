@@ -11,6 +11,7 @@ await ctx.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**', (route) => { co
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
 if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFail = true; });
+if (process.env.EQUIP) await ctx.addInitScript((eq) => { try { localStorage.setItem('tipbait:equipped', eq); } catch {} }, process.env.EQUIP); // e.g. EQUIP='{"bag":"bag_ufo","outfit":"fit_ceo","head":"head_fire"}'
 if (process.env.HALL_KIND) await ctx.addInitScript((k) => { globalThis.__hallKind = k; }, process.env.HALL_KIND);
 if (process.env.RIVAL) await ctx.addInitScript((m) => { globalThis.__rivalMode = m; }, process.env.RIVAL);
 const page = await ctx.newPage();
@@ -122,7 +123,7 @@ if ((await G()).st === 'finale') {
   while ((hs = await H()).ph === 'hall' && k < 900) {
     const cap = (kk) => kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase());
     if (hs.kind === 'ladder') { if (hs.st === 'tele' && !hs.done && hs.t > 0.2) { const miss = process.env.DOG_MISS && !globalThis.__lm && hs.t > 0.2 && (globalThis.__lc = (globalThis.__lc || 0) + 1) === 2; if (miss) globalThis.__lm = 1; await key(cap(miss ? (hs.key === 'arrowup' ? 'arrowdown' : 'arrowup') : hs.key)); } }
-    else if (hs.kind === 'mop') { if (hs.st === 'slide') { if (hs.slip) { if (hs.slipT > 0.14) { globalThis.__sl = (globalThis.__sl || 0) + (hs.slipT < 0.2 ? 1 : 0); if (!(process.env.DOG_MISS && globalThis.__sl === 2)) await key(cap(hs.key)); } } else if (Math.abs(hs.b) > 0.33 && k % 3 === 0) await key(hs.b > 0 ? 'ArrowLeft' : 'ArrowRight'); } }
+    else if (hs.kind === 'mop' || hs.kind === 'beam') { if (hs.st === 'slide') { if (hs.slip) { if (hs.slipT > 0.14) { globalThis.__sl = (globalThis.__sl || 0) + (hs.slipT < 0.2 ? 1 : 0); if (!(process.env.DOG_MISS && globalThis.__sl === 2)) await key(cap(hs.key)); } } else if (Math.abs(hs.b) > 0.33 && k % 3 === 0) await key(hs.b > 0 ? 'ArrowLeft' : 'ArrowRight'); } }
     else if (hs.st === 'tele' && !hs.dodged && hs.t > 0.2) { const miss = process.env.DOG_MISS && hs.i === 1; const kk = miss ? (hs.key === 'arrowup' ? 'ArrowLeft' : 'ArrowUp') : hs.key; await key(kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
     if (hs.st !== lastSt) { lastSt = hs.st; n = 0; }
     if (n % 6 === 0 || hs.st === 'lunge' || hs.st === 'swing') await shot(`fin_hall_${String(k).padStart(4, '0')}_${hs.st}`);

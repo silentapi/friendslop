@@ -6,7 +6,8 @@
 //    meter: tap ← → to keep the needle centred (it drifts away from the middle), and when your foot SLIPS the needle
 //    kicks hard one way — counter with the opposite key before you go over. Wrong key or too slow: SPLAT.
 // Both end like the dog: grade into G.fin.hall / hallT / hallKind, then the finale walks you to Kyle's door.
-import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mat, box, cyl, canvasTex } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mat, box, cyl, canvasTex, tex } from './core.js';
+import * as Sets from './sets.js';
 import { character, ik2 } from './chars.js';
 
 const HC = { c0: 3.0, c: -1.5, cx: 0.25 }, DOOR_Z = -9;
@@ -137,10 +138,10 @@ async function buildLadder(F, scene) {
   const rest = () => V(G0.gx - 0.05 + Math.sin(F.t * 2.1) * 0.1, 2.25 + Math.sin(F.t * 4.2) * 0.04, h.gz + 2.0);
   const target = (k) => ({ swingL: V(h.cx - 0.34, 1.18, HC.c + 0.05), swingR: V(h.cx + 0.34, 1.18, HC.c + 0.05), high: V(h.cx, 1.6, HC.c + 0.05), low: V(h.cx, 0.3, HC.c + 0.05) })[k];
   const E = {
-    kind: 'ladder',
+    kind: 'ladder', _h: h, _lad: lad, _guy: guy,
     state: () => ({ kind: 'ladder', st: h.st, t: h.t, key: h.atk?.key, done: !!h.dodge }),
     skippable: () => h.st === 'outro' || h.st === 'pass',
-    start() { F.Audio.music('tense'); F.Audio.sfx('creak', 0.6, 1.3); h.tip.copy(rest()); },
+    start() { F.UI.remove('evui'); F.Audio.music('tense'); F.Audio.sfx('creak', 0.6, 1.3); h.tip.copy(rest()); },
     key(k, e) {
       k = KEYMAP[k] || k; if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) return;
       e?.preventDefault();
@@ -208,7 +209,7 @@ async function buildLadder(F, scene) {
         }
       } else if (h.st === 'outro') {
         // he finally notices you, pulls a headphone off, flattens himself against the wall
-        const t = h.t; camK = t < 2.2 ? 'guycu' : 'game';
+        const t = h.t; camK = t < 2.2 ? 'two' : 'game';
         tipGoal = V(G0.gx - 0.9, 2.5, h.gz + 0.6).lerp(V(-1.05, 2.4, h.gz + 1.2), smooth(seg(t, 0.3, 1.2)));
         if (t > 0.4 && !h.o1) { h.o1 = true; caption(F, 'maintenance guy', 'oh! my bad bro 🎧 you good?', 1700); A.sfx('pop', 0.6, 1.2); }
         if (t > 1.9 && !h.o2) { h.o2 = true; UI.thought(h.res.every(Boolean) ? 'not today, ladder.' : 'i am NOT good.', 1500); }
@@ -238,7 +239,7 @@ async function buildLadder(F, scene) {
       const d = h.dodge; let cDx = 0, hop = 0, duck = 0, roll = 0;
       if (d) {
         d.t += dt; const k = smooth(seg(d.t, 0, 0.15)) * (1 - smooth(seg(d.t, 0.75, 1.15)));
-        if (d.k === 'arrowup') hop = Math.sin(Math.PI * seg(d.t, 0, 0.5)) * 0.55;
+        if (d.k === 'arrowup') hop = Math.sin(Math.PI * seg(d.t, 0, 0.55)) * 0.7;
         else if (d.k === 'arrowdown') duck = k;
         else { cDx = DODGE_X[d.k] * k; roll = -DODGE_X[d.k] * 0.35 * Math.sin(Math.PI * seg(d.t, 0, 0.3)); }
       }
@@ -256,7 +257,8 @@ async function buildLadder(F, scene) {
       const push = h.st === 'swing' || (h.st === 'res' && h.t < 0.4) ? 1 : 0; F.camPush = damp(F.camPush || 0, push, 10, rdt);
       let cp, cl, fov;
       if (camK === 'follow') { cp = V(cx - 0.55, 1.68, cz + 2.0); cl = V(cx + 0.15, 1.15, cz - 3); fov = 56; }
-      else if (camK === 'guycu') { const hp = guy.boneWorld('Head'); cp = V(G0.gx + 0.75, 1.55, h.gz + 1.5); cl = hp.add(V(0, -0.12, 0)); fov = 40; }
+      else if (camK === 'guycu') { const hp = guy.boneWorld('Head'); cp = V(G0.gx + 1.05, 1.5, h.gz + 1.15); cl = hp.add(V(-0.1, -0.15, 0)); fov = 42; }
+      else if (camK === 'two') { const mz = (h.gz + HC.c) / 2; cp = V(1.02, 1.5, mz + 0.35); cl = V(-0.45, 1.2, mz - 0.5); fov = 54; }
       else if (camK === 'pass') { const u = seg(h.t, 0, 3.0); cp = V(-0.95, 1.7, DOOR_Z - 1.6); cl = V(lerp(0.2, 0.5, u), 1.1, lerp(-2.2, DOOR_Z + 0.3, easeInOut(u))); fov = 54; }
       else { cp = V(-0.95, 1.85 - F.camPush * 0.1, HC.c + 2.45 - F.camPush * 0.35); cl = V(-0.05, 1.05, HC.c - 1.4); fov = 56 - F.camPush * 4; }
       camera(F, cp, cl, fov, camK, rdt, h.shake);
@@ -286,7 +288,7 @@ async function buildMop(F, scene) {
     kind: 'mop',
     state: () => ({ kind: 'mop', st: h.st, t: h.t, key: h.slip?.key, b: h.b, slip: !!h.slip, slipT: h.slip ? h.slip.t : 0 }),
     skippable: () => h.st === 'outro',
-    start() { F.Audio.music('tense'); F.Audio.sfx('creak', 0.6, 1.3); },
+    start() { F.UI.remove('evui'); F.Audio.music('tense'); F.Audio.sfx('creak', 0.6, 1.3); },
     key(k, e) {
       k = KEYMAP[k] || k; if (k !== 'arrowleft' && k !== 'arrowright') return;
       e?.preventDefault();
@@ -392,7 +394,7 @@ async function buildMop(F, scene) {
       let cp, cl, fov;
       const cz = h.cz;
       if (camK === 'follow') { cp = V(h.cx - 0.55, 1.68, cz + 2.0); cl = V(h.cx + 0.1, 1.05, cz - 3); fov = 56; }
-      else if (camK === 'feet') { cp = V(h.cx + 0.95, 0.55, cz - 1.25); cl = V(h.cx, 0.45, cz + 0.2); fov = 48; }
+      else if (camK === 'feet') { cp = V(h.cx + 0.95, 0.85, cz - 2.1); cl = V(h.cx - 0.05, 0.75, cz + 0.1); fov = 46; }
       else if (camK === 'door') { cp = V(-0.85, 1.6, DOOR_Z - 1.7); cl = V(0.4, 1.1, DOOR_Z + 0.2); fov = 54; }
       else { cp = V(-0.75, 1.9, cz + 2.4); cl = V(0.05, 0.85, cz - 2.2); fov = 56; }
       camera(F, cp, cl, fov, camK, rdt, h.shake);
@@ -401,5 +403,212 @@ async function buildMop(F, scene) {
   return E;
 }
 
-export const HALL_KINDS = ['dog', 'ladder', 'mop'];
-export function buildEncounter(kind, F, scene) { return kind === 'ladder' ? buildLadder(F, scene) : buildMop(F, scene); }
+// ================================================================ BEAM: the floor caved in; one plank across the hole
+const HOLE = { z0: -3.6, z1: -7.1, x: 0.12, deep: -3.1 };
+function tiledM(p, rx, ry, o = {}) { const t = tex(p).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t, ...o }); }
+function holeSet(F, scene) {
+  const g = new THREE.Group(); scene.add(g);
+  // cut the corridor runner: hide the full-length floor planes, put back the pieces either side of the hole
+  const L = 30, zA = 4, zB = -26;
+  for (const m of [...F.hall.children]) {
+    const gp = m.geometry?.parameters;
+    if (!m.isMesh || m.geometry.type !== 'PlaneGeometry' || gp.height !== L || Math.abs(m.rotation.x + Math.PI / 2) > 1e-3) continue;
+    m.visible = false;
+    for (const [a, b] of [[zA, HOLE.z0], [HOLE.z1, zB]]) {
+      const len = a - b, geo = new THREE.PlaneGeometry(gp.width, len), uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * len / L + (b - zB) / L);
+      const piece = new THREE.Mesh(geo, m.material); piece.rotation.x = -Math.PI / 2; piece.position.set(m.position.x, m.position.y, (a + b) / 2); piece.receiveShadow = true; g.add(piece);
+    }
+  }
+  const cem = tiledM('tex/cement.jpg', 2, 1, { color: 0xb8b2a6 }), dark = mat(0x1a1714, { roughness: 1 }), wood = tiledM('tex/plywood.jpg', 1, 1, { color: 0xb08a5a });
+  // the slab's broken edges: concrete lips, splintered joists, bent rebar, torn carpet
+  for (const z of [HOLE.z0, HOLE.z1]) {
+    const s = z === HOLE.z0 ? -1 : 1;
+    box(2.6, 0.3, 0.12, cem, 0, -0.15, z + s * 0.06, g);
+    for (let i = 0; i < 9; i++) { const j = box(0.07, 0.18, 0.5 + Math.random() * 0.4, wood, -1.1 + i * 0.27, -0.12 - Math.random() * 0.08, z + s * 0.2, g); j.rotation.x = s * (0.15 + Math.random() * 0.3); j.rotation.y = (Math.random() - 0.5) * 0.3; }
+    for (let i = 0; i < 6; i++) { const r = cyl(0.008, 0.008, 0.45 + Math.random() * 0.3, mat(0x5a3a28, { metalness: 0.6, roughness: 0.6 }), 5, -1 + Math.random() * 2, -0.18, z + s * 0.18, g); r.rotation.set(Math.PI / 2 + s * (0.3 + Math.random() * 0.6), 0, (Math.random() - 0.5) * 0.8); }
+    for (let i = 0; i < 12; i++) { const t = box(0.24, 0.012, 0.06 + Math.random() * 0.14, mat(0x5a1a22, { roughness: 1 }), -1.15 + i * 0.21, 0.004, z + s * (0.02 + Math.random() * 0.05), g); t.rotation.y = (Math.random() - 0.5) * 0.5; }
+  }
+  // the shaft down to floor 19: walls, a dim corridor below with one flickering tube light
+  const dz = HOLE.z0 - HOLE.z1, zc = (HOLE.z0 + HOLE.z1) / 2;
+  for (const sx of [-1, 1]) box(0.1, 3.1, dz + 6, cem, sx * 1.32, HOLE.deep / 2 - 0.05, zc, g);
+  const below = new THREE.Mesh(new THREE.PlaneGeometry(2.6, dz + 6), tiledM('tex/hall_carpet.jpg', 2, (dz + 6) / 1.3, { color: 0x6a6070 })); below.rotation.x = -Math.PI / 2; below.position.set(0, HOLE.deep, zc); below.receiveShadow = true; g.add(below);
+  box(2.6, 0.06, dz + 6, dark, 0, -0.33, zc + (dz + 6) / 2 + 0.02, g).scale.z = 0.0001; // (keeps the group's bbox sane)
+  for (const [a, b] of [[zc + dz / 2 + 3, HOLE.z0], [HOLE.z1, zc - dz / 2 - 3]]) box(2.6, 0.04, a - b, mat(0xd8d2c6, { roughness: 1 }), 0, -0.32, (a + b) / 2, g); // floor 19's ceiling, either side of the hole
+  for (let i = 0; i < 14; i++) { const c = box(0.12 + Math.random() * 0.3, 0.08 + Math.random() * 0.15, 0.12 + Math.random() * 0.3, Math.random() < 0.5 ? cem : wood, (Math.random() - 0.5) * 2.2, HOLE.deep + 0.06, HOLE.z1 + Math.random() * dz, g); c.rotation.set(Math.random(), Math.random() * 3, Math.random()); }
+  const tube = box(1.2, 0.05, 0.1, new THREE.MeshBasicMaterial({ color: 0xdff0ff }), 0, -0.36, zc - 2.2, g);
+  const lamp = new THREE.PointLight(0xcfe6ff, 6, 9, 1.6); lamp.position.set(0, -0.6, zc - 1.5); g.add(lamp);
+  const up = new THREE.PointLight(0xffd8a8, 2.5, 6, 2); up.position.set(0, -2.4, zc); g.add(up);
+  // the plank, a sawhorse pushed aside, caution tape, a sign
+  const plank = new THREE.Group(); g.add(plank);
+  box(0.24, 0.05, dz + 0.8, tiledM('tex/plywood.jpg', 0.3, 3, { color: 0xc8a070 }), 0, 0, 0, plank).castShadow = true;
+  plank.position.set(HOLE.x, 0.03, zc);
+  const tape = canvasTex('caution', 512, 64, (c, w, h) => { c.fillStyle = '#ffd21a'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.font = '900 40px system-ui'; for (let x = 10; x < w; x += 190) c.fillText('CAUTION', x, 46); });
+  const tm = new THREE.MeshLambertMaterial({ map: tape, side: THREE.DoubleSide });
+  const tapes = [];
+  for (const [x0, z0, x1, z1] of [[-1.2, HOLE.z0 + 0.35, -0.25, HOLE.z0 + 0.25], [0.5, HOLE.z0 + 0.25, 1.2, HOLE.z0 + 0.35]]) { const t = new THREE.Mesh(new THREE.PlaneGeometry(Math.hypot(x1 - x0, z1 - z0), 0.08), tm); t.position.set((x0 + x1) / 2, 0.95, (z0 + z1) / 2); t.rotation.y = -Math.atan2(z1 - z0, x1 - x0); g.add(t); tapes.push(t); }
+  for (const x of [-1.2, -0.25, 0.5, 1.2]) cyl(0.03, 0.04, 1.0, mat(0xff6a00), 8, x, 0.5, HOLE.z0 + 0.3, g);
+  const sign = canvasTex('holesign', 384, 256, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = '#d21f1f'; c.fillRect(0, 0, w, 70); c.fillStyle = '#fff'; c.font = '900 50px system-ui'; c.textAlign = 'center'; c.fillText('DANGER', w / 2, 52); c.fillStyle = '#111'; c.font = '800 34px system-ui'; c.fillText('FLOOR UNDER REPAIR', w / 2, 128); c.font = '700 30px system-ui'; c.fillText('use plank ⟶', w / 2, 180); c.font = '600 20px system-ui'; c.fillText('— mgmt (sorry)', w / 2, 226); });
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.34), new THREE.MeshLambertMaterial({ map: sign })); sg.position.set(-1.22, 1.35, HOLE.z0 + 0.9); sg.rotation.y = Math.PI / 2; g.add(sg);
+  // dust motes drifting up out of the hole
+  const dustT = canvasTex('dustmote', 64, 64, (c, w, h) => { const gr = c.createRadialGradient(32, 32, 1, 32, 32, 30); gr.addColorStop(0, 'rgba(230,220,200,.9)'); gr.addColorStop(1, 'rgba(230,220,200,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+  const dust = Array.from({ length: 26 }, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dustT, transparent: true, depthWrite: false, opacity: 0.25 })); sp.scale.setScalar(0.06 + Math.random() * 0.1); sp.position.set((Math.random() - 0.5) * 2.2, HOLE.deep + Math.random() * 3.4, HOLE.z1 + Math.random() * dz); sp.userData.v = 0.1 + Math.random() * 0.2; g.add(sp); return sp; });
+  return { g, plank, tube, lamp, dust, tapes };
+}
+async function buildBeam(F, scene) {
+  const set = holeSet(F, scene);
+  // a short stairwell, parked out of sight, for the trip back up if you fall
+  const well = Sets.stairwell(null, 3); well.position.set(60, 0, 0); well.visible = false; scene.add(well);
+  for (const o of well.children) if (o.isMesh && (Math.abs(o.position.x - 3.15) < 0.01 || (o.geometry?.type === 'PlaneGeometry' && o.position.x > 2.9))) o.visible = false;
+  let nl = 0; well.traverse((o) => { if (o.isPointLight && nl++ % 3) o.visible = false; });
+  const bang = bangSprite('❗', '#ff2a1a'), dustS = bangSprite('💨', '#5a5048'); scene.add(bang, dustS);
+  const h = { st: 'intro', t: 0, i: 0, res: [], pen: 0, slow: 1, shake: 0, cz: HC.c0, cx: 0.2, b: 0, bv: 0, lurch: null, next: 0, at: [], sumB: 0, nB: 0, fell: false, y: 0, vy: 0 };
+  let ui = null, bar = null, q = null;
+  const done = () => h.st === 'after' || h.st === 'fall' || h.st === 'below' || h.st === 'climb' || h.st === 'back';
+  const E = {
+    kind: 'beam', _h: h,
+    state: () => ({ kind: 'beam', st: h.st === 'cross' ? 'slide' : h.st, t: h.t, key: h.lurch?.key, b: h.b, slip: !!h.lurch, slipT: h.lurch ? h.lurch.t : 0 }),
+    skippable: () => h.st === 'after' || h.st === 'back',
+    start() { F.UI.remove('evui'); F.Audio.music('tense'); F.Audio.sfx('creak', 0.7, 0.8); },
+    key(k, e) {
+      k = KEYMAP[k] || k; if (k !== 'arrowleft' && k !== 'arrowright') return;
+      e?.preventDefault();
+      if (h.st !== 'cross') return;
+      const dir = k === 'arrowright' ? 1 : -1;
+      if (h.lurch) {
+        const s = h.lurch;
+        if (dir === -s.side) {
+          const u = s.t / s.W, perfect = u < 0.5; h.res.push(true); ui.set(h.res); h.lurch = null; bang.visible = false;
+          h.b *= 0.35; h.bv = -s.side * 0.35; h.slow = 0.3; const pts = (perfect ? 220 : 140) * (h.i + 1); F.G.score += pts; h.i++;
+          q?.result(perfect ? 'PERFECT' : 'NICE', perfect ? 'rock solid' : 'caught it'); q = null; F.UI.pop(perfect ? 'STEADY!' : 'CAUGHT IT', `+${pts}`, { top: 24 }); F.Audio.sfx('creak', 0.7, 1.6);
+        } else E.fall('leaned the wrong way');
+        return;
+      }
+      h.bv += dir * 1.0; h.b += dir * 0.04; F.Audio.sfx('creak', 0.25, 1.8 + Math.random() * 0.3);
+    },
+    fall(why) {
+      const G = F.G, UI = F.UI, A = F.Audio;
+      if (h.lurch) { q?.result('MISS', why); q = null; h.lurch = null; bang.visible = false; }
+      while (h.res.length < 3) h.res.push(false); ui?.set(h.res);
+      h.fell = true; h.st = 'fall'; h.t = 0; h.fallSide = Math.sign(h.b) || 1; h.slow = 0.3; h.y = 0; h.vy = 0; h.fallX = h.cx + h.b * 0.1;
+      h.pen += 6; G.ice = Math.max(0, G.ice - 10); G.combo = 0; G.mult = 1;
+      UI.pop('AAAAAA', `${why} · +6s · ice −10`, { top: 24 }); A.sfx('whoosh', 1, 0.5); A.sfx('creak', 1, 0.5); navigator.vibrate?.(80);
+    },
+    hide() { set.g.visible = false; well.visible = false; bang.visible = dustS.visible = false; for (const m of F.hall.children) if (m.isMesh && m.geometry.type === 'PlaneGeometry' && m.geometry.parameters.height === 30) m.visible = true; },
+    dispose() {},
+    finish() {
+      if (h.done) return h.r; h.done = true;
+      while (h.res.length < 3) h.res.push(false);
+      const avg = h.nB ? h.sumB / h.nB : 1;
+      const g = h.fell ? 'FELL A FLOOR' : avg < 0.22 ? 'TIGHTROPE' : avg < 0.38 ? 'STEADY' : 'SHAKY', pts = { 'FELL A FLOOR': 0, TIGHTROPE: 700, STEADY: 350, SHAKY: 150 }[g];
+      const G = F.G; G.score += pts; G.fin = { ...(G.fin || {}), hall: g, hallT: h.pen, hallKind: 'beam', hallPerfect: g === 'TIGHTROPE' && h.res.every(Boolean) };
+      ui?.done(g); F.UI.remove('evui'); return (h.r = { g, pts, avg });
+    },
+    update(rdt) {
+      const G = F.G, UI = F.UI, A = F.Audio, R = G.R;
+      h.slow = damp(h.slow, 1, h.st === 'fall' ? 1.2 : 2.5, rdt); const dt = rdt * h.slow;
+      F.t += dt; h.t += dt; h.shake = Math.max(0, h.shake - rdt * 2.5);
+      for (const d of set.dust) { d.position.y += d.userData.v * dt; d.position.x += Math.sin(F.t + d.position.z) * 0.02 * dt; if (d.position.y > 1.2) d.position.y = HOLE.deep; }
+      set.lamp.intensity = 6 * (Math.sin(F.t * 37) > -0.85 ? 1 : 0.15); set.tube.material.color.setScalar(set.lamp.intensity > 1 ? 1 : 0.3);
+      for (const t of set.tapes) t.rotation.x = Math.sin(F.t * 5 + t.position.x) * 0.25;
+      let walk = 0, camK = 'game', arms = 0, roll = 0, x = h.cx, z = h.cz, y = 0, yaw = Math.PI, fallPose = 0, wellOn = false;
+      const bounce = h.st === 'cross' ? Math.sin(F.t * 9) * 0.012 * (1 + Math.abs(h.b)) - 0.02 * Math.sin(Math.PI * clamp((HOLE.z0 - h.cz) / (HOLE.z0 - HOLE.z1))) : 0;
+      set.plank.position.y = 0.03 + bounce * 0.6; set.plank.rotation.z = h.st === 'cross' ? h.b * 0.04 : 0;
+      if (h.st === 'intro') {
+        const t = h.t; walk = 1 - smooth(seg(t, 1.6, 2.0));
+        h.cz = lerp(HC.c0, HOLE.z0 + 0.55, easeInOut(seg(t, 0, 2.0))); h.cx = lerp(0.2, HOLE.x, seg(t, 1.6, 2.0)); z = h.cz; x = h.cx;
+        camK = t < 1.9 ? 'follow' : t < 4.0 ? 'reveal' : 'plank';
+        if (t > 2.0 && !h.l0) { h.l0 = true; UI.thought('…there is a HOLE in the floor', 1800); A.sfx('creak', 0.9, 0.6); h.shake = 0.3; }
+        if (t > 3.0 && !h.l1) { h.l1 = true; UI.thought('and kyle is on the other side. of course he is.', 1800); }
+        if (t > 4.6) {
+          h.st = 'cross'; h.t = 0;
+          ui = UI.evUI({ title: '🕳️ THE PLANK', pips: 3, hint: 'stay centred: tap <b>←</b> <b>→</b> against the sway · when the plank <b>LURCHES</b>, hit the <b>opposite</b> key fast · fall = floor 19', keys: ['arrowleft', 'arrowright'] });
+          ui.el.querySelector('.dogui').classList.remove('run'); ui.bind((k) => E.key(k)); bar = balanceBar(ui);
+          let tt = 0.9 + Math.random() * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + Math.random() * 0.6; }
+        }
+      } else if (h.st === 'cross') {
+        // step by step along the plank; the sway feeds on itself and on how far you've leaned
+        arms = 1; walk = 0.55; h.cz -= 0.62 * dt; z = h.cz; x = HOLE.x + h.b * 0.07; roll = h.b * 0.45;
+        if (h.lurch) {
+          const s = h.lurch; s.t += dt; h.bv = (s.side * 1.05 - s.b0) / s.W; h.b += h.bv * dt; q?.set(1 - s.t / s.W);
+          if (Math.abs(h.b) >= 1) E.fall(s.t >= s.W * 0.98 ? 'too slow' : 'went over');
+        } else {
+          h.bv += (Math.sin(F.t * 2.9) * 0.9 + (Math.random() - 0.5) * 2.6) * dt + h.b * 1.6 * dt; h.bv *= Math.exp(-2.0 * dt); h.b += h.bv * dt;
+          if (Math.abs(h.b) >= 1) E.fall('lost your balance');
+          if (h.next < 3 && h.t >= h.at[h.next]) {
+            const side = Math.abs(h.b) > 0.2 ? Math.sign(h.b) : (Math.random() < 0.5 ? -1 : 1), W = hallWindows(G)[h.next];
+            h.lurch = { side, W, t: 0, b0: h.b, key: side < 0 ? 'arrowright' : 'arrowleft' }; h.next++;
+            q = UI.qte({ key: h.lurch.key, label: side < 0 ? 'plank LURCHES <b>LEFT</b> — lean right' : 'plank LURCHES <b>RIGHT</b> — lean left' }); A.sfx('creak', 1.1, 0.7); A.sfx('crash', 0.25, 2.2); bang.visible = true; h.shake = 0.45;
+          }
+        }
+        if (h.st === 'cross') { h.sumB += Math.abs(h.b) * dt; h.nB += dt; bar?.set(h.b, !!h.lurch); }
+        camK = 'plank';
+        if (h.st === 'cross' && h.cz <= HOLE.z1 - 0.35 && !h.lurch) {
+          while (h.res.length < h.next) h.res.push(false);
+          h.st = 'after'; h.t = 0; const r = E.finish();
+          UI.pop(r.g, `${r.avg < 0.22 ? 'like a gymnast' : 'made it'} · +${r.pts}`, { top: 24 }); A.sfx(r.g === 'TIGHTROPE' ? 'jingle' : 'pop', 0.7); UI.remove('qte'); bang.visible = false;
+          setTimeout(() => UI.remove('evui'), 1500); UI.skipChip(true).addEventListener('click', () => F.skip());
+        }
+      } else if (h.st === 'after') {
+        const t = h.t; walk = 1 - smooth(seg(t, 1.9, 2.3)); arms = 1 - smooth(seg(t, 0, 0.5));
+        h.cz = lerp(HOLE.z1 - 0.35, DOOR_Z - 0.15, easeInOut(seg(t, 0, 2.2))); h.cx = lerp(HOLE.x, 0.15, smooth(seg(t, 0.5, 2.0))); z = h.cz; x = h.cx;
+        yaw = lerp(Math.PI, Math.PI / 2, smooth(seg(t, 1.8, 2.3))); camK = 'door';
+        if (t > 0.6 && !h.l2) { h.l2 = true; UI.thought('never. again.', 1400); }
+        if (t > 2.5) return F.enterDoor();
+      } else if (h.st === 'fall') {
+        // off the side, a beat of slow-mo, then down through the hole
+        const t = h.t; fallPose = 1;
+        if (t > 0.25) { h.vy -= 9.8 * dt; h.y += h.vy * dt; }
+        y = Math.max(HOLE.deep, h.y); x = h.fallX + h.fallSide * Math.min(0.5, t * 0.9); z = h.cz;
+        roll = h.fallSide * Math.min(1.2, t * 2.2); camK = 'down';
+        if (y <= HOLE.deep && !h.landed) { h.landed = true; h.t = 0; h.st = 'below'; A.sfx('boom', 1, 0.8); A.sfx('crash', 0.9, 0.7); h.shake = 1; dustS.visible = true; dustS.position.set(x, HOLE.deep + 0.4, z); }
+        h.fx = x;
+      } else if (h.st === 'below') {
+        // floor 19: flat on your back in the rubble, then up, dusting off
+        const t = h.t; x = h.fx; z = h.cz; y = HOLE.deep; camK = 'below';
+        fallPose = 0; const u = clamp(t / 2.0);
+        dustS.scale.setScalar(0.5 + t * 0.2); dustS.material.opacity = 1 - u;
+        if (t > 0.4 && !h.l3) { h.l3 = true; UI.thought('floor 19. cool. cool cool cool.', 1700); }
+        h.lie = u;
+        if (t > 2.1) { h.st = 'climb'; h.t = 0; dustS.visible = false; A.sfx('step', 1, 1); }
+      } else if (h.st === 'climb') {
+        // back up the stairs to 20 (the long way, again)
+        const t = h.t, s = Math.min(1.999, t * 0.95); wellOn = true;
+        const sp = Sets.stairPath(2 + s); x = 60 + sp.p.x; y = sp.p.y; z = sp.p.z; yaw = Math.atan2(sp.dir.x, sp.dir.z); walk = 1;
+        camK = 'well';
+        if (t > 0.2 && !h.l4) { h.l4 = true; UI.sceneCap('', { extra: '<div class="notif"><div class="ic">↑</div><div><b>Floor 19 → 20</b><small>the stairs. again.</small></div></div>' }); }
+        if (t > 2.1) { h.st = 'back'; h.t = 0; UI.remove('scene'); }
+      } else if (h.st === 'back') {
+        // in through the far stair door, past the hole you fell through, to 2004
+        const t = h.t; walk = 1 - smooth(seg(t, 1.6, 2.0));
+        h.cz = lerp(-13.5, DOOR_Z - 0.15, easeInOut(seg(t, 0, 1.9))); z = h.cz; x = lerp(-0.3, 0.15, seg(t, 0, 1.9)); yaw = lerp(0, Math.PI / 2, smooth(seg(t, 1.5, 2.0)));
+        camK = 'door';
+        if (t > 0.3 && !h.l5) { h.l5 = true; UI.thought('do NOT look at the hole', 1400); }
+        if (t > 2.2) { if (!h.r) E.finish(); return F.enterDoor(); }
+      }
+      well.visible = wellOn;
+      // ---- you
+      const lie = h.st === 'below' ? h.lie : 0;
+      poseCourier(F, { x, z, yaw, walk, arms, roll, t: F.t, fall: lie ? (lie < 0.62 ? 0.3 : lie) : 0 });
+      R.root.position.y = y + (h.st === 'cross' ? bounce + 0.055 : 0);
+      if (fallPose) { R.walk('falling', 0.3 + h.t * 1.3, { offset: V(0, 0, 0), yaw: 0 }); R.root.rotation.set(0, yaw, 0); R.root.rotateZ(roll); R.C.root.updateMatrixWorld(true); F.palmCup(F.cup, R.C); }
+      bang.visible = !!h.lurch; if (bang.visible) { bang.position.copy(R.C.boneWorld('Head')).add(V(0, 0.5, 0)); const sc = 0.34 * (1 + 0.15 * Math.sin(F.t * 30)); bang.scale.set(sc, sc, 1); }
+      // ---- camera: tight over the shoulder on the plank so the drop is right there under you
+      let cp, cl, fov;
+      const P = R.root.position;
+      if (camK === 'follow') { cp = V(P.x - 0.55, 1.68, P.z + 2.0); cl = V(P.x + 0.1, 0.9, P.z - 3); fov = 56; }
+      else if (camK === 'reveal') { cp = V(1.0, 1.15, HOLE.z0 + 1.1); cl = V(-0.1, -1.4, (HOLE.z0 + HOLE.z1) / 2); fov = 52; }
+      else if (camK === 'plank') { cp = V(P.x - 0.85, 1.55, P.z + 1.25); cl = V(P.x + 0.12, 0.15, P.z - 1.6); fov = 50; }
+      else if (camK === 'down') { cp = V(h.fallX - 0.6, 1.9, h.cz + 1.4); cl = V(P.x, P.y + 0.6, P.z); fov = 54; }
+      else if (camK === 'below') { cp = V(-0.9, HOLE.deep + 1.4, h.cz + 1.9); cl = V(h.fx, HOLE.deep + 0.3, h.cz); fov = 56; }
+      else if (camK === 'well') { cp = V(60 + 9.5, P.y + 1.6, 0.2); cl = V(60 + 0.4, P.y + 0.7, 0); fov = 50; }
+      else { cp = V(-0.85, 1.6, DOOR_Z + (h.st === 'back' ? -1.3 : 1.9)); cl = V(0.3, 1.1, h.st === 'back' ? DOOR_Z - 2 : DOOR_Z + 0.2); fov = 54; }
+      camera(F, cp, cl, fov, camK, rdt, h.shake);
+    },
+  };
+  void done;
+  return E;
+}
+
+export const HALL_KINDS = ['dog', 'ladder', 'mop', 'beam'];
+export function buildEncounter(kind, F, scene) { return kind === 'ladder' ? buildLadder(F, scene) : kind === 'beam' ? buildBeam(F, scene) : buildMop(F, scene); }

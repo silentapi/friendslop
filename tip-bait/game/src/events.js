@@ -411,6 +411,7 @@ export function createEvents(ctx) {
     E.speedK = E.cur?.kind === 'rival' && E.locked ? DUEL_SPEED : 1;
     for (const p of props) {
       const ev = p.ev;
+      if (ev.st === 'idle' && G.s > (ev.kind === 'rival' ? ev.s + 25 : ev.drops[0].s - 4)) { ev.st = 'done'; continue; } // came in past it (continue / debug skip): don't start late
       if (ev.kind === 'rival') { if (ev.st === 'idle' && G.s >= ev.s && !E.cur) rivalStart(ev); if (ev.st !== 'idle' && ev.st !== 'done') rivalUpdate(ev, dt, sdt); }
       if (ev.kind === 'crane') { if (ev.st === 'idle' && G.s >= ev.s - 2 && !E.cur) craneStart(ev); if (ev.st !== 'done') craneUpdate(ev, dt, sdt); }
     }
@@ -420,7 +421,7 @@ export function createEvents(ctx) {
   E.camera = () => {
     const ev = E.cur; if (!ev) return { w: 0 };
     if (ev.kind === 'rival' && ev.st !== 'finish') { const rl = LANES[ev.rl], mid = (G.lat + rl) / 2; return { w: 1, scale: 1.2, shot: { ds: -4.9, lat: mid - ev.side * 0.3, y: 2.55, lds: 7, llat: mid, ly: 1.05, fov: baseFov() - 2 } }; }
-    if (ev.kind === 'crane' && ev.st === 'snap') return { w: 1, scale: 1.4, shot: { ds: -9.5, lat: G.lat * 0.35, y: 9.5 + G.y * 0.3, lds: 17, llat: 0, ly: 0, fov: baseFov() + 6 } };
+    if (ev.kind === 'crane' && ev.st === 'snap') return { w: 1, scale: 1.4, shot: { ds: -8.2, lat: G.lat * 0.45, y: 7.0 + G.y * 0.4, lds: 15, llat: G.lat * 0.25, ly: 0.2, fov: baseFov() + 4 } };
     return { w: 0 };
   };
   // your near arm shoves him when you counter

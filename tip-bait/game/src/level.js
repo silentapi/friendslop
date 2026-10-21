@@ -124,7 +124,7 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
     obs.push({ kind: 'bus', s: s + 14, lat: 0, len: 12, w: 2.6, h: 3.1, v: 0, pull: 0, parked: true });
     for (const li of [0, 2]) obs.push({ kind: 'jersey', s: s + 10, lat: LANES[li], len: 0.8, w: 2.2, h: 2.5, v: 0 }, { kind: 'jersey', s: s + 18, lat: LANES[li], len: 0.8, w: 2.2, h: 2.5, v: 0 });
     ground(s - 34, 1, 5); arc(s + 2.5, 1, PHYS.MEGA, 1.8, vm, 16, 0.075); ground(s + 36, 1, 8);
-    pickups.push({ s: s + 44, lat: LANES[r() < 0.5 ? 0 : 2], kind: ['magnet', 'x2', 'shield'][ri(3)] }); // a reward on the landing runway
+    pickups.push({ s: s + 44, lat: LANES[r() < 0.5 ? 0 : 2], kind: ['magnet', 'x2', 'shield', 'rocket'][ri(4)] }); // a reward on the landing runway
     reserve(s - 36, s + megaEnd, 'mega', 1);
   }
   // --- the rival courier duel and the crane drop: always planned, each reserves its stretch
@@ -165,7 +165,7 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
     if (breath > 15 && r() < 0.35) { const n = Math.floor((breath - 10) / 2); const ph = Math.asin(clamp((LANES[safe] / 2.4))) - (n - 1) * 0.35; for (let k = 0; k < n; k++) coins.push({ s: s + 3 + k * 2, lat: 2.4 * Math.sin(ph + k * 0.35), y: 0.9 }); }
     else ground(s0 - Math.min(18, breath - 4), safe, Math.max(3, Math.floor(Math.min(18, breath - 6) / 2.2)));
     if (storm && r() < 0.45 && breath > 16) puddles.push({ s: s + breath * 0.4, lat: LANES[[0, 1, 2].filter((l) => l !== safe)[ri(2)]] });
-    if (sinceSet > 2 && count % 5 === 3) { const pl = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; pickups.push({ s: s + breath * 0.5, lat: LANES[pl], kind: ['magnet', 'shield', 'cool', 'x2'][ri(4)] }); }
+    if (sinceSet > 2 && count % 5 === 3) { const pl = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; pickups.push({ s: s + breath * 0.5, lat: LANES[pl], kind: ['magnet', 'shield', 'cool', 'x2', 'rocket', 'magnet', 'x2'][ri(7)] }); }
     if (s0 + 30 > end) break; // patterns must finish before the Citi Tower approach
     floorS = s + 2;
     const res = P[kind](s0, safe);
@@ -236,7 +236,7 @@ export async function populate(scene, route, lv) {
   const jTex = canvasTex('jersey', 256, 64, (c, w, h) => { c.fillStyle = '#c9c6bf'; c.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#fff' : '#ff5a00'; c.fillRect(i * 44 + 6, 8, 40, 20); } c.fillStyle = '#9d9a93'; c.fillRect(0, h - 10, w, 10); });
   const jG = BGU.mergeGeometries([new THREE.BoxGeometry(2.2, 0.85, 0.32).translate(0, 0.875, 0), new THREE.BoxGeometry(2.2, 0.45, 0.7).translate(0, 0.225, 0)]);
   const jim = new THREE.InstancedMesh(jG, new THREE.MeshLambertMaterial({ map: jTex }), Math.max(1, jers.length));
-  jers.forEach((o, i) => jim.setMatrixAt(i, place(o.s, o.lat)));
+  jers.forEach((o, i) => { o.mats = [place(o.s, o.lat).clone()]; jim.setMatrixAt(i, o.mats[0]); });
   jim.castShadow = true; scene.add(jim); out.jersey = { mesh: jim, list: jers };
   // a chain-link panel on every jersey: reads at a glance as "too tall to jump"
   const linkTex = canvasTex('chainlink', 128, 128, (c, w, h) => { c.clearRect(0, 0, w, h); c.strokeStyle = '#c9ced4'; c.lineWidth = 3; for (let k = -w; k < w * 2; k += 16) { c.beginPath(); c.moveTo(k, 0); c.lineTo(k + h, h); c.stroke(); c.beginPath(); c.moveTo(k + h, 0); c.lineTo(k, h); c.stroke(); } });
@@ -250,6 +250,7 @@ export async function populate(scene, route, lv) {
   rim.material.color.set(0x9aa0a6);
   jers.forEach((o, i) => { const m = place(o.s, o.lat); fim.setMatrixAt(i, m); rim.setMatrixAt(i, m); sim.setMatrixAt(i, m); });
   fim.castShadow = true; rim.castShadow = true; scene.add(fim, rim, sim);
+  out.statics.push(...[jim, fim, rim, sim].map((mesh) => ({ mesh, list: jers }))); // so a rocket can blow them away
   // turn signals for merging cars (two per car, on the side it's turning toward)
   out.mergers = lv.obs.filter((o) => o.merge);
   out.blink = new THREE.InstancedMesh(new THREE.BoxGeometry(0.34, 0.22, 0.34), new THREE.MeshBasicMaterial({ color: 0xffb030 }), Math.max(1, out.mergers.length * 2));
@@ -273,7 +274,7 @@ export async function populate(scene, route, lv) {
   out.coinMesh = new THREE.InstancedMesh(cp.geo, cp.mats, Math.max(1, lv.coins.length));
   out.coinMesh.frustumCulled = false; scene.add(out.coinMesh);
   // power-up pickups: glowing badge sprites over a ground ring
-  const PU = { magnet: ['🧲', '#ff3d5a'], shield: ['🪖', '#3d8bff'], cool: ['❄️', '#46d8ff'], x2: ['✖2', '#ffc83d'] };
+  const PU = { magnet: ['🧲', '#ff3d5a'], shield: ['🪖', '#3d8bff'], cool: ['❄️', '#46d8ff'], x2: ['✖2', '#ffc83d'], rocket: ['🚀', '#ff7a1a'] };
   out.pickMeshes = lv.pickups.map((p) => {
     const [icon, col] = PU[p.kind], g = pickupMesh(icon, col);
     route.world(p.s, p.lat, 0, g.position); scene.add(g); p.mesh = g; p.sprite = g.userData.orbG; return g;

@@ -14,7 +14,7 @@ export function loading() {
   return { set(p) { el.querySelector('.bar i').style.width = `${Math.round(p * 100)}%`; } };
 }
 
-export function title({ bestScore, best, orders, muted, onPlay, onMute }) {
+export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMute, onShop }) {
   const el = layer('title', `
     <div class="top">
       <div class="logo">Tip<b>Bait</b></div>
@@ -22,12 +22,18 @@ export function title({ bestScore, best, orders, muted, onPlay, onMute }) {
       <div class="chips"><span class="chip">📍 S Orange Ave</span><span class="chip">🚆 Church Street Station</span><span class="chip">🏢 <b>Citi Tower</b></span></div>
     </div>
     <div class="bottom">
-      <div class="stats">${orders ? `Orders delivered: <b>${orders}</b> · Tips received: <b>$0.00</b>` : TOUCH ? 'Swipe to dodge · Swipe up to jump · Tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'}</div>
+      <div class="menu-stats">
+        <div><small>WALLET</small><b>🪙 ${wallet.toLocaleString('en-US')}</b></div>
+        <div><small>BEST SCORE</small><b>${bestScore ? bestScore.toLocaleString('en-US') : '—'}</b></div>
+        <div><small>DELIVERED</small><b>${orders || 0}</b></div>
+      </div>
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
-      <div class="small">Best score: ${bestScore ? bestScore.toLocaleString('en-US') : '—'} · best time: ${best ? best : '—'} · gobbl courier #4412</div>
+      <button class="btn ghost menu-shop" id="shop">🛒 gobbl STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button>
+      <div class="small">${TOUCH ? 'Swipe to dodge · swipe up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'} · best time ${best || '—'}</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
   el.querySelector('#play').onclick = onPlay;
+  el.querySelector('#shop').onclick = (e) => { e.stopPropagation(); onShop?.(); };
   el.querySelector('#mute').onclick = (e) => { e.stopPropagation(); const m = onMute(); e.currentTarget.textContent = m ? '🔇' : '🔊'; };
   return el;
 }

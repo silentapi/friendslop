@@ -13,6 +13,8 @@ import { Finale } from './finale.js';
 import * as K from './kyle.js';
 import { createFX } from './fx.js';
 import { createEvents } from './events.js';
+import { createCosmetics } from './cosmetics.js';
+import { openShop } from './shop.js';
 
 // ---------------------------------------------------------------- persistent state
 const store = {
@@ -111,7 +113,7 @@ async function buildWorld(n) {
   G.pop = await populate(world, route, G.lv);
   G.tut = TUT; EV.bind(G.pop.events);
   warmup(world);
-  if (!G.R) { G.R = await rider(); }
+  if (!G.R) { G.R = await rider(); G.cos = createCosmetics(G.R); G.cos.applyAll(store.get('equipped', {})); }
   world.add(G.R.root);
   setWeather(G.def.storm);
   resetRun();
@@ -141,7 +143,7 @@ function resetRun(atS = 0) {
   if (atS === 0) {
     G.base = Math.min(21, 15.2 + (G.order - 1) * 1.0);
     G.eta = Math.round(G.route.length / (G.base * 0.98) + 8); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
-    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0;
+    G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.banked = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0;
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
     for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.on = false; o.teched = false; }
     for (const ic of G.lv.ice) ic.got = false;
@@ -184,6 +186,7 @@ window.addEventListener('keydown', (e) => {
   if (G.state === 'title' && (k === 'enter' || k === ' ')) { e.preventDefault(); document.getElementById('play')?.click(); return; }
   if (G.state === 'crashed' && k === 'enter') { document.getElementById('watchad')?.click(); return; }
   if (G.state === 'crashed' && k === 'r') { document.getElementById('rs')?.click(); return; }
+  if (G.state === 'title' && k === 's') { e.preventDefault(); openStore(); return; }
   if (G.state === 'results' && k === 'enter') { document.getElementById('next')?.click(); return; }
   if (k === 'm') { Audio.unlock(); Audio.setMuted(!Audio.muted); UI.toast(Audio.muted ? 'Sound off' : 'Sound on', 900); return; }
   if ((k === 'escape' || k === 'p') && (G.state === 'run' || G.state === 'paused')) { G.state === 'run' ? pause() : resume(); return; }
@@ -201,7 +204,7 @@ window.addEventListener('keydown', (e) => {
 function pause() {
   if (G.state !== 'run') return;
   G.state = 'paused'; Audio.music(null);
-  UI.pauseMenu({ onResume: resume, onRestart: () => { resume(); startOrder(true); }, onQuit: () => { UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
+  UI.pauseMenu({ onResume: resume, onRestart: () => { bankCoins(); resume(); startOrder(true); }, onQuit: () => { bankCoins(); UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
 }
 function resume() { if (G.state !== 'paused') return; UI.remove('pause'); G.state = 'run'; Audio.music('full'); }
 window.addEventListener('blur', pause);
@@ -209,7 +212,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 function useBoost() { if (G.boostCharge >= 1 && G.state === 'run') { G.boostCharge = 0; startBoost('BOOST!'); } }
 function startBoost(label, dur = 2.2) { G.boostT = dur; const rp = G.R.root.position; FX.shock(rp, { color: 0x46ff8f, radius: 8, dur: 0.55 }); FX.burst(rp.clone().setY(0.6), { color: 0x46ff8f, n: 36, speed: 8, up: 3, life: 0.7, size: 0.4 }); UI.flash(); G.shake = Math.max(G.shake || 0, 0.25); UI.pop(label, '2× speed'); Audio.sfx('boom', 0.6); Audio.sfx('whoosh', 0.9, 0.8); navigator.vibrate?.(30); }
 
-const POWERS = { magnet: { icon: '🧲', dur: 8, name: 'MAGNET', sub: 'coins come to you' }, shield: { icon: '🪖', dur: 30, name: 'HELMET', sub: 'blocks one crash' }, cool: { icon: '❄️', dur: 10, name: 'COOLER BAG', sub: 'ice stops melting' }, x2: { icon: '✖2', dur: 10, name: 'DOUBLE COINS', sub: '2× tip coins' } };
+const POWERS = { magnet: { icon: '🧲', dur: 8, name: 'MAGNET', sub: 'coins come to you' }, shield: { icon: '🪖', dur: 30, name: 'HELMET', sub: 'blocks one crash' }, cool: { icon: '❄️', dur: 10, name: 'COOLER BAG', sub: 'ice stops melting' }, x2: { icon: '✖2', dur: 10, name: 'DOUBLE COINS', sub: '2× tip coins' }, rocket: { icon: '🚀', dur: 1.5, name: 'ROCKET!', sub: 'smash through anything' } };
 function followSpeed(o) {
   let gap = 1e9;
   for (const q of G.lv.obs) if (q !== o && !q.dead && q.s > o.s && Math.abs(q.lat - o.lat) < (q.w + o.w) / 2 + 0.2) gap = Math.min(gap, q.s - q.len / 2 - (o.s + o.len / 2));
@@ -222,6 +225,7 @@ function grabPower(p) {
   G.powers = G.powers.filter((w) => w.id !== p.kind); G.powers.push({ id: p.kind, t: d.dur, dur: d.dur, icon: d.icon });
   { const at = route0().world(p.s, p.lat, 1.2); const col = { magnet: 0xff3d5a, shield: 0x3d8bff, cool: 0x46d8ff, x2: 0xffc83d }[p.kind]; FX.burst(at, { color: col, n: 40, speed: 5, up: 3, life: 0.8, size: 0.4 }); FX.shock(at, { color: col, radius: 5 }); }
   addScore(50); addCombo(2); UI.pop(d.name, d.sub); Audio.sfx('jingle', 0.6, 1.3); Audio.sfx('ding', 0.5, 1.5);
+  if (p.kind === 'rocket') { G.invT = 0; G.shake = Math.max(G.shake || 0, 0.4); UI.flash(); Audio.sfx('boom', 0.9, 0.7); Audio.sfx('whoosh', 1, 0.5); FX.shock(G.R.root.position, { color: 0xff7a1a, radius: 9, dur: 0.6 }); }
 }
 // ---------------------------------------------------------------- the Akira slide into Citi Tower's front spot
 function startAkira() {
@@ -361,9 +365,9 @@ function update(dt, t) {
   if (!G.dmDone.has('fast') && G.s / G.route.length > 0.5 && G.eta > G.etaTotal * 0.55) { G.dmDone.add('fast'); UI.dm(K.pickLine(K.FAST_TEXTS)); }
   // speed
   G.boostT = Math.max(0, G.boostT - sdt); G.slowT = Math.max(0, G.slowT - sdt); G.invT = Math.max(0, G.invT - sdt);
-  const target = G.base * (G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * EV.speedK * smooth(seg(G.runT, 0, 1.2));
+  const target = G.base * (power('rocket') ? 2.0 : G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * EV.speedK * smooth(seg(G.runT, 0, 1.2));
   G.runT += sdt;
-  G.v = damp(G.v, target, G.boostT > 0 ? 6 : 2.5, sdt);
+  G.v = damp(G.v, target, power('rocket') ? 9 : G.boostT > 0 ? 6 : 2.5, sdt);
   const prevS = G.s;
   G.s = Math.min(L, G.s + G.v * sdt); G.dist += G.v * sdt; G.score += G.v * sdt;
   // lanes + jump + ramps
@@ -443,6 +447,7 @@ function update(dt, t) {
     for (const o of G.lv.obs) {
       if (o.dead || (o.drop && !o.landed)) continue;
       if (hit(o, o.len, o.w, o.h)) {
+        if (power('rocket') && o.kind !== 'gate') { rocketSmash(o); continue; }
         if (G.boostT > 0 && (o.kind === 'cone' || o.kind === 'barrier')) { o.dead = true; G.smashes++; FX.burst(G.R.root.position.clone().setY(0.6).addScaledVector(V(route.at(G.s).fx, 0, route.at(G.s).fz), 1), { color: 0xff7a1a, n: 22, speed: 6, up: 4, life: 0.7, size: 0.32, grav: 12 }); addScore(25); addCombo(2); G.boostT = Math.min(3.5, G.boostT + 0.4); UI.pop('SMASH!', `+${25 * G.mult} · boost +`); Audio.sfx('crash', 0.5, 1.6); continue; }
         if ((o.kind === 'car' || o.kind === 'bus') && !o.parked && G.y > 0.12 && G.time - (G.rampT ?? -9) < 2.2 && !G.tech && !o.teched) { o.teched = true; startTech(o); continue; } // landing on a car off a ramp: tech it
         const sh = power('shield'); if (sh) { sh.t = 0; o.dead = true; G.invT = 1.2; G.shake = 0.4; UI.pop('SHIELD!', 'helmet saved you'); Audio.sfx('crash', 0.7, 1.2); continue; }
@@ -451,7 +456,7 @@ function update(dt, t) {
       }
       if (!o.passed && o.s < G.s - o.len / 2 - 0.7) { o.passed = true; const dl = Math.abs(o.lat - G.lat); if ((o.kind === 'car' || o.kind === 'bus') && !o.parked && dl < 3.0) { G.nearMiss++; G.boostCharge = Math.min(1, G.boostCharge + 0.34); addScore(50); addCombo(4); if (G.boostT > 0) G.boostT = Math.min(3.5, G.boostT + 0.6); UI.pop('NEAR MISS', `+${50 * G.mult}${G.boostT > 0 ? ' · boost extended' : ' · +boost'}`); Audio.sfx('whoosh', 0.9, 1.2); } }
     }
-    for (const w of G.pop.walkers) if (Math.abs(w.s - G.s) < 0.9 && Math.abs(w.lat - G.lat) < 0.6 && G.y < 1.5) return crash('tourist');
+    for (const w of G.pop.walkers) if (!w.gone && Math.abs(w.s - G.s) < 0.9 && Math.abs(w.lat - G.lat) < 0.6 && G.y < 1.5) { if (power('rocket')) { w.gone = true; FX.burst(route.world(w.s, w.lat, 1.2), { color: 0xff6ad5, n: 30, speed: 7, up: 6, life: 0.9, size: 0.4, grav: 9 }); UI.pop('YEET', 'sorry ma’am'); Audio.sfx('pop', 1, 0.6); continue; } return crash('tourist'); }
     if (G.rail && G.trainCab != null && G.trainCab < 1.6 && G.trainCab > -78 && Math.abs(G.s - G.rail.s) < 2.2 && G.y < 4.8) return crash('train');
   }
   // DMs + places
@@ -479,8 +484,38 @@ function update(dt, t) {
     if (tr.t >= tr.dur && tr.kind !== 'nohand') { R.bike.rotation.y = 0; G.trick = null; } }
   const nh = tr && tr.kind === 'nohand' ? Math.sin(Math.PI * clamp(tr.e)) : 0;
   R.ride(G.dist, { lean: 0.42 + (G.boostT > 0 ? 0.12 : 0) - nh * 0.5, bank: clamp(-latV * 0.05 - curve * G.v * G.v * 0.012 + EV.bank(), -0.45, 0.45), stand: G.y > 0.3 ? 0.6 + nh * 0.4 : 0, look: G.y > 0.3 ? 0.15 + nh * 0.3 : 0 });
-  EV.pose(R);
+  EV.pose(R); updateRocket(dt);
   R.root.visible = G.invT <= 0 || Math.floor(G.invT * 12) % 2 === 0;
+}
+// the rocket: everything you touch goes up in a fireball (short and capped: ~20 m more than riding)
+function rocketSmash(o) {
+  o.dead = true; G.smashes++;
+  const at = G.route.world(o.s, o.lat, Math.min(1.2, o.h / 2));
+  FX.burst(at, { color: 0xffa21a, n: 46, speed: 10, up: 5, life: 0.7, size: 0.55, grav: 6 });
+  FX.burst(at, { color: 0x3a3632, n: 24, speed: 4, up: 3, life: 1.3, size: 1.1, grav: -1 });
+  FX.shock(at, { color: 0xff5a1a, radius: 6, dur: 0.45 });
+  Audio.sfx('boom', 1, 0.8 + Math.random() * 0.2); Audio.sfx('crash', 0.6, 1.3); G.shake = Math.max(G.shake || 0, 0.5);
+  addScore(75); addCombo(3); UI.pop('KABOOM!', `+${75 * G.mult}`); navigator.vibrate?.(40);
+}
+let rocketMesh = null;
+function rocketProp() {
+  const g = new THREE.Group(), white = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.35, metalness: 0.2 }), red = new THREE.MeshStandardMaterial({ color: 0xd8261c, roughness: 0.4 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.8, 16), white); body.rotation.x = Math.PI / 2; g.add(body);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 16), red); nose.rotation.x = Math.PI / 2; nose.position.z = 0.55; g.add(nose);
+  for (let k = 0; k < 3; k++) { const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.22), red); fin.position.set(Math.cos(k * 2.09) * 0.15, Math.sin(k * 2.09) * 0.15, -0.3); fin.rotation.z = k * 2.09; g.add(fin); }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.9, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffa21a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); flame.rotation.x = -Math.PI / 2; flame.position.z = -0.85; g.add(flame);
+  const core = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.5, 10, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); core.rotation.x = -Math.PI / 2; core.position.z = -0.65; g.add(core);
+  g.userData = { flame, core }; g.position.set(0, 1.32, -0.66); g.scale.setScalar(1.55); g.visible = false;
+  return g;
+}
+function updateRocket(dt) {
+  const R = G.R; if (!rocketMesh) { rocketMesh = rocketProp(); R.root.add(rocketMesh); }
+  const on = G.state === 'run' && !!power('rocket'); rocketMesh.visible = on;
+  if (G.rocketWas && !on && G.state === 'run') G.invT = Math.max(G.invT, 0.5); // a beat of grace as the burn ends inside traffic
+  G.rocketWas = on;
+  if (!on) return;
+  const f = 0.85 + Math.random() * 0.4; rocketMesh.userData.flame.scale.set(f, 1 + Math.random() * 0.6, f); rocketMesh.userData.core.scale.setScalar(0.8 + Math.random() * 0.4);
+  if (Math.random() < 0.6) FX.burst(R.root.localToWorld(V(0, 1.3, -1.5)), { color: 0x8a8580, n: 2, speed: 1.5, up: 0.6, life: 0.8, size: 0.7, grav: -0.5 });
 }
 function crash(kind) {
   G.state = 'crashing'; G.crashT = 0; G.crashes++; G.crashAt = G.s; G.crashKind = kind; breakCombo(); G.powers = []; if (G.qte) { G.qte.ui.remove(); G.qte = null; } G.qteAt = null; G.airKind = null; G.trick = null; G.R.bike.rotation.y = 0; G.slowmo = 1; Audio.rate(1);
@@ -497,7 +532,7 @@ function updateCrash(dt) {
   R.C.root.rotation.x = uu * Math.PI * 2.5;
   if (G.crashT > 1.0 && G.state === 'crashing') {
     G.state = 'crashed';
-    UI.crash({ tip: G.tip, onAd: () => { UI.remove('crash'); G.state = 'ad'; Audio.sfx('jingle', 0.9); UI.ad({ seconds: 4, onDone: continueRun }); }, onRestart: () => { UI.remove('crash'); startOrder(true); } });
+    UI.crash({ tip: G.tip, onAd: () => { UI.remove('crash'); G.state = 'ad'; Audio.sfx('jingle', 0.9); UI.ad({ seconds: 4, onDone: continueRun }); }, onRestart: () => { bankCoins(); UI.remove('crash'); startOrder(true); } });
   }
 }
 function continueRun() {
@@ -535,7 +570,8 @@ function animateLevel(t, dt) {
   // smashed / cleared cones and barriers disappear
   for (const st of P.statics) {
     let dirty = false, idx = 0;
-    for (const o of st.list) { const vis = !o.dead; if (o._vis !== vis) { o._vis = vis; dirty = true; o.mats.forEach((m, k) => st.mesh.setMatrixAt(idx + k, vis ? m : m4.makeScale(0, 0, 0))); } idx += o.mats.length; }
+    const vk = (st.vk ||= Symbol('vis'));
+    for (const o of st.list) { const vis = !o.dead; if (o[vk] !== vis) { o[vk] = vis; dirty = true; o.mats.forEach((m, k) => st.mesh.setMatrixAt(idx + k, vis ? m : m4.makeScale(0, 0, 0))); } idx += o.mats.length; }
     if (dirty) st.mesh.instanceMatrix.needsUpdate = true;
   }
   for (const o of P.buses) { const f = route.at(o.s); route.world(o.s, o.lat, 0, o.mesh.position); o.mesh.rotation.y = f.yaw + (o.t0 ? 0.08 * Math.sin(Math.PI * seg(G.time - o.t0, 0, 1.4)) * Math.sign(o.pull - o.lat0) : 0); o.mesh.visible = !o.dead; }
@@ -595,9 +631,9 @@ const SMOOTH = { ds: 0.22, lat: 0.2, y: 0.28, lds: 0.14, llat: 0.16, ly: 0.18, f
 function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x), ch = cur - tgt, t = ((CAM.v[k] || 0) + o * ch) * dt; CAM.v[k] = ((CAM.v[k] || 0) - o * t) * e; return tgt + (ch + t) * e; }
 const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
 function chaseShot() {
-  const b = G.boostT > 0 ? 1 : 0, wide = camera.aspect >= 1;
+  const rk = power('rocket') ? 1 : 0, b = G.boostT > 0 || rk ? 1 : 0, wide = camera.aspect >= 1;
   const cruise = clamp(G.v / G.base);
-  return { ds: -((wide ? 7.2 : 8.2) - cruise * 0.5 + b * 1.6), lat: G.lat * 0.7, y: (wide ? 3.3 : 4.1) - cruise * 0.25 + G.y * 0.45, lds: wide ? 9 : 7, llat: G.lat * 0.55, ly: (wide ? 1.4 : 1.0) + G.y * 0.5, fov: baseFov() + cruise * 5 + b * 11 };
+  return { ds: -((wide ? 7.2 : 8.2) - cruise * 0.5 + b * 1.6), lat: G.lat * 0.7, y: (wide ? 3.3 : 4.1) - cruise * 0.25 + G.y * 0.45, lds: wide ? 9 : 7, llat: G.lat * 0.55, ly: (wide ? 1.4 : 1.0) + G.y * 0.5, fov: baseFov() + cruise * 5 + b * 11 + rk * 7 };
 }
 function jumpShot() { // big jumps: a low side angle inside the street (SunRail: train side; mega ramp: over the bus)
   const mega = (G.airKind || G.lastAir) === 'mega', side = mega ? -1 : 1, h = halfAt(G.s);
@@ -606,6 +642,7 @@ function jumpShot() { // big jumps: a low side angle inside the street (SunRail:
     : { ds: 4.0, lat: side * (h - 0.8), y: 1.8 + G.y * 0.5, lds: 0.3, llat: G.lat, ly: 0.9 + G.y, fov: baseFov() - 2 };
 }
 function titleShot(t) { // front three-quarter on the rider at the start, drifting gently across the street
+  if (G.state === 'shop') { const port = camera.aspect < 1, a = t * 0.45, r = port ? 4.4 : 3.0; return { ds: r * Math.cos(a), lat: r * Math.sin(a), y: port ? 1.7 : 1.45, lds: 0, llat: 0, ly: port ? 1.0 : 1.05, fov: port ? 52 : 38 }; } // the store's turntable
   return { ds: 6.2, lat: 2.6 * Math.sin(t * 0.18 + 0.6), y: 1.7 + 0.25 * Math.sin(t * 0.11), lds: 0, llat: 0, ly: 1.15, fov: baseFov() - 4 };
 }
 const mixShot = (a, b, k) => Object.fromEntries(CKEYS.map((c) => [c, a[c] + (b[c] - a[c]) * k]));
@@ -708,6 +745,16 @@ function showResults(line) {
     score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, perfect, fin: G.fin, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog, rival: G.fin?.rival, crane: G.fin?.crane },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
     onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. ${perfect ? `PERFECT RUN. He actually tipped ${UI.money(G.tip)}. 🤯` : 'He tipped $0.00. Again. 🙄'} #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
+  // tip-coins → wallet: what you picked up plus a grade bonus (a perfect run pays big)
+  const bonus = ({ S: 200, A: 120, B: 70, C: 35, D: 15 }[grade] || 0) + (perfect ? 500 : 0), got = G.coins - (G.banked || 0), earned = bankCoins(bonus);
+  const res = document.querySelector('#results .res');
+  if (res) {
+    const w = document.createElement('div'); w.className = 'walletline';
+    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} grade bonus → wallet</span><b>${store.get('wallet', 0).toLocaleString('en-US')}</b><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
+    (res.querySelector('.nextup') || res.lastElementChild).before(w);
+    w.querySelector('#toshop').onclick = () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); openStore(); };
+  }
+  void earned;
 }
 
 // ---------------------------------------------------------------- title: slow orbit at the start of the route
@@ -736,14 +783,16 @@ function step(dt, draw) {
   if (!QA) frameMs = frameMs * 0.95 + (dt * 1000) * 0.05;
   if (!QA && now - lastQ > 2500 && G.state === 'run') { lastQ = now; const nq = frameMs > 24 ? Math.max(0.55, quality - 0.15) : frameMs < 15 && quality < 1 ? Math.min(1, quality + 0.1) : quality; if (nq !== quality) { quality = nq; resize(); } }
   if (G.state === 'title' || G.state === 'order') { titleCamera(T, dt); G.introT = 0; }
+  else if (G.state === 'shop') { titleCamera(T, dt); G.introT = 0; }
   else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
   if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
-  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && G.boostT > 0, cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
-  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.22 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
+  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && (G.boostT > 0 || !!power('rocket')), cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
+  if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: power('rocket') ? 1 : G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.22 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);
+  G.cos?.tick(T, { speed: G.state === 'run' ? G.v : 6 });
   // ambience follows where you are: the city while riding (louder + brighter with speed), then the building's rooms
   if (G.state === 'run') { Audio.ambience('city', 1); Audio.ambienceLevel(clamp(G.v / (G.base * 1.75) + (G.boostT > 0 ? 0.25 : 0))); }
   else if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused' || G.state === 'count') Audio.ambience('city', 0.6);
@@ -776,9 +825,28 @@ async function boot() {
   showTitle();
   window.__ready = true;
 }
+// ---------------------------------------------------------------- wallet + store
+// coins you pick up are banked into the wallet when a run ends: delivered (plus a grade bonus), restarted or quit
+function bankCoins(bonus = 0) {
+  const n = Math.max(0, (G.coins || 0) - (G.banked || 0)) + bonus; G.banked = G.coins || 0;
+  if (n) store.set('wallet', store.get('wallet', 0) + n);
+  return n;
+}
+function viewOffset(on) { // in the store, slide the picture so the courier stands clear of the panel
+  const w = innerWidth, h = innerHeight;
+  if (!on) { camera.clearViewOffset(); return; }
+  if (w >= h) camera.setViewOffset(w, h, w * 0.2, 0, w, h); else camera.setViewOffset(w, h, 0, h * 0.27, w, h);
+}
+function openStore() {
+  if (G.state !== 'title') return;
+  Audio.unlock(); UI.remove('title'); G.state = 'shop'; viewOffset(true); Audio.sfx('pop', 0.7, 1.1);
+  const close = () => { viewOffset(false); showTitle(); };
+  G.shop = openShop({ store, cos: G.cos, sfx: (n, g, r) => Audio.sfx(n, g, r), onClose: close });
+}
+window.__openStore = openStore;
 function showTitle() {
   G.state = 'title';
-  UI.title({ bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
+  UI.title({ wallet: store.get('wallet', 0), onShop: openStore, bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
 }
 requestAnimationFrame(frame);
 boot();
