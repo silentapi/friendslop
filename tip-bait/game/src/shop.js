@@ -2,8 +2,8 @@
 // equip from, and a "buy coins" sheet for later. Openings borrow the genre's grammar, in 3D: the crate flies to
 // centre, hums and shakes with light leaking from its seams (white for everyone; only Kyle-tier climbs the rarity
 // ladder), the lid blows off in a column of light, and a curved CS:GO-style wheel of cards decelerates under the
-// needle: it lands at a random spot on the winner, often creeps to the edge next to something better, sometimes
-// spills over and rolls back. The result is rolled before any of it plays; the show never changes it.
+// needle: one natural, ever-slowing spin that stops where it stops: a random spot on the winner, often right by the edge
+// next to something better. It never reverses or rolls back. The result is rolled before any of it plays.
 import * as THREE from 'three';
 import { ITEMS, CATS, DEFAULTS, RARITY, byId } from './cosmetics.js';
 import { CRATES, PITY, REFUND, TIERS, openCrate, keysFor } from './crates.js';
@@ -290,10 +290,9 @@ function runOpening(crate, pulls, ctx) {
     const pick = (r) => { const l = ITEMS.filter((i) => !i.def && !i.bp && i.r === r); return l[Math.floor(Math.random() * l.length)]; };
     const juicy = () => pick(top < 3 ? (Math.random() < 0.7 ? 'legendary' : 'mythic') : top === 3 ? 'mythic' : 'legendary');
     W = 26 + Math.floor(Math.random() * 10); // where on the strip the winner sits varies run to run
-    const N = W + 9, mode = Math.random() < 0.38 ? 'edge' : Math.random() < 0.45 ? 'over' : 'plain', side = Math.random() < 0.5 ? -1 : 1;
+    const N = W + 9, mode = Math.random() < 0.45 ? 'edge' : 'plain', side = Math.random() < 0.5 ? -1 : 1;
     // landing spot on the winning card (in card widths from its centre; the card edge is ±0.45)
-    const off = mode === 'edge' ? side * (0.37 + Math.random() * 0.06) : mode === 'over' ? side * (0.18 + Math.random() * 0.22) : (Math.random() - 0.5) * 0.74;
-    const peak = mode === 'edge' ? side * (0.445 + Math.random() * 0.03) : mode === 'over' ? side * (0.56 + Math.random() * 0.14) : off;
+    const off = mode === 'edge' ? side * (0.36 + Math.random() * 0.07) : (Math.random() - 0.5) * 0.74, peak = off; // forward only
     const items = Array.from({ length: N }, (_, i) => (i === W ? best.item : pick(randR())));
     if (mode !== 'plain' || Math.random() < 0.6) items[W + side] = juicy(); // the near miss sits on the side the needle leans to
     if (Math.random() < 0.5) items[W - side] = pick(Math.random() < 0.5 ? 'epic' : 'legendary');
@@ -333,14 +332,11 @@ function runOpening(crate, pulls, ctx) {
     if (!multi) { wheel.visible = true; needle.visible = true; }
   }
   const lerp = (a, b, k) => a + (b - a) * k, clamp01 = (x) => Math.max(0, Math.min(1, x));
-  function wheelAngle(st) { // the authored spin: fast start, long ease, an edge crawl or a spill-and-roll-back at the end
-    const { from, peak, to, dur, pw } = plan;
-    if (st < dur) return lerp(from, peak, 1 - Math.pow(1 - st / dur, pw));
-    const k = st - dur; if (plan.mode === 'plain') return to;
-    const back = plan.mode === 'over' ? 0.75 : 0.5; if (k >= back) return to;
-    const u = k / back; return lerp(peak, to, plan.mode === 'over' ? (1 - Math.cos(u * Math.PI)) / 2 : u * u * (3 - 2 * u));
+  function wheelAngle(st) { // fast start, one long monotonic ease-out to the landing spot (edge landings crawl in slower)
+    const { from, to, dur, pw } = plan;
+    return st < dur ? lerp(from, to, 1 - Math.pow(1 - st / dur, pw)) : to;
   }
-  const spinEnd = () => plan.dur + (plan.mode === 'plain' ? 0 : plan.mode === 'over' ? 0.75 : 0.5);
+  const spinEnd = () => plan.dur;
   // under ?qa=1 the show only advances through api.advance() (software GL is far too slow for real time)
   const QAMODE = new URLSearchParams(location.search).has('qa');
   function frame(now) {
