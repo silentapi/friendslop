@@ -227,7 +227,7 @@ window.addEventListener('keydown', (e) => {
 function pause() {
   if (G.state !== 'run') return;
   G.state = 'paused'; Audio.music(null);
-  UI.pauseMenu({ onResume: resume, onRestart: () => { bankCoins(); partialXP(); resume(); startOrder(true); }, onQuit: () => { bankCoins(); partialXP(); UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
+  UI.pauseMenu({ onResume: resume, onRestart: () => { bankCoins(); partialXP(); resume(); startOrder(true); }, onQuit: () => { bankCoins(); partialXP(); if (G.daily) { G.order = G.careerOrder ?? G.order; G.daily = null; G.builtFor = null; } UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
 }
 function resume() { if (G.state !== 'paused') return; UI.remove('pause'); G.state = 'run'; Audio.music('full'); }
 window.addEventListener('blur', pause);
@@ -837,7 +837,7 @@ async function startOrder(restart = false) {
 function countdownGo() {
   const marks = G.route.streets.slice(1).map((st) => [st.s0 / G.route.length, st.name.replace(/^(East|West|South|North) /, '')]);
   if (G.rail) marks.push([G.rail.s / G.route.length, 'SunRail']);
-  G.state = 'count'; hud = UI.hud(marks); hud.onBoost(useBoost); hud.hint(true);
+  G.state = 'count'; hud = UI.hud(marks); hud.onBoost(useBoost); hud.hint(true); hud.el.querySelector('#pausebtn').addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (G.state === 'run') pause(); });
   hud.update({ eta: G.eta, prog: 0, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: 0 });
   G.introT = 0; G.countN = 0; // the countdown runs on the game clock (see step) so the camera hand-off always lands on GO
 }

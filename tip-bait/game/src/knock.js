@@ -176,7 +176,7 @@ export class Knock {
       <div class="kn-top"><div class="kn-hp"><i></i></div><div class="kn-sc"><b>00000000</b><span><i class="kn-pie"></i><em>100.00%</em></span></div></div>
       <div class="kn-combo"><b>0x</b></div>
       <div class="kn-keys${touch ? ' off' : ''}"><span>Z<small>0</small></span><span>X<small>0</small></span></div>
-      <div class="kn-shout"></div><div class="kn-big"></div>
+      <div class="kn-shout"></div><div class="kn-big"></div><div class="kn-ms"></div><div class="kn-glow"></div>
       <div class="kn-card"><small>Kyle’s door · apt 2004</small><h2>PLAY THE SECRET KNOCK</h2><p>${touch ? 'tap the circles as the rings close · hold sliders' : 'click the circles as the rings close · or <kbd>Z</kbd> <kbd>X</kbd> anywhere · hold for sliders'}</p><p class="kn-warn">drop the HP bar and he won’t open · <b>+2.5 s</b> per retry</p></div>
       <div class="kn-rank"></div>`);
     this.el.classList.add('kn-on'); document.getElementById('dms')?.remove();
@@ -234,7 +234,7 @@ export class Knock {
   hitHead(o, v, d = 0) {
     const A = this.F.Audio; o.hit = v; o.err = d;
     if (o.kind === 'circle') return this.judge(o, v, o.u, o.v);
-    if (v) { this.addCombo(); this.score(30, false); this.hp = Math.min(1, this.hp + 0.02); A.sfx('tok', 0.85); this.burst(o.u, o.v, o.col); }
+    if (v) { this.addCombo(); this.score(30, false); this.hp = Math.min(1, this.hp + 0.02); A.sfx('tok', 0.85); this.burst(o.u, o.v, o.col, false, v); }
     else this.breakCombo(o.u, o.v, true);
   }
   judge(o, v, u, w) { // final judgement for a circle / slider: score, HP, combo, pop
@@ -242,13 +242,35 @@ export class Knock {
     if (v) {
       if (o.kind === 'circle') this.addCombo();
       this.score(v, true); this.hp = Math.min(1, this.hp + (v === 300 ? 0.07 : v === 100 ? 0.035 : 0.005));
-      if (o.kind === 'circle') { A.sfx('tok', 0.9); if (o.fin) { A.sfx('fclap', 0.9); A.sfx('whistle', 0.6); } this.burst(u, w, o.col, o.fin); }
+      if (o.kind === 'circle') { A.sfx('tok', 0.9); if (o.fin) { A.sfx('fclap', 0.9); A.sfx('whistle', 0.6); } this.burst(u, w, o.col, o.fin, v); }
     } else this.breakCombo(u, w, o.kind === 'circle');
     this.fx.push({ k: 'j', v, u, w, t: this.T, fin: o.fin });
+    if (v) this.sectionCheck(o); else this.miss();
   }
-  addCombo() { this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); this.comboPop = this.T; this.setMuffle(); }
+  // negative reinforcement: red flash at the edges, the HP bar jolts, the cursor kicks, a dull thud
+  miss() {
+    this.redT = this.T; this.jolt = this.T; this.F.Audio.sfx('thud', 0.8);
+    const hp = this.hpEl.parentElement; hp.classList.remove('kn-hit'); void hp.offsetWidth; hp.classList.add('kn-hit'); clearTimeout(this.hpT); this.hpT = setTimeout(() => hp.classList.remove('kn-hit'), 340);
+  }
+  // a whole section on 300s: a flourish
+  sectionCheck(o) {
+    let sb = A0; for (const [, b] of SECS) if (o.b >= b) sb = b;
+    const nx = SECS.map(([, b]) => b).find((b) => b > sb) ?? 1e9, sec = this.notes.filter((q) => q.b >= sb && q.b < nx);
+    if ((this.flour ||= {})[sb] || !sec.every((q) => q.done && q.res === 300)) return;
+    this.flour[sb] = true; this.banner('PERFECT SECTION', 'gold'); this.F.Audio.sfx('chime', 0.6, 1.2);
+    for (let i = 0; i < 26; i++) { const a = (i / 26) * TAU, sp = 0.9 + Math.random() * 0.8; this.fx.push({ k: 's', u: 0, w: 0, col: COLS[i % 2], t: this.T, dx: Math.cos(a) * sp * 2.2, dy: Math.sin(a) * sp * 2.2, big: 1 }); }
+  }
+  banner(text, kind = '') { const e = this.$('.kn-ms'); e.textContent = text; e.className = 'kn-ms ' + kind; void e.offsetWidth; e.classList.add('in'); const g = this.$('.kn-glow'); g.className = 'kn-glow ' + kind; void g.offsetWidth; g.classList.add('in'); }
+  addCombo() {
+    this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); this.comboPop = this.T; this.setMuffle();
+    if (this.combo % 10 === 0) { this.banner(`${this.combo} COMBO!`); this.F.Audio.sfx('jingle', 0.35, 1.3 + Math.min(0.4, this.combo / 100)); }
+  }
   breakCombo(u, w, hpHit) {
-    if (this.combo >= 5) this.F.Audio.sfx('cbreak', 0.7);
+    if (this.combo >= 5) { // the number shatters off the counter
+      this.F.Audio.sfx('cbreak', 0.7);
+      const host = this.$('.kn-combo'), sh = document.createElement('i'); sh.className = 'kn-shard'; sh.innerHTML = `${this.combo}x<small>COMBO BROKEN</small>`;
+      host.appendChild(sh); setTimeout(() => sh.remove(), 900);
+    }
     this.combo = 0; this.setMuffle(); if (hpHit) this.hp -= this.L.miss;
     this.shake = 1;
   }
@@ -258,7 +280,14 @@ export class Knock {
     const k = Math.floor(s.rot * 2); if (k > (s.ticks || 0)) { s.ticks = k; this.F.Audio.sfx('spin', 0.5, 1 + Math.min(1, s.rot / 6)); if (s.rot >= 3) this.score(100, false); }
     if (s.rot >= 3 && !s.clear) { s.clear = true; this.F.Audio.sfx('fclap', 0.8); this.F.Audio.sfx('whistle', 0.5, 1.2); }
   }
-  burst(u, w, col, big = false) { this.fx.push({ k: 'b', u, w, col, t: this.T, big }); for (let i = 0; i < (big ? 16 : 7); i++) { const a = Math.random() * TAU, s = 0.6 + Math.random() * 0.9; this.fx.push({ k: 's', u, w, col, t: this.T, dx: Math.cos(a) * s, dy: Math.sin(a) * s }); } }
+  // positive reinforcement: a ring + sparks sized by the judgement, a puff of door dust, and the door thumps
+  burst(u, w, col, big = false, v = 300) {
+    if (this.fx.length > 260) this.fx.splice(0, this.fx.length - 260); // particle cap
+    const q = v === 300 ? 1 : v === 100 ? 0.65 : 0.4; this.thump = Math.max(this.thump || 0, 0.5 + q * 0.5);
+    this.fx.push({ k: 'b', u, w, col, t: this.T, big, q });
+    for (let i = 0; i < (big ? 18 : Math.round(4 + q * 8)); i++) { const a = Math.random() * TAU, s = (0.6 + Math.random() * 0.9) * (0.7 + q * 0.4); this.fx.push({ k: 's', u, w, col, t: this.T, dx: Math.cos(a) * s, dy: Math.sin(a) * s }); }
+    for (let i = 0; i < 5; i++) this.fx.push({ k: 'd', u, w, t: this.T, dx: (Math.random() - 0.5) * 1.2, dy: -0.2 - Math.random() * 0.5, s: 0.5 + Math.random() * 0.7 });
+  }
   stats() {
     const done = this.notes.filter((o) => o.res != null), c = { 300: 0, 100: 0, 50: 0, 0: 0 };
     for (const o of done) c[o.res]++;
@@ -349,6 +378,7 @@ export class Knock {
     const D = 1.78, aspect = cam.aspect || 1, hh = Math.max(PH + 0.36, (PW + 0.2) / aspect);
     const fov = 2 * Math.atan(hh / D) * 180 / Math.PI, sh = this.shake * 0.006;
     const p = V(FACE_X - D, PY + 0.04, Sets.DOOR_Z + 0.02), l = V(FACE_X, PY + 0.02, Sets.DOOR_Z);
+    this.thump = Math.max(0, (this.thump || 0) - dt * 9); p.x += this.thump * 0.014; // each knock nudges the shot into the door
     p.x += Math.sin(this.T * 0.7) * 0.01 + (Math.random() - 0.5) * sh; p.y += Math.sin(this.T * 0.9) * 0.008 + (Math.random() - 0.5) * sh;
     this.camK = { p, l, fov };
     const u = this.st === 'intro' && this.c0.distanceTo(p) < 9 ? easeInOut(clamp(this.t / 0.8)) : 1; // glide in from the hall shot (cut if it came from elsewhere)
@@ -423,17 +453,21 @@ export class Knock {
       for (let i = vis.length - 1; i >= 0; i--) this.drawObj(vis[i], t, r, gone * fade);
       const s = this.spin; if (t > s.t - 0.4 && t < s.tEnd + 0.4) this.drawSpin(s, t, gone * fade);
     }
+    // edges: a green pulse on every beat while the combo is 10+, a red flash on a miss
+    if (t > 0 && this.combo >= 10 && this.st === 'play') { const ph = ((t - knockBeat(0)) / (60 / KNOCK_BPM)) % 1, a = Math.pow(1 - ph, 3) * Math.min(0.22, 0.08 + this.combo / 300); this.edge(c, W, H, `rgba(46,230,111,${a.toFixed(3)})`); }
+    if (this.redT != null && this.T - this.redT < 0.4) this.edge(c, W, H, `rgba(255,59,48,${(0.42 * (1 - (this.T - this.redT) / 0.4)).toFixed(3)})`);
     // effects (screen-anchored to the door, so they ride the camera's breathing)
-    this.fx = this.fx.filter((f) => this.T - f.t < 0.9);
+    this.fx = this.fx.filter((f) => this.T - f.t < (f.big ? 1.2 : 0.9));
     for (const f of this.fx) {
-      const a = this.T - f.t, [x, y] = this.scr(f.u, f.w);
-      if (f.k === 'b') { const k = clamp(a / 0.28); c.globalAlpha = (1 - k) * fade; c.lineWidth = r * 0.14; c.strokeStyle = rgba(f.col, 1, 1.15); c.beginPath(); c.arc(x, y, r * (1 + k * (f.big ? 0.9 : 0.45)), 0, TAU); c.stroke(); c.fillStyle = rgba(f.col, 0.35 * (1 - k)); c.fill(); }
-      else if (f.k === 's') { const k = clamp(a / 0.45); c.globalAlpha = (1 - k) * fade; c.fillStyle = rgba(f.col, 1, 1.25); c.beginPath(); c.arc(x + f.dx * r * 1.8 * easeOut(k), y + f.dy * r * 1.8 * easeOut(k), r * 0.07 * (1 - k * 0.6), 0, TAU); c.fill(); }
+      const a = this.T - f.t; let [x, y] = this.scr(f.u, f.w);
+      if (f.k === 'b') { const k = clamp(a / 0.3), q = f.q ?? 1; c.globalAlpha = (1 - k) * fade; c.lineWidth = r * (0.08 + 0.1 * q); c.strokeStyle = rgba(f.col, 1, 1.15); c.beginPath(); c.arc(x, y, r * (1 + k * (f.big ? 1.1 : 0.25 + 0.5 * q)), 0, TAU); c.stroke(); c.fillStyle = rgba(f.col, 0.35 * (1 - k)); c.fill(); }
+      else if (f.k === 'd') { const k = clamp(a / 0.8); c.globalAlpha = 0.5 * (1 - k) * fade; c.fillStyle = '#b89470'; c.beginPath(); c.arc(x + f.dx * r * 1.3 * easeOut(k), y + r * 0.6 + (f.dy + k * 1.4) * r * k, r * 0.16 * f.s * (0.6 + k), 0, TAU); c.fill(); }
+      else if (f.k === 's') { const k = clamp(a / (f.big ? 0.9 : 0.45)); c.globalAlpha = (1 - k) * fade; c.fillStyle = rgba(f.col, 1, 1.25); c.beginPath(); c.arc(x + f.dx * r * 1.8 * easeOut(k), y + f.dy * r * 1.8 * easeOut(k), r * 0.07 * (1 - k * 0.6), 0, TAU); c.fill(); }
       else if (f.k === 'j') {
         const k = clamp(a / 0.7), pop = a < 0.08 ? 0.7 + a / 0.08 * 0.6 : 1.3 - Math.min(0.3, (a - 0.08) * 2);
         const [txt, col] = f.v === 300 ? ['300', '#2ee66f'] : f.v === 100 ? ['100', '#ffc83d'] : f.v === 50 ? ['50', '#d6aa6e'] : ['✗', '#ff3b30'];
         c.globalAlpha = (1 - easeOut(seg(k, 0.55, 1))) * fade; c.font = `900 ${Math.round(r * (f.v ? 0.62 : 1.0) * pop)}px Archivo, system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        const yy = y - (f.v ? r * 1.05 : -a * r * 0.8); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = r * 0.25; c.shadowOffsetY = 2; c.fillStyle = col; c.fillText(txt, x, yy); c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+        const yy = y - (f.v ? r * 1.05 : -a * r * 0.8); if (!f.v && a < 0.3) x += Math.sin(a * 80) * r * 0.12 * (1 - a / 0.3); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = r * 0.25; c.shadowOffsetY = 2; c.fillStyle = col; c.fillText(txt, x, yy); c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
       }
     }
     c.globalAlpha = 1;
@@ -488,8 +522,13 @@ export class Knock {
     c.fillText(s.clear ? `bonus +${Math.max(0, Math.round((s.rot - 3) * 1000 + 1000))}` : matchMedia('(pointer: coarse)').matches ? 'drag circles · optional' : 'hold + circle the mouse · or mash Z X', x, y + R * 0.16);
     c.restore();
   }
+  edge(c, W, H, col) { const g = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.42, W / 2, H / 2, Math.hypot(W, H) * 0.55); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, col); c.globalAlpha = 1; c.fillStyle = g; c.fillRect(0, 0, W, H); }
   drawCursor(c, r) {
     const cu = this.cur, now = this.T; if (this.st === 'out') return;
+    const jo = this.jolt != null && now - this.jolt < 0.2 ? Math.sin((now - this.jolt) * 90) * r * 0.25 * (1 - (now - this.jolt) / 0.2) : 0;
+    c.save(); c.translate(jo, 0); this.cursorAt(c, r, cu, now); c.restore();
+  }
+  cursorAt(c, r, cu, now) {
     if (cu.touch && !this.down) cu.on = Math.max(0, cu.on - 0.06);
     if (cu.on <= 0 || cu.x < -50) return;
     this.trail.push([cu.x, cu.y, now]); this.trail = this.trail.filter((p) => now - p[2] < 0.14).slice(-14);

@@ -410,7 +410,7 @@ function runOpening(crate, pulls, ctx) {
   }
   // reveal pose: the winner flies forward and flips, then parks where it doesn't cover the courier
   const isPortrait = () => innerWidth < innerHeight * 0.9;
-  const parkAt = () => (isPortrait() ? toWorld(innerWidth / 2, innerHeight * 0.19, 1) : toWorld(innerWidth - Math.min(innerWidth * 0.17, 210), innerHeight * 0.21, 1));
+  const parkAt = () => (isPortrait() ? toWorld(innerWidth * 0.2, innerHeight * 0.12, 1) : toWorld(innerWidth - Math.min(innerWidth * 0.17, 210), innerHeight * 0.21, 1));
   let hero = null;
   function reveal(wasSkip = false) {
     if (phase === 'reveal') return;
@@ -439,7 +439,7 @@ function runOpening(crate, pulls, ctx) {
       const u = clamp01(revealT / 0.7), e = 1 - Math.pow(1 - u, 3), park = parkAt(), v = clamp01((revealT - 1.0) / 0.6), pe = v * v * (3 - 2 * v);
       const mid = new THREE.Vector3(0, 0.4, FZ + 2.4);
       hero.g.position.copy(hero.from).lerp(mid, e).lerp(park, pe);
-      hero.g.rotation.y = Math.PI * 2 * e + Math.sin(revealT * 1.6) * 0.18 * pe; hero.g.scale.setScalar(lerp(1, 1.25, e) * lerp(1, isPortrait() ? 0.8 : 0.66, pe));
+      hero.g.rotation.y = Math.PI * 2 * e + Math.sin(revealT * 1.6) * 0.18 * pe; hero.g.scale.setScalar(lerp(1, 1.25, e) * lerp(1, isPortrait() ? 0.52 : 0.66, pe));
       rays.position.set(hero.g.position.x, hero.g.position.y, -3); halo.position.set(hero.g.position.x, hero.g.position.y, -2.5); rays.scale.setScalar(lerp(16, 8, pe)); halo.scale.setScalar(lerp(7, 4.5, pe));
       wheel.position.y = lerp(0.25, -halfH * 1.4, clamp01(revealT / 0.8)); for (const c of cards) { c.sharp.material.opacity *= 1 - Math.min(1, dt * 3); c.blur.material.opacity = 0; }
     } else {

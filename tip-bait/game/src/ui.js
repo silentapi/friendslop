@@ -68,6 +68,7 @@ export function orderCard({ tip, note, pickup, dropoff, eta, n, thought = '', on
 export function hud(marks = []) {
   const el = layer('hud', `
     <div class="hudtop">
+      <button class="hpause" id="pausebtn" aria-label="Pause"><i></i><i></i></button>
       <div class="pill" id="eta"><small>ETA</small><span>0:00</span></div>
       <div class="prog"><i id="progf"></i><em style="left:0">☕</em>${marks.map(([p, name]) => `<span class="mk" style="left:${(p * 100).toFixed(1)}%"><b></b>${name}</span>`).join('')}<em style="left:100%">🏢</em><span class="me" id="me">🚲</span></div>
       <div class="pill tipv"><small>TIP</small><b id="tipv">$50.00</b></div>
@@ -134,7 +135,7 @@ export function pauseMenu({ onResume, onRestart, onQuit }) {
   const el = layer('pause', `<div class="pausebox"><div class="ptitle">Paused</div>
     <button class="btn" id="presume">RESUME${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">Esc</small>'}</button>
     <button class="btn dark" id="prestart">Restart order${TOUCH ? '' : ' (R)'}</button>
-    <button class="btn ghost" id="pquit">Quit to title</button>
+    <button class="btn ghost" id="pquit">⌂ Main menu</button>
     <div class="small">${TOUCH ? '' : '← → lanes · ↑ jump · Shift boost · M mute'}</div></div>`);
   el.querySelector('#presume').onclick = onResume; el.querySelector('#prestart').onclick = onRestart; el.querySelector('#pquit').onclick = onQuit;
   return el;
