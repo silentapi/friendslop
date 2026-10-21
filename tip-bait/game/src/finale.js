@@ -221,7 +221,7 @@ export class Finale {
     this.cup.removeFromParent(); s.add(this.cup);
     // hazards on three landings (random floors + kinds): a dog, a wet floor, a mop bucket
     const kinds = ['dog', 'wet', 'bucket'].sort(() => Math.random() - 0.5), floors = [5 + Math.floor(Math.random() * 3), 10 + Math.floor(Math.random() * 3), 15 + Math.floor(Math.random() * 3)];
-    this.hazards = floors.map((f, i) => { const kind = kinds[i], key = kind === 'wet' ? 'arrowup' : Math.random() < 0.5 ? 'arrowleft' : 'arrowright'; const m = hazardProp(kind); const { p } = Sets.stairPath(2 * (f - 1) + 0.02); m.position.copy(p).add(V(0, 0, f % 2 ? 0.6 : -0.6)); s.add(m); return { f, kind, key, m, done: false }; });
+    this.hazards = []; void floors; void kinds; // no landing QTEs: the stairs are pure rhythm — never the same foot twice, as fast as you can
     Object.assign(this, { flights: 0, sCur: 0, beat: 0, stumble: 0, perfects: 0, misses: 0, haz: null, hazT: 0, dodge: 0 });
     UI.skipChip(false);
     Audio.music('full');

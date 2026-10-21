@@ -49,9 +49,9 @@ const pilot = () => page.evaluate((crashMode) => {
   if (g.state !== 'run' || crashMode) return null;
   const cap = (k) => 'Arrow' + k.slice(5, 6).toUpperCase() + k.slice(6);
   if (g.tech) return cap(g.tech.key);
-  { const E = window.__EV, ev = E?.cur; if (E?.locked && ev?.kind === 'rival') { if (ev.st === 'strike' && !ev.pressed) { const u = ev.t / ev.W; if (globalThis.__rivalMode === 'dodge') return u > 0.3 ? cap(ev.away) : null; if (globalThis.__rivalMode === 'miss' && ev.res.length === 1) return null; return u > 0.7 ? cap(ev.toward) : null; } if (globalThis.__rivalMode === 'flinch' && ev.st === 'feint' && ev.t > 0.1 && !ev.flinchCd) return cap(ev.toward); return null; } }
+  { const E = window.__EV, ev = E?.cur; if (E?.locked && ev?.kind === 'rival') { if (ev.st === 'strike' && !ev.pressed && ev.combo) { const u = ev.t / ev.W; if (globalThis.__rivalMode === 'miss' && ev.res.length === 1) return null; return u > 0.55 ? cap(ev.combo[ev.hit].key) : null; } if (globalThis.__rivalMode === 'flinch' && ev.st === 'feint' && ev.t > 0.1 && !ev.flinchCd) return cap(ev.toward); return null; } }
   if (g.akira && !g.akira.res) return globalThis.__akiraFail && g.akira.idx === 1 ? 'ArrowUp' === cap(g.akira.seq[1]) ? 'ArrowLeft' : 'ArrowUp' : cap(g.akira.seq[g.akira.idx]);
-  if (g.qte) return (1 - g.qte.t / g.qte.dur) < 0.22 ? g.qte.key.replace('arrow', 'Arrow').replace('Arrowup', 'ArrowUp').replace('Arrowdown', 'ArrowDown').replace('Arrowleft', 'ArrowLeft').replace('Arrowright', 'ArrowRight') : null;
+  if (g.qte) return g.qte.t > 0.12 + g.qte.idx * 0.1 ? cap(g.qte.seq[g.qte.idx]) : null;
   { const m = g.lv.ramps.find((r) => r.mega && r.s - g.s > 0 && r.s - g.s < 45); if (m && g.lane !== 1) return g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; if (m) return null; }
   const ahead = (li) => {
     let d = 999;

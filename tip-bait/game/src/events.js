@@ -204,7 +204,7 @@ export function createEvents(ctx) {
     E.locked = true; E.cur = ev; p.root.visible = true;
     clearTraffic(G.s - 6, ev.s + ev.len + 30); // nothing drives into a duel you can't steer out of
     const reals = ev.beats.filter((b) => b === 'real').length;
-    E.ui = UI.evUI({ title: '🛴 RIVAL COURIER', pips: reals, hint: `when he swings: <b>${ev.side > 0 ? '→' : '←'}</b> shove back <i>(late = PERFECT)</i> · <b>${ev.side > 0 ? '←' : '→'}</b> sidestep · <b>don’t bite on fakes</b>`, keys: [ev.away, ev.toward] });
+    E.ui = UI.evUI({ title: '🛴 RIVAL COURIER', pips: reals, hint: `he throws COMBOS: <b>SHOVE</b> → <b>${ev.side > 0 ? '→' : '←'}</b> · <b>GRAB</b> → <b>↓</b> · <b>KICK</b> → <b>↑</b> · late = PERFECT · don’t bite on fakes`, keys: [ev.away, 'arrowup', 'arrowdown', ev.toward] });
     E.ui.bind((k) => E.key(k));
     Audio.sfx('scratch', 0.5, 1.6); Audio.sfx('whoosh', 0.8, 0.7);
   }
@@ -215,6 +215,20 @@ export function createEvents(ctx) {
     ev.st = 'gap'; ev.t = 0; ev.gap = (0.4 + Math.random() * 0.55) * (ev.bi === 0 ? 1.5 : 1);
     ev.W = (ev.first && k === 0 ? 0.5 : [0.4, 0.35, 0.3][Math.min(2, k)]) * (1 - d * 0.15);
     ev.pressed = null;
+  }
+  // his moves: a shove (counter TOWARD him), a grab at your bag (↓ yank it back), a kick at your front wheel (↑ hop)
+  const HITS = { shove: { label: 'SHOVE', ok: 'countered' }, grab: { label: 'GRAB', ok: 'bag saved' }, kick: { label: 'KICK', ok: 'hopped it' } };
+  function startCombo(ev) {
+    const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(4, 2 + k + (d > 0.6 ? 1 : 0));
+    ev.combo = [{ type: 'shove' }]; for (let i = 1; i < n; i++) { const opts = ['shove', 'grab', 'kick'].filter((t) => t !== ev.combo[i - 1].type); ev.combo.push({ type: opts[Math.floor(Math.random() * opts.length)] }); }
+    for (const h of ev.combo) h.key = h.type === 'shove' ? ev.toward : h.type === 'grab' ? 'arrowdown' : 'arrowup';
+    ev.hit = 0; ev.late = 0; ev.W0 = ev.W; nextHit(ev, true);
+  }
+  function nextHit(ev, first = false) {
+    const h = ev.combo[ev.hit]; ev.t = 0; ev.W = ev.W0 * Math.pow(0.88, ev.hit);
+    const tip = { shove: `${ev.side > 0 ? '→' : '←'} shove back`, grab: '↓ yank your bag back', kick: '↑ hop his kick' }[h.type];
+    ev.q?.remove?.(); ev.q = UI.qte({ key: h.key, label: `<b>${HITS[h.type].label}</b> ${ev.hit + 1}/${ev.combo.length}${first && ev.first ? ' — ' + tip : ''}` });
+    if (!first) Audio.sfx('whoosh', 0.6, 0.8 + ev.hit * 0.15);
   }
   function rivalFinish(ev) {
     const p = P(ev), n = ev.res.filter((x) => x === 'PERFECT' || x === 'COUNTER').length, perf = ev.res.filter((x) => x === 'PERFECT').length, shoved = ev.res.filter((x) => x === 'SHOVED').length;
@@ -229,11 +243,17 @@ export function createEvents(ctx) {
   }
   function rivalPress(ev, k) {
     const p = P(ev);
-    if (k !== ev.toward && k !== ev.away) return true; // swallow other keys during the duel
+    if (!['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) return true; // swallow other keys during the duel
     if (ev.st === 'strike' && !ev.pressed) {
-      const u = ev.t / ev.W; ev.pressed = k;
-      if (k === ev.toward) { const perfect = u >= 0.62; resolveStrike(ev, perfect ? 'PERFECT' : 'COUNTER'); }
-      else resolveStrike(ev, 'DODGE');
+      const h = ev.combo[ev.hit], u = ev.t / ev.W;
+      if (k === h.key) { // answered this hit: chain straight into the next one
+        ev.late += u >= 0.5 ? 1 : 0; ev.q?.result(u >= 0.5 ? 'PERFECT' : 'GOOD', HITS[h.type].ok); ev.q = null;
+        const at = G.R.root.position.clone().setY(h.type === 'kick' ? 0.5 : 1.2).lerp(p.root.position.clone().setY(1.1), 0.5);
+        FX.burst(at, { color: 0xffffff, n: 12, speed: 4, up: 1.5, life: 0.35, size: 0.28 }); Audio.sfx(h.type === 'kick' ? 'pop' : 'crash', 0.45, 1.5 + ev.hit * 0.12); G.score += 60 * G.mult; G.shake = Math.max(G.shake || 0, 0.12);
+        if (++ev.hit >= ev.combo.length) { ev.pressed = k; resolveStrike(ev, ev.late >= Math.ceil(ev.combo.length / 2) ? 'PERFECT' : 'COUNTER'); }
+        else nextHit(ev);
+      } else if (k === ev.away && h.type === 'shove' && ev.hit === 0) { ev.pressed = k; ev.q?.remove?.(); resolveStrike(ev, 'DODGE'); } // bail out of the whole combo: safe, cheap
+      else { ev.pressed = k; ev.q?.result('MISS', 'wrong move'); ev.q = null; resolveStrike(ev, 'SHOVED'); }
       return true;
     }
     if ((ev.st === 'tell' || ev.st === 'feint' || ev.st === 'gap') && ev.flinchCd <= 0) {
@@ -277,14 +297,14 @@ export function createEvents(ctx) {
       case 'tell': // the wind-up looks the same for real and fake: lean away, eyes on you
         tell = smooth(clamp(ev.t / 0.24)); lean = -0.22 * tell; E.slow = 0.85;
         if (ev.t > 0.24) {
-          if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.7; ev.q = UI.qte({ key: ev.toward, label: ev.first && ev.res.length === 0 ? `<b>${ev.side > 0 ? '→' : '←'}</b> SHOVE BACK — late = PERFECT` : 'SHOVE BACK!' }); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
+          if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.75; startCombo(ev); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
           else { ev.st = 'feint'; ev.t = 0; }
         } break;
       case 'feint': lean = lerp(-0.22, 0.18, smooth(seg(ev.t, 0, 0.18))) * (1 - smooth(seg(ev.t, 0.25, 0.55))); E.slow = 0.85;
         if (ev.t > 0.12 && !ev.fk) { ev.fk = true; sayBubble(p, '😏'); }
         if (ev.t > 0.7) { ev.fk = false; rivalBeat(ev); } break;
-      case 'strike': { // he swings in across the lane line
-        const u = clamp(ev.t / ev.W); lean = lerp(-0.22, 0.35, easeOut(u)); reach = u; E.slow = 0.7;
+      case 'strike': { // a combo: each hit swings in on its own short timer
+        const u = clamp(ev.t / ev.W), ty = ev.combo[ev.hit].type; lean = lerp(-0.22, ty === 'kick' ? 0.15 : 0.35, easeOut(u)); reach = u; E.slow = 0.75; ev.hitType = ty;
         ev.q?.set(1 - u);
         if (ev.t >= ev.W) { ev.q?.result('MISS', 'too slow'); ev.q = null; resolveStrike(ev, 'SHOVED'); }
         break; }
@@ -325,7 +345,7 @@ export function createEvents(ctx) {
       // hands on the bar, the near one reaching for your shoulder when he swings
       const near = ev.side > 0 ? 'Left' : 'Right', far = near === 'Left' ? 'Right' : 'Left';
       const bar = (s) => p.root.localToWorld(V(s * 0.24, 1.06, 0.46));
-      const target = G.R.C.boneWorld('Spine2').add(V(0, 0.15, 0));
+      const target = ev.hitType === 'kick' ? G.R.root.localToWorld(V(0, 0.45, 0.55)) : ev.hitType === 'grab' ? G.R.C.boneWorld('Spine2').add(G.R.root.localToWorld(V(0, 0.1, -0.35)).sub(G.R.root.position)) : G.R.C.boneWorld('Spine2').add(V(0, 0.15, 0));
       ik2(C.bone(far + 'Arm'), C.bone(far + 'ForeArm'), C.bone(far + 'Hand'), bar(far === 'Left' ? 1 : -1), p.root.localToWorld(V(far === 'Left' ? 0.6 : -0.6, 0.8, -0.4)));
       ik2(C.bone(near + 'Arm'), C.bone(near + 'ForeArm'), C.bone(near + 'Hand'), bar(near === 'Left' ? 1 : -1).lerp(target, clamp(reach * 1.2)), p.root.localToWorld(V(near === 'Left' ? 0.6 : -0.6, 0.6, -0.5)));
       const hd = C.bone('Head'); hd.rotateY(ev.side * 0.6 * (ev.st === 'gap' || ev.st === 'tell' || ev.st === 'strike' ? 1 : 0.4)); if (ev.laughT > 0) hd.rotateX(-0.3 * Math.sin(ev.laughT * 20)); hd.updateMatrixWorld(true);

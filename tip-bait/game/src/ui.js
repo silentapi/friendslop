@@ -259,7 +259,7 @@ export function deskUI() {
 }
 // stairs rhythm climb: hit ↑ when the marker crosses the green zone
 // a set piece's banner on the ride: title, pips, the rule in one line (+ touch buttons)
-const KEYGLYPH = { arrowleft: '←', arrowright: '→', arrowup: '↑ JUMP', arrowdown: '↓' };
+const KEYGLYPH = { arrowleft: '←', arrowright: '→', arrowup: '↑', arrowdown: '↓' };
 export function evUI({ title, hint, pips = 0, keys = null }) {
   remove('evui');
   const el = layer('evui', `

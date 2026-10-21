@@ -275,27 +275,31 @@ const QKEYS = ['arrowup', 'arrowleft', 'arrowright', 'arrowdown'];
 const QALIAS = { w: 'arrowup', a: 'arrowleft', d: 'arrowright', s: 'arrowdown', ' ': 'arrowup', shift: 'arrowdown', U: 'arrowup', L: 'arrowleft', R: 'arrowright', D: 'arrowdown' };
 const TRICKS = { arrowup: ['BACKFLIP', 'flip'], arrowleft: ['TAIL WHIP', 'whip'], arrowright: ['TAIL WHIP', 'whip'], arrowdown: ['NO-HANDER', 'nohand'] };
 function startQTE(kind) {
-  const key = QKEYS[Math.floor((QA ? G.s * 7 : Math.random() * 4)) % 4];
-  const first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
-  G.qte = { kind, key, t: 0, dur: first ? 1.15 : 0.8, ui: UI.qte({ key, label: first ? 'press it when the ring turns <span style="color:var(--gobbl)">GREEN</span>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
+  // a trick is a key combo punched in mid-air: 2 keys over the tracks, 3 over the bus (4 on later orders); fast = PERFECT
+  const rr = QA ? mulberry(Math.floor(G.s * 7)) : Math.random, first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
+  const n = (kind === 'rail' ? 2 : 3) + (G.order >= 4 ? 1 : 0), seq = []; for (let i = 0; i < n; i++) { let k; do k = QKEYS[Math.floor(rr() * 4)]; while (k === seq[i - 1]); seq.push(k); }
+  const key = seq[n - 1];
+  G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.5 : 0.95) + n * 0.12, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
   Audio.rate(0.7); Audio.sfx('whoosh', 0.8, 0.5); UI.coach(null);
 }
-function updateQTE(dt) { const q = G.qte; q.t += dt; q.ui.set(1 - q.t / q.dur); if (q.t >= q.dur) endQTE('MISS', 'too slow'); }
+function updateQTE(dt) { const q = G.qte; q.t += dt; q.ui.set(q.idx, 1 - q.t / q.dur); if (q.t >= q.dur) endQTE('MISS', 'too slow'); }
 function qtePress(k) {
   k = QALIAS[k] || k; if (!QKEYS.includes(k)) return false;
   const q = G.qte, u = 1 - q.t / q.dur;
-  if (k !== q.key) endQTE('MISS', 'wrong key'); else if (u > 0.45) endQTE('MISS', 'too early'); else endQTE(u < 0.2 ? 'PERFECT' : 'GOOD');
+  if (k !== q.seq[q.idx]) { endQTE('MISS', 'wrong key'); return true; }
+  q.idx++; Audio.sfx('pop', 0.8, 1 + q.idx * 0.15);
+  if (q.idx >= q.seq.length) endQTE(u > 0.42 ? 'PERFECT' : 'GOOD');
   return true;
 }
 function endQTE(grade, why = '') {
   const q = G.qte; G.qte = null; G.trickGrade = grade;
-  if (grade === 'MISS') { G.qteMisses = (G.qteMisses || 0) + 1; q.ui.result('MISS', why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2); return; }
+  if (grade === 'MISS') { G.qteMisses = (G.qteMisses || 0) + 1; q.ui.result(false, why); breakCombo(); Audio.sfx('bwomp', 0.6, 1.2); return; }
   const [name, kind] = TRICKS[q.key], pts = grade === 'PERFECT' ? 500 : 250;
   const tLand = (G.vy + Math.sqrt(Math.max(0, G.vy * G.vy + 48 * G.y))) / 24;
   G.trick = { name, kind, t: 0, dur: Math.max(0.3, Math.min(0.7, tLand * 0.85)) };
   addScore(pts); addCombo(grade === 'PERFECT' ? 8 : 5); G.tricks++;
   if (grade === 'PERFECT') G.boostCharge = 1;
-  q.ui.result(grade, `${name} +${pts * G.mult}`); Audio.sfx('ding', 0.9, grade === 'PERFECT' ? 1.5 : 1.2); Audio.sfx('boom', 0.4, 1.4);
+  q.ui.result(true, `${grade} · ${name} +${pts * G.mult}`); Audio.sfx('ding', 0.9, grade === 'PERFECT' ? 1.5 : 1.2); Audio.sfx('boom', 0.4, 1.4);
 }
 function land() {
   const g = G.trickGrade, kind = G.airKind; G.airKind = null; G.trickGrade = null;
