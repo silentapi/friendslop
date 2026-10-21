@@ -719,9 +719,10 @@ function step(dt, draw) {
   if (G.state === 'title' || G.state === 'order') { titleCamera(T, dt); G.introT = 0; }
   else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
-  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && G.boostT > 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
-  else if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
+  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
+  // effects run alongside (never in the state chain above: that once swallowed the crash update)
+  if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && G.boostT > 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
   if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: G.boostT > 0 ? Math.min(1, G.boostT * 2) : 0, score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);
   if (draw && G.state !== 'loading') (finale?.active ? finale.render() : renderer.render(scene, camera));
