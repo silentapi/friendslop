@@ -852,7 +852,7 @@ function shareText({ total, grade, rows, perfect, daily }) {
   const L = [daily ? `🛵 TIP BAIT DAILY · ${daily.label}${daily.tries > 1 ? ` · try #${daily.tries}` : ''}` : `🛵 TIP BAIT · Order #${G.order}`,
     `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}${perfect ? ' · ⭐ PERFECT RUN' : ''}`,
     played.map((x) => SQ[x.r.badge] || '⬛').join(''), ''];
-  for (const x of played) L.push(`${SQ[x.r.badge] || '⬛'} ${x.icon} ${x.name}: ${x.r.badge}${x.r.label ? ` (${String(x.r.label).replace(/<[^>]+>/g, '')})` : ''}`);
+  for (const x of played) { const lb = String(x.r.label || '').replace(/<[^>]+>/g, ''); L.push(`${SQ[x.r.badge] || '⬛'} ${x.icon} ${x.name}: ${x.r.badge}${lb && lb !== x.r.badge ? ` (${lb})` : ''}`); }
   L.push('', `⏱️ ${UI.fmtTime(G.time)} · 💥 ${G.crashes} crash${G.crashes === 1 ? '' : 'es'} · 🪙 ${G.coins} coins · 🔥 x${G.bestMult || 1} best combo`);
   L.push(perfect ? `🤯 Kyle actually tipped ${UI.money(G.tip)}` : paid > 0 ? `💸 Kyle tipped ${UI.money(paid)} of ${UI.money(G.def.tip)}` : `🙄 Kyle tipped $0.00 of ${UI.money(G.def.tip)}`);
   if (daily) L.push(`${daily.streak > 1 ? `🔥 ${daily.streak}-day streak · ` : ''}same route + same rolls for everyone today`, `👉 hit PLAY DAILY: ${SHARE_URL}`);

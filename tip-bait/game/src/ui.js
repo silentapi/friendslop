@@ -301,8 +301,8 @@ export function pouchFly({ from, before, after, n = 20 }) {
 // sheet with the text selected. The button itself flips to "✓ Copied" so success can't hide behind another layer.
 export function copyText(txt, ok = 'Copied!', btn = null) {
   const done = () => {
-    toast(ok);
-    if (btn) { clearTimeout(btn._ct); btn._lbl ??= btn.innerHTML; btn.innerHTML = '✓ Copied'; btn.classList.add('copied'); btn._ct = setTimeout(() => { btn.innerHTML = btn._lbl; btn.classList.remove('copied'); }, 2200); }
+    if (!btn) return toast(ok);
+    { clearTimeout(btn._ct); btn._lbl ??= btn.innerHTML; btn.innerHTML = '✓ Copied'; btn.classList.add('copied'); btn._ct = setTimeout(() => { btn.innerHTML = btn._lbl; btn.classList.remove('copied'); }, 2200); }
   };
   const sheet = () => {
     remove('copysheet');
