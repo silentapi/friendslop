@@ -193,7 +193,7 @@ export class Knock {
     for (const o of this.notes) if (o.b >= sb) { o.hit = o.res = o.end = o.err = o.shake = null; o.done = false; o.trk = 0; o.reps = 0; }
     this.fx.length = 0; this.combo = 0; this.hp = 1; this.st = 'play'; this.fresh = this.T;
     const s = this.spin; s.rot = 0; s.ticks = 0; s.clear = false;
-    this.pts = this.secPts[sb] ?? 0;
+    this.pts = this.secPts[sb] ?? 0; for (const k in this.secPts) if (+k > sb) delete this.secPts[k];
     this.startSong(Math.max(0, knockBeat(sb - 4) - 0.05));
     this.$('.kn-big').classList.remove('in'); void penalised;
   }
@@ -235,7 +235,7 @@ export class Knock {
       if (t > 0.7 && !this.k2) { this.k2 = true; A.sfx('knock', 0.9, 1.05); }
       if (t > 1.05 && !this.sh) { this.sh = true; this.shout('who is it??'); A.sfx('bwomp', 0.25, 1.6); }
       if (t > 1.5 && !this.cd) { this.cd = true; this.$('.kn-card').classList.add('in'); A.sfx('rise', 0.5); }
-      if (t > 3.5) { this.$('.kn-card').classList.remove('in'); this.st = 'play'; this.fresh = this.T; this.startSong(this.tut ? 0 : Math.max(0, knockBeat(4) - 0.05)); }
+      if (t > 3.5 && (QA || !A.unlocked || A.ready('knock') || t > 7)) { this.$('.kn-card').classList.remove('in'); this.st = 'play'; this.fresh = this.T; this.startSong(this.tut ? 0 : Math.max(0, knockBeat(4) - 0.05)); }
     } else if (this.st === 'play') {
       this.clk += dt; this.tick(this.songT(), dt);
     } else if (this.st === 'fail') {

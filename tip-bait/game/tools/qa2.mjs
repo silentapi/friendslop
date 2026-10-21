@@ -128,6 +128,7 @@ if ((await G()).st === 'finale') {
   k = 0; let lastSt = '', n = 0;
   const H = () => page.evaluate(() => { const F = window.__F; if (F.enc) return { ph: F.phase, ...F.enc.state(), i: F.enc.state().i ?? 0 }; const h = F.h; return h ? { ph: window.__F.phase, st: h.st, t: h.t, i: h.i, key: h.atk?.key, side: h.atk?.side, dodged: !!h.dodge } : { ph: window.__F.phase }; });
   let hs;
+  if (process.env.KNOCK_ONLY) await page.evaluate(() => window.__F.enterDoor()); // straight to Kyle's door
   while ((hs = await H()).ph === 'hall' && k < 900) {
     const cap = (kk) => kk.replace(/arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase());
     if (hs.kind === 'ladder') { if (hs.st === 'tele' && !hs.done && hs.t > 0.2) { const nm = Number(process.env.DOG_MISS || 0), c = (globalThis.__lc = (globalThis.__lc || 0) + 1), miss = nm >= 2 ? c <= nm : nm && c === 2; await key(cap(miss ? (hs.key === 'arrowup' ? 'arrowdown' : 'arrowup') : hs.key)); } }
@@ -166,7 +167,7 @@ if ((await G()).st === 'finale') {
         } else if (globalThis.__spun === 1 && ks.t >= s1) { globalThis.__spun = 2; await ptr('pointerup', 0, 0); }
       }
       const st = ks.st + (ks.fails || 0); if (st !== last) { console.log('KNOCK', ks.st, 'fails', ks.fails, 't', ks.t, 'hp', ks.hp, 'combo', ks.combo, ks.res ? JSON.stringify(ks.res) : ''); last = st; sn = 0; }
-      const every = ks.st === 'intro' ? 5 : ks.st === 'out' ? 2 : ks.st === 'fail' ? 3 : ks.st === 'rank' ? 8 : (ks.t < 6 ? 2 : 5);
+      const every = ks.st === 'intro' ? 5 : ks.st === 'out' ? 2 : ks.st === 'fail' ? 3 : ks.st === 'rank' ? 8 : (ks.t < 7 ? 3 : 6);
       if (sn % every === 0) await shot(`kn_${String(kk).padStart(4, '0')}_${ks.st}`);
       await tick(1); kk++; sn++;
     }
