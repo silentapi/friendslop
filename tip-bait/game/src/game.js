@@ -789,6 +789,7 @@ function step(dt, draw) {
   if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(chaseShot(), dt, { scale: 3 }); }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
+  FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes
   if (G.world && G.route && (G.state === 'run' || G.state === 'crashing' || G.state === 'crashed')) { const f = G.route.at(G.s); FX.update(dt * (G.state === 'run' ? G.slowmo : 0.4), { rider: G.R.root, boosting: G.state === 'run' && (G.boostT > 0 || !!power('rocket')), cruise: G.state === 'run' ? clamp((G.v / G.base - 0.55) / 0.45) : 0, speed: G.v, fwd: V(f.fx, 0, f.fz), right: V(f.rx, 0, f.rz) }); }
   if (G.state === 'run' && hud) hud.update({ eta: G.eta, etaTotal: G.etaTotal, prog: G.s / G.route.length, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: power('rocket') ? 1 : G.boostT > 0 ? Math.min(1, 0.4 + G.boostT * 2) : 0.22 * clamp((G.v / G.base - 0.6) / 0.4), score: G.score, mult: G.mult, coins: G.coins, powers: G.powers.filter((p) => p.t > 0) });
   if (G.world) updateRain(T);

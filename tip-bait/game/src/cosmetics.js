@@ -222,8 +222,8 @@ export function createCosmetics(R) {
             for (const [bone, y, n] of [['Spine', 0.05, 2], ['Spine1', 0.05, 2], ['Spine2', 0.08, 3], ['Neck', 0.04, 1]]) for (let k = 0; k < n; k++) { const s = new THREE.Mesh(new THREE.ConeGeometry(0.045 - k * 0.006, 0.12, 4), lite); s.castShadow = true; attach('outfit', bone, s, [0, y + k * 0.06, -0.15 - (bone === 'Spine2' ? 0.18 : 0)], [-0.9, 0, 0], 1); }
             const tail = new THREE.Group(); const segs = []; let parent = tail;
             for (let k = 0; k < 5; k++) { const seg = new THREE.Group(); seg.position.set(0, 0, k ? -0.13 : 0); const m = new THREE.Mesh(new THREE.SphereGeometry(0.11 - k * 0.018, 12, 10), g); m.scale.set(1, 1, 1.4); m.position.z = -0.07; m.castShadow = true; seg.add(m); parent.add(seg); parent = seg; segs.push(seg); }
-            attach('outfit', 'Hips', tail, [0, -0.02, -0.12], [0.5, 0, 0], 1);
-            anim.outfit.push((t) => segs.forEach((s, k) => { s.rotation.y = Math.sin(t * 4 - k * 0.6) * 0.18; s.rotation.x = 0.1 + Math.sin(t * 3 - k) * 0.05; }));
+            attach('outfit', 'Hips', tail, [0, -0.04, -0.14], [-0.3, 0, 0], 1); // out the back, drooping (inflatable)
+            anim.outfit.push((t) => segs.forEach((s, k) => { s.rotation.y = Math.sin(t * 4 - k * 0.6) * 0.18; s.rotation.x = -0.06 + Math.sin(t * 3 - k) * 0.05; }));
           }
           if (f.extra === 'banana') { const top = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.035, 0.14, 8), std(0x5a3a12)); top.castShadow = true; attach('outfit', 'Head', top, [0, 0.3, 0], [0.3, 0, 0], 1); for (let k = 0; k < 3; k++) { const peel = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22, 3, 1, true), new THREE.MeshStandardMaterial({ color: 0xffe135, side: THREE.DoubleSide })); attach('outfit', 'Head', peel, [Math.cos(k * 2.1) * 0.09, 0.2, Math.sin(k * 2.1) * 0.09], [Math.PI + Math.sin(k * 2.1) * 0.5, 0, Math.cos(k * 2.1) * 0.6], 1); } }
         }

@@ -11,7 +11,7 @@ await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', 
 await ctx.addInitScript((o) => { localStorage.setItem('tipbait:order', String(o)); window.__qaLevel = true; }, Number(order));
 const page = await ctx.newPage();
 const warns = []; page.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') warns.push(m.text()); });
-await page.goto('http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
+await page.goto(process.env.QA_URL || 'http://localhost:8124/tip-bait/game/dist/index.html?qa=1');
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 180000 });
 const res = await page.evaluate(async ([N, order]) => {
   const LANES = [-2.4, 0, 2.4], out = [];
