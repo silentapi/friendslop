@@ -1,5 +1,6 @@
+import { rnd } from './core.js';
 // Everything Kyle S (and the courier) says. Text-speak, but always readable on a glance.
-const pick = (a, r = Math.random) => a[Math.floor(r() * a.length) % a.length];
+const pick = (a, r = () => rnd('lines')) => a[Math.floor(r() * a.length) % a.length];
 export const pickLine = pick;
 
 // courier's thought when the order pings in, by how many times you've delivered to him
@@ -49,7 +50,7 @@ let lastDoor = '';
 export function doorLine({ ice = 100, late = false, crashes = 0, fast = false, extra = null } = {}) {
   const sit = [...(ice < 25 ? DOOR_LINES.soup : []), ...(late ? DOOR_LINES.late : []), ...(crashes >= 2 ? DOOR_LINES.crashed : []), ...(fast ? DOOR_LINES.fast : []), ...(extra || [])];
   let line;
-  for (let k = 0; k < 6 && (!line || line === lastDoor); k++) { const pool = sit.length && Math.random() < 0.6 ? sit : DOOR_LINES.scam; line = pool[Math.floor(Math.random() * pool.length)]; }
+  for (let k = 0; k < 6 && (!line || line === lastDoor); k++) { const pool = sit.length && rnd('lines') < 0.6 ? sit : DOOR_LINES.scam; line = pool[Math.floor(rnd('lines') * pool.length)]; }
   return (lastDoor = line);
 }
 export const THOUGHTS = {

@@ -260,8 +260,8 @@ function* classicG(kind) {
   yield; return [L, L.slice()];
 }
 // ---- 'knock': the secret-knock song at Kyle's door (knock.js builds its beatmap from these constants).
-// Straight 16ths (no swing) so the map lands exactly on the grid: 2 count-in bars, the 12-bar map, a spinner bar, a ring-out bar.
-export const KNOCK_BPM = 128, KNOCK_OFFSET = 0.1, KNOCK_INTRO = 2, KNOCK_BARS = 12, KNOCK_OUTRO = 2;
+// Straight 16ths (no swing) so the map lands exactly on the grid: 2 count-in bars, the 8-bar map (A3 B2 C2 + a finisher bar), a ring-out bar.
+export const KNOCK_BPM = 128, KNOCK_OFFSET = 0.1, KNOCK_INTRO = 2, KNOCK_BARS = 8, KNOCK_OUTRO = 1;
 const KB = 60 / KNOCK_BPM, KS = KB / 4;
 export const knockBeat = (b) => KNOCK_OFFSET + b * KB; // song time (s) of beat b (beat 0 = first count-in downbeat)
 const KBASS = [[0, 42, 1.5], [1.5, 42, 0.5], [2, 45, 1], [3, 40, 1, 42], [4, 42, 1.5], [5.5, 42, 0.5], [6, 47, 1], [7, 45, 0.75, 40]];
@@ -275,7 +275,7 @@ function* knockG() {
   const cym = () => oEnv(oHp(oNoise(2.2), 3800), 0.002, 1.6).map((v) => v * 0.5);
   const roll = () => oEnv(oHp(oLp(oNoise(0.12), 7000), 1200), 0.001, 30).map((v) => v * 0.7);
   for (let bar = 0; bar < bars; bar++) {
-    const sec = bar < KNOCK_INTRO ? 'in' : bar < KNOCK_INTRO + 4 ? 'A' : bar < KNOCK_INTRO + 8 ? 'B' : bar < KNOCK_INTRO + 11 ? 'C' : bar < KNOCK_INTRO + 12 ? 'D' : bar === bars - 2 ? 'S' : 'E';
+    const sec = bar < KNOCK_INTRO ? 'in' : bar < KNOCK_INTRO + 3 ? 'A' : bar < KNOCK_INTRO + 5 ? 'B' : bar < KNOCK_INTRO + 7 ? 'C' : bar < KNOCK_INTRO + 8 ? 'D' : 'E';
     for (let s = 0; s < 16; s++) {
       const t = knockBeat(bar * 4 + s / 4), on = s % 4 === 0;
       if (sec === 'in') { if (on) put(t, m('rim', rim), s ? 0.55 : 0.8); if (s === 0 || (bar === 1 && s === 8)) put(t, m('k', oKick), 0.7); if (s % 2 === 0) put(t, m('h', () => oHat()), 0.25, 0.3); if (bar === 1 && s >= 12) put(t, m('c78', () => oCowbell(oNote(78))), 0.35 + (s - 12) * 0.1); continue; }
@@ -284,13 +284,6 @@ function* knockG() {
         if (s === 0 || s === 6 || s === 12) { put(t, m('k', oKick), 1); put(t, m('cl', oClap), 0.85); put(t, m('c78', () => oCowbell(oNote(78))), 0.7); put(t, m('c85', () => oCowbell(oNote(85))), 0.45); put(t, o808(oNote(s === 12 ? 47 : 42), KB * 1.2), 0.9); }
         if (s === 0) put(t, m('cy', cym), 0.7);
         if (s >= 14) put(t, m('h', () => oHat()), 0.4);
-        continue;
-      }
-      if (sec === 'S') { // spinner bar: four on the floor under a snare roll that tightens into the ring-out
-        if (on) put(t, m('k', oKick), 0.9);
-        put(t, m('ro', roll), 0.25 + 0.5 * s / 16, (s % 2 ? 0.3 : -0.3));
-        if (s >= 8 && s % 2) put(t, m('ro', roll), 0.35 + 0.4 * s / 16);
-        if (s === 0) for (let k = 0; k < 4; k++) put(t + k * KB, o808(oNote(42 + k * 2), KB * 0.9), 0.7);
         continue;
       }
       // A / B / C: the groove

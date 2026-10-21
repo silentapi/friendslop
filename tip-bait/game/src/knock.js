@@ -1,5 +1,5 @@
 // Kyle's door: the secret knock. Kyle won't open ("who is it??") until you play the knock: an osu!-style map ON door
-// 2004, synced to the 'knock' track (audio.js). Hit circles, sliders and an optional end spinner are door-face points
+// 2004, synced to the 'knock' track (audio.js). Hit circles (brass knocker plates) and sliders are door-face points
 // projected onto a 2D overlay every frame, with approach circles, 300/100/50/✗ pops, combo, accuracy, score and a
 // draining HP bar. HP empty → "WRONG KNOCK": the section restarts (+2.5 s); the third time Kyle opens anyway (+8 s).
 // Input: click / tap the circle, or Z / X anywhere (osu keys: they hit whichever note is due; held, they track sliders).
@@ -13,18 +13,18 @@ const TAU = Math.PI * 2;
 // the playfield on the door: u across (z), v up (y), both -1..1
 const FACE_X = 1.215, PY = 1.28, PH = 0.56, PW = 0.43;
 const onDoor = (u, v, o = V()) => o.set(FACE_X, PY + v * PH, Sets.DOOR_Z + u * PW);
-const COLS = [[255, 96, 160], [80, 196, 255], [255, 204, 60], [150, 240, 110]];
+const COLS = [[46, 230, 111], [255, 200, 61], [214, 170, 110], [240, 236, 226]]; // combo colours: gobbl green, Kyle amber, brass, paper
 const rgba = (c, a, k = 1) => `rgba(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)},${a})`;
 // checkpoints (song beats): a failed section restarts from its first beat, after one bar of lead-in
-const A0 = KNOCK_INTRO * 4, SECS = [['A', A0], ['B', A0 + 16], ['C', A0 + 32], ['D', A0 + 44]];
-const SPIN_B = (KNOCK_INTRO + KNOCK_BARS) * 4, END_B = SPIN_B + 4;
+const A0 = KNOCK_INTRO * 4, SECS = [['A', A0], ['B', A0 + 12], ['C', A0 + 20], ['D', A0 + 28]];
+const END_B = (KNOCK_INTRO + KNOCK_BARS) * 4 + 2; // the ring-out stab, then straight to the ranking (no spinner)
 // per difficulty (order 1 / 2 / 3+): approach time, hit windows ±s for 300/100/50, HP drain per s, HP lost per miss
-const LV = [{ ar: 1.2, w: [0.08, 0.14, 0.2], drain: 0.03, miss: 0.17 }, { ar: 1.0, w: [0.07, 0.125, 0.18], drain: 0.045, miss: 0.2 }, { ar: 0.85, w: [0.06, 0.115, 0.165], drain: 0.06, miss: 0.23 }];
+const LV = [{ ar: 1.3, w: [0.095, 0.16, 0.22], drain: 0.0225, miss: 0.145 }, { ar: 1.1, w: [0.083, 0.14, 0.195], drain: 0.034, miss: 0.17 }, { ar: 0.95, w: [0.073, 0.13, 0.18], drain: 0.045, miss: 0.195 }];
 // rhythm per bar: c = circle, s = slider (beat:length, r = with a reverse), f = finisher (clap + whistle)
 const PAT = [
-  { A: ['c0 c1 c2', 'c0 c1 s2:1', 'c0 c1 c2 c3', 's0:1 c2 c3'], B: ['c0 c1 c1.5 c2 c3', 's0:1.5 c2 c3', 'c0 c0.5 c1 s2:1', 's0:1 s2:1'], C: ['c0 c0.5 c1 c2 c2.5 c3', 's0:1 c1.5 c2 c3', 'c0 c0.5 c1 c1.5 s2:1.5'], D: ['f0 f1.5 f3'] },
-  { A: ['c0 c1 c1.5 c2 c3', 's0:1 c1.5 c2 c3', 'c0 c0.5 c1 c2 c3', 's0:1 s2:1'], B: ['c0 c0.5 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c2.5 c3', 'c0 c0.5 c1 s2:1 c3.5', 'c0 c1 c1.5 s2:1.5'], C: ['c0 c0.5 c1 c1.5 c2 c2.5 c3', 's0:0.5 c1 c1.5 s2:1 c3.5', 'c0 c0.5 c0.75 c1 c2 c2.5 c3 c3.5'], D: ['f0 f1.5 f3'] },
-  { A: ['c0 c0.5 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c3', 'c0 c0.5 c1 c1.5 c2 c2.5 c3', 's0:1 c1.5 s2:1 c3.5'], B: ['c0 c0.5 c0.75 c1 c2 c2.5 c2.75 c3', 's0:1r c1.5 c2 c2.5 c3 c3.5', 'c0 c0.5 c1 c1.5 c2 c2.25 c2.5 c3', 's0:0.5 c1 s1.5:1 c3 c3.5'], C: ['c0 c0.25 c0.5 c1 c1.5 c2 c2.25 c2.5 c3', 's0:1r c1.5 c1.75 c2 s2.5:1', 'c0 c0.5 c1 c1.25 c1.5 c2 c2.5 c3 c3.25 c3.5'], D: ['f0 f1.5 f3'] },
+  { A: ['c0 c1 c2', 'c0 c1 s2:1', 's0:1 c2 c3'], B: ['c0 c1 c1.5 c2 c3', 's0:1.5 c2 c3'], C: ['c0 c1 c2 c2.5 c3', 's0:1 c2 c3'], D: ['f0 f1.5 f3'] },
+  { A: ['c0 c1 c1.5 c2 c3', 's0:1 c1.5 c2 c3', 'c0 c0.5 c1 c2 c3'], B: ['c0 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c3'], C: ['c0 c0.5 c1 s2:1 c3.5', 'c0 c1 c1.5 s2:1.5'], D: ['f0 f1.5 f3'] },
+  { A: ['c0 c0.5 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c3', 'c0 c0.5 c1 c1.5 c2 c3'], B: ['c0 c0.5 c1 c2 c2.5 c3', 's0:0.5 c1 s1.5:1 c3 c3.5'], C: ['c0 c0.5 c1 c1.5 c2 c2.5 c3', 's0:1r c1.5 c2 c2.5 c3'], D: ['f0 f1.5 f3'] },
 ];
 const bez = (p, s) => { const [a, b, c] = p, k = 1 - s; return [k * k * a[0] + 2 * k * s * b[0] + s * s * c[0], k * k * a[1] + 2 * k * s * b[1] + s * s * c[1]]; };
 const inside = (x, y) => Math.abs(x) <= 0.86 && Math.abs(y) <= 0.86;
@@ -59,7 +59,7 @@ export function buildMap(lvl, tut, seed = 1) {
     }
     prev = o;
   }
-  objs.push({ kind: 'spin', b: SPIN_B, len: 3.5, t: knockBeat(SPIN_B), tEnd: knockBeat(SPIN_B + 3.5), u: 0, v: 0, n: 0, col: COLS[0] });
+  objs.push({ kind: 'spin', b: 1e6, len: 0, t: 1e9, tEnd: 1e9, u: 0, v: 0, n: 0, col: COLS[0] }); // spinner retired (kept as a never-due stub)
   return objs;
 }
 const sliderAt = (o, t) => { const span = (o.tEnd - o.t) / (o.rep + 1); let s = clamp((t - o.t) / span, 0, o.rep + 1); const leg = Math.min(o.rep, Math.floor(s)); s -= leg; if (leg % 2) s = 1 - s; return bez(o.path, clamp(s)); };
@@ -67,10 +67,11 @@ const sliderAt = (o, t) => { const span = (o.tEnd - o.t) / (o.rep + 1); let s = 
 export class Knock {
   constructor(F) {
     this.F = F; const G = F.G;
-    this.lvl = G.order <= 1 ? 0 : G.order === 2 ? 1 : 2; this.L = LV[this.lvl];
+    this.daily = !!G.daily; // the daily: same map for everyone (order-2 level, no tutorial, seeded from the day)
+    this.lvl = this.daily ? 1 : G.order <= 1 ? 0 : G.order === 2 ? 1 : 2; this.L = LV[this.lvl];
     let seen = false; try { seen = localStorage.getItem('tipbait:knockSeen') === '1'; } catch {}
-    this.tut = !seen;
-    this.objs = buildMap(this.lvl, this.tut, 7 + G.order * 31);
+    this.tut = !seen && !this.daily;
+    this.objs = buildMap(this.lvl, this.tut, this.daily ? (G.seed ^ 0x6b6e6f63) >>> 0 : 7 + G.order * 31);
     this.notes = this.objs.filter((o) => o.kind !== 'spin'); this.spin = this.objs.find((o) => o.kind === 'spin');
     Object.assign(this, { st: 'intro', t: 0, T: 0, clk: 0, useAudio: false, hp: 1, combo: 0, maxCombo: 0, fails: 0, pen: 0, forced: false, keys: new Set(), down: false, kc: [0, 0], fx: [], trail: [], cur: { x: -99, y: -99, on: 0, touch: false }, shake: 0, muffle: 0 });
     const cam = F.camera; this.c0 = cam.position.clone(); this.q0 = cam.quaternion.clone(); this.f0 = cam.fov;
@@ -128,7 +129,7 @@ export class Knock {
   // ------------------------------------------------------------------ judging
   due() { return this.notes.find((o) => o.hit == null); }
   press(src, x, y, key) {
-    if (this.st === 'rank') { if (this.rt > 1.0) this.leave(); return; }
+    if (this.st === 'rank') { if (this.rt > 0.6) this.leave(); return; }
     if (this.st !== 'play') return;
     const t = this.songT(), sp = this.spin;
     if (t >= sp.t && t <= sp.tEnd + 0.05) { if (src === 'key' && key !== this.lastKey) this.spinAdd(0.25); this.lastKey = key; return; }
@@ -206,9 +207,9 @@ export class Knock {
     const s = this.spin, bonus = s.clear ? Math.round((s.rot - 3) * 1000 + 1000) : 0; this.pts += Math.max(0, bonus);
     G.score += Math.round(this.pts / 100);
     G.fin = { ...(G.fin || {}), knock: rank, knockT: this.pen, knockAcc: acc, knockCombo: this.maxCombo, knockLabel: `${rank} · ${(acc * 100).toFixed(2)}% · ${this.maxCombo}x${this.forced ? ' · he gave up' : ''}` };
-    try { localStorage.setItem('tipbait:knockSeen', '1'); } catch {}
+    if (!this.daily) try { localStorage.setItem('tipbait:knockSeen', '1'); } catch {}
     F.Audio.muffle(20000, 0.25);
-    const col = { SS: '#ffe27a', S: '#ffd23d', A: '#7dff8a', B: '#5ec8ff', C: '#c58cff', D: '#ff5e5e' }[rank];
+    const col = { SS: '#ffc83d', S: '#ffc83d', A: '#2ee66f', B: '#9fe6ff', C: '#c9a46a', D: '#ff3b30' }[rank];
     const row = (lab, n, cl) => `<div class="kn-r ${cl}"><b>${lab}</b><span>${n}</span></div>`;
     const el = this.$('.kn-rank');
     el.innerHTML = `<div class="kn-rl" style="--rc:${col}">${rank}</div><div class="kn-rd"><small>${this.forced ? 'he opened anyway' : rank === 'SS' || rank === 'S' ? 'that’s the knock' : 'close enough'}</small>
@@ -231,18 +232,18 @@ export class Knock {
     // intro: hall camera → the door, a normal knock, Kyle won't open, the card, then the count-in
     if (this.st === 'intro') {
       const t = this.t;
-      if (t > 0.45 && !this.k1) { this.k1 = true; A.sfx('knock', 0.9); }
-      if (t > 0.7 && !this.k2) { this.k2 = true; A.sfx('knock', 0.9, 1.05); }
-      if (t > 1.05 && !this.sh) { this.sh = true; this.shout('who is it??'); A.sfx('bwomp', 0.25, 1.6); }
-      if (t > 1.5 && !this.cd) { this.cd = true; this.$('.kn-card').classList.add('in'); A.sfx('rise', 0.5); }
-      if (t > 3.5 && (QA || !A.unlocked || A.ready('knock') || t > 7)) { this.$('.kn-card').classList.remove('in'); this.st = 'play'; this.fresh = this.T; this.startSong(this.tut ? 0 : Math.max(0, knockBeat(4) - 0.05)); }
+      if (t > 0.3 && !this.k1) { this.k1 = true; A.sfx('knock', 0.9); }
+      if (t > 0.5 && !this.k2) { this.k2 = true; A.sfx('knock', 0.9, 1.05); }
+      if (t > 0.75 && !this.sh) { this.sh = true; this.shout('who is it??'); A.sfx('bwomp', 0.25, 1.6); }
+      if (t > 0.95 && !this.cd) { this.cd = true; this.$('.kn-card').classList.add('in'); A.sfx('rise', 0.5); }
+      if (t > 2.4 && (QA || !A.unlocked || A.ready('knock') || t > 6)) { this.$('.kn-card').classList.remove('in'); this.st = 'play'; this.fresh = this.T; this.startSong(this.tut ? 0 : Math.max(0, knockBeat(4) - 0.05)); }
     } else if (this.st === 'play') {
       this.clk += dt; this.tick(this.songT(), dt);
     } else if (this.st === 'fail') {
       this.ft += dt;
-      if (this.ft > 1.8) { if (this.forced) this.finish(); else this.restart(); }
+      if (this.ft > 1.4) { if (this.forced) this.finish(); else this.restart(); }
     } else if (this.st === 'rank') {
-      this.rt += dt; if (this.rt > (QA ? 3.2 : 6)) this.leave();
+      this.rt += dt; if (this.rt > (QA ? 2.6 : 4)) this.leave();
     }
     this.pose(dt);
     if (this.st === 'out') {
@@ -260,7 +261,7 @@ export class Knock {
     const p = V(FACE_X - D, PY + 0.04, Sets.DOOR_Z + 0.02), l = V(FACE_X, PY + 0.02, Sets.DOOR_Z);
     p.x += Math.sin(this.T * 0.7) * 0.01 + (Math.random() - 0.5) * sh; p.y += Math.sin(this.T * 0.9) * 0.008 + (Math.random() - 0.5) * sh;
     this.camK = { p, l, fov };
-    const u = this.st === 'intro' && this.c0.distanceTo(p) < 9 ? easeInOut(clamp(this.t / 1.1)) : 1; // glide in from the hall shot (cut if it came from elsewhere)
+    const u = this.st === 'intro' && this.c0.distanceTo(p) < 9 ? easeInOut(clamp(this.t / 0.8)) : 1; // glide in from the hall shot (cut if it came from elsewhere)
     if (u < 1) { const q1 = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(p, l, cam.up)); cam.position.copy(this.c0).lerp(p, u); cam.quaternion.copy(this.q0).slerp(q1, u); cam.fov = lerp(this.f0, fov, u); }
     else { cam.position.copy(p); cam.lookAt(l); cam.fov = fov; }
     cam.updateProjectionMatrix(); cam.updateMatrixWorld();
@@ -271,7 +272,7 @@ export class Knock {
       const u = smooth(clamp(this.ot / 0.85)); R.root.position.copy(A).lerp(B, u); R.root.rotation.set(0, Math.PI / 2, 0);
       R.walk(u < 0.97 ? 'walk' : 'idle', this.ot * 1.3, { offset: V(0, 0, 0), yaw: 0 });
     } else {
-      const u = this.st === 'intro' ? smooth(clamp(this.t / 0.9)) : 1;
+      const u = this.st === 'intro' ? smooth(clamp(this.t / 0.7)) : 1;
       R.root.position.copy(this.p0).lerp(A, u); R.root.rotation.set(0, lerp(this.y0, Math.PI / 2, u), 0);
       R.walk('idle', 1 + this.T, { offset: V(0, 0, 0), yaw: 0 });
     }
@@ -326,8 +327,8 @@ export class Knock {
       const vis = this.objs.filter((o) => o.kind !== 'spin' && !o.done && t > o.t - ar && t < o.tEnd + 0.25);
       const gone = this.st === 'fail' ? 1 - clamp(this.ft / 0.5) : 1;
       // follow points between consecutive notes, like osu
-      c.save(); c.globalAlpha = 0.35 * gone * fade; c.strokeStyle = '#fff'; c.lineWidth = 2;
-      for (let i = 0; i < this.notes.length - 1; i++) { const a = this.notes[i], b = this.notes[i + 1]; if (b.nc || b.done || t < b.t - ar || t > b.t) continue; const ae = a.kind === 'slider' ? this.scr(...a.path[a.rep ? 0 : 2]) : [a.sx, a.sy], d = Math.hypot(b.sx - ae[0], b.sy - ae[1]); if (d < r * 2.6) continue; const n = Math.floor((d - 2 * r) / 28); for (let k = 1; k <= n; k++) { const f = (r + k * ((d - 2 * r) / (n + 1))) / d, x = lerp(ae[0], b.sx, f), y = lerp(ae[1], b.sy, f); c.beginPath(); c.arc(x, y, 2, 0, TAU); c.fillStyle = '#fff'; c.fill(); } }
+      c.save(); c.globalAlpha = 0.45 * gone * fade; c.lineWidth = 2;
+      for (let i = 0; i < this.notes.length - 1; i++) { const a = this.notes[i], b = this.notes[i + 1]; if (b.nc || b.done || t < b.t - ar || t > b.t) continue; const ae = a.kind === 'slider' ? this.scr(...a.path[a.rep ? 0 : 2]) : [a.sx, a.sy], d = Math.hypot(b.sx - ae[0], b.sy - ae[1]); if (d < r * 2.6) continue; const n = Math.floor((d - 2 * r) / 28); for (let k = 1; k <= n; k++) { const f = (r + k * ((d - 2 * r) / (n + 1))) / d, x = lerp(ae[0], b.sx, f), y = lerp(ae[1], b.sy, f); c.beginPath(); c.arc(x, y, 2, 0, TAU); c.fillStyle = '#f3e3c3'; c.fill(); } }
       c.restore();
       for (let i = vis.length - 1; i >= 0; i--) this.drawObj(vis[i], t, r, gone * fade);
       const s = this.spin; if (t > s.t - 0.4 && t < s.tEnd + 0.4) this.drawSpin(s, t, gone * fade);
@@ -340,9 +341,9 @@ export class Knock {
       else if (f.k === 's') { const k = clamp(a / 0.45); c.globalAlpha = (1 - k) * fade; c.fillStyle = rgba(f.col, 1, 1.25); c.beginPath(); c.arc(x + f.dx * r * 1.8 * easeOut(k), y + f.dy * r * 1.8 * easeOut(k), r * 0.07 * (1 - k * 0.6), 0, TAU); c.fill(); }
       else if (f.k === 'j') {
         const k = clamp(a / 0.7), pop = a < 0.08 ? 0.7 + a / 0.08 * 0.6 : 1.3 - Math.min(0.3, (a - 0.08) * 2);
-        const [txt, col] = f.v === 300 ? ['300', '#7fd6ff'] : f.v === 100 ? ['100', '#8dff6a'] : f.v === 50 ? ['50', '#ffc23d'] : ['✗', '#ff3b3b'];
+        const [txt, col] = f.v === 300 ? ['300', '#2ee66f'] : f.v === 100 ? ['100', '#ffc83d'] : f.v === 50 ? ['50', '#d6aa6e'] : ['✗', '#ff3b30'];
         c.globalAlpha = (1 - easeOut(seg(k, 0.55, 1))) * fade; c.font = `900 ${Math.round(r * (f.v ? 0.62 : 1.0) * pop)}px Archivo, system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        const yy = y - (f.v ? r * 1.05 : -a * r * 0.8); c.lineWidth = Math.max(3, r * 0.1); c.strokeStyle = 'rgba(0,0,0,.6)'; c.strokeText(txt, x, yy); c.fillStyle = col; c.fillText(txt, x, yy);
+        const yy = y - (f.v ? r * 1.05 : -a * r * 0.8); c.shadowColor = 'rgba(0,0,0,.65)'; c.shadowBlur = r * 0.25; c.shadowOffsetY = 2; c.fillStyle = col; c.fillText(txt, x, yy); c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
       }
     }
     c.globalAlpha = 1;
@@ -358,7 +359,7 @@ export class Knock {
       const out = t > o.tEnd ? 1 - clamp((t - o.tEnd) / 0.2) : 1;
       c.save(); c.globalAlpha = A * appear * out; c.lineCap = c.lineJoin = 'round';
       const stroke = (wd, st) => { c.beginPath(); pts.forEach((p, i) => (i ? c.lineTo(p[0] + shx, p[1]) : c.moveTo(p[0] + shx, p[1]))); c.lineWidth = wd; c.strokeStyle = st; c.stroke(); };
-      stroke(r * 2, 'rgba(255,255,255,.95)'); stroke(r * 1.8, rgba(o.col, 0.92, 0.32)); stroke(r * 1.1, rgba(o.col, 0.55, 0.5)); stroke(r * 0.4, rgba(o.col, 0.35, 0.8));
+      stroke(r * 2, rgba(o.col, 0.95, 0.9)); stroke(r * 1.8, 'rgba(24,16,10,.88)'); stroke(r * 1.2, rgba(o.col, 0.16)); stroke(r * 0.3, rgba(o.col, 0.4));
       const e = pts[24]; this.disc(e[0] + shx, e[1], r, o.col, 1, '');
       if (o.rep && !(o.reps >= 1)) { c.fillStyle = '#fff'; c.font = `900 ${Math.round(r * 0.9)}px system-ui`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('↺', e[0] + shx, e[1]); }
       c.restore();
@@ -371,17 +372,18 @@ export class Knock {
       if (o.hit != null) return; // head already played
     }
     c.save(); c.globalAlpha = A * appear; this.disc(x, y, r, o.col, 1, String(o.n), o.fin); c.restore();
-    if (t < o.t) { const k = clamp((o.t - t) / ar); c.save(); c.globalAlpha = A * appear; c.lineWidth = Math.max(2, r * 0.08); c.strokeStyle = rgba(o.col, 1, 1.1); c.beginPath(); c.arc(x, y, r * (1 + 2.8 * k), 0, TAU); c.stroke(); c.restore(); }
+    if (t < o.t) { const k = clamp((o.t - t) / ar); c.save(); c.globalAlpha = A * appear; c.lineWidth = Math.max(2, r * 0.07); c.strokeStyle = rgba(o.col, 0.95, 1.1); c.beginPath(); c.arc(x, y, r * (1 + 2.6 * k), 0, TAU); c.stroke(); c.restore(); }
     if (this.tut && o.b < A0 && o.n === 1 && t < o.t + 0.1) { c.save(); c.globalAlpha = A * appear; c.font = `800 ${Math.round(clamp(r * 0.42, 13, 20))}px Figtree, system-ui`; c.textAlign = 'center'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 4; const tx = matchMedia('(pointer: coarse)').matches ? 'tap when the ring closes' : 'click / Z when the ring closes'; c.strokeText(tx, x, y + r * 1.75); c.fillText(tx, x, y + r * 1.75); c.restore(); }
   }
-  disc(x, y, r, col, a, num, fin = false) {
+  disc(x, y, r, col, a, num, fin = false) { // a knocker plate on the door: metal ring in the combo colour, dark wood-glass face, number
     const c = this.cx;
-    c.beginPath(); c.arc(x, y + r * 0.06, r * 1.04, 0, TAU); c.fillStyle = 'rgba(0,0,0,.35)'; c.fill();
-    const g = c.createRadialGradient(x, y - r * 0.45, r * 0.1, x, y, r); g.addColorStop(0, rgba(col, 1, 1.18)); g.addColorStop(1, rgba(col, 1, 0.62));
-    c.beginPath(); c.arc(x, y, r, 0, TAU); c.fillStyle = g; c.fill();
-    c.lineWidth = r * 0.13; c.strokeStyle = '#fff'; c.beginPath(); c.arc(x, y, r * 0.93, 0, TAU); c.stroke();
-    if (fin) { c.lineWidth = r * 0.06; c.beginPath(); c.arc(x, y, r * 0.7, 0, TAU); c.stroke(); }
-    if (num) { c.font = `900 ${Math.round(r * 0.82)}px Archivo, system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = r * 0.12; c.strokeStyle = 'rgba(0,0,0,.45)'; c.strokeText(num, x, y + r * 0.05); c.fillStyle = '#fff'; c.fillText(num, x, y + r * 0.05); }
+    c.beginPath(); c.arc(x, y + r * 0.08, r * 1.02, 0, TAU); c.fillStyle = 'rgba(0,0,0,.38)'; c.fill();
+    c.beginPath(); c.arc(x, y, r * 0.9, 0, TAU); c.fillStyle = 'rgba(22,15,10,.86)'; c.fill();
+    const g = c.createLinearGradient(x - r, y - r, x + r, y + r); g.addColorStop(0, rgba(col, 1, 1.25)); g.addColorStop(0.45, rgba(col, 1, 1)); g.addColorStop(1, rgba(col, 1, 0.55));
+    c.lineWidth = r * 0.2; c.strokeStyle = g; c.beginPath(); c.arc(x, y, r * 0.9, 0, TAU); c.stroke();
+    c.lineWidth = Math.max(1, r * 0.035); c.strokeStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(x, y, r * 0.99, Math.PI * 1.1, Math.PI * 1.6); c.stroke(); // a glint
+    if (fin) { c.lineWidth = r * 0.05; c.strokeStyle = rgba(col, 0.8); c.beginPath(); c.arc(x, y, r * 0.62, 0, TAU); c.stroke(); }
+    if (num) { c.font = `900 ${Math.round(r * 0.78)}px Archivo, system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = rgba(col, 1, 1.1); c.fillText(num, x, y + r * 0.04); }
   }
   drawSpin(s, t, A) {
     const c = this.cx, x = this.cx0, y = this.cy0, R = Math.min(this.W, this.H) * 0.34, k = clamp((t - s.t) / (s.tEnd - s.t)), inA = clamp((t - s.t + 0.4) / 0.4) * (t > s.tEnd ? 1 - clamp((t - s.tEnd) / 0.4) : 1);
@@ -402,9 +404,9 @@ export class Knock {
     if (cu.on <= 0 || cu.x < -50) return;
     this.trail.push([cu.x, cu.y, now]); this.trail = this.trail.filter((p) => now - p[2] < 0.14).slice(-14);
     const s = clamp(r * 0.42, 11, 22);
-    for (let i = 0; i < this.trail.length - 1; i++) { const p = this.trail[i], k = (i + 1) / this.trail.length; c.globalAlpha = 0.45 * k * cu.on; c.beginPath(); c.arc(p[0], p[1], s * 0.55 * (0.4 + 0.6 * k), 0, TAU); c.fillStyle = '#ffcf6b'; c.fill(); }
+    for (let i = 0; i < this.trail.length - 1; i++) { const p = this.trail[i], k = (i + 1) / this.trail.length; c.globalAlpha = 0.45 * k * cu.on; c.beginPath(); c.arc(p[0], p[1], s * 0.55 * (0.4 + 0.6 * k), 0, TAU); c.fillStyle = '#7ff0a8'; c.fill(); }
     c.globalAlpha = cu.on; const g = c.createRadialGradient(cu.x, cu.y, 0, cu.x, cu.y, s * (this.down || this.keys.size ? 1.25 : 1));
-    g.addColorStop(0, '#fff'); g.addColorStop(0.35, '#fff3c4'); g.addColorStop(0.7, 'rgba(255,170,60,.9)'); g.addColorStop(1, 'rgba(255,140,40,0)');
+    g.addColorStop(0, '#fff'); g.addColorStop(0.35, '#d8ffe6'); g.addColorStop(0.7, 'rgba(46,230,111,.85)'); g.addColorStop(1, 'rgba(46,230,111,0)');
     c.fillStyle = g; c.beginPath(); c.arc(cu.x, cu.y, s * 1.3, 0, TAU); c.fill(); c.globalAlpha = 1;
   }
   hud() {

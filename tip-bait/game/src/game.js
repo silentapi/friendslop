@@ -1,7 +1,7 @@
 // TIP BAIT — mobile web game. Deliver an iced caramel macchiato through real Downtown Orlando to Kyle S at
 // Citi Tower (101 Lake Ave, floor 20). Swipe lanes, jump, hit boost pads and ramps, crash → watch an ad →
 // continue from where you were. Kyle takes the tip anyway.
-import { THREE, V, clamp, lerp, damp, seg, smooth, easeOut, easeInOut, loadJSON, loadTex, tex, progress, mulberry } from './core.js';
+import { THREE, V, clamp, lerp, damp, seg, smooth, easeOut, easeInOut, loadJSON, loadTex, tex, progress, mulberry, rnd, seedRun, hashStr } from './core.js';
 import { Route } from './route.js';
 import * as City from './city.js';
 import { citiTower } from './citi.js';
@@ -28,6 +28,16 @@ const ORDERS = [
   { route: 'orange', tip: 100, note: 'its raining so $100 tip 🙏 trust', pickup: 'Starbucks · 325 S Orange Ave', storm: true },
   { route: 'sunrail', tip: 250, note: '$250 tip on god. last time was a glitch', pickup: 'Starbucks · Church Street Station', storm: true },
 ];
+// Daily: one route, one seed, one difficulty for everyone on a given (local) date — a skill check between friends.
+const DAILY_ORDER = 3; // fixed difficulty for the daily (speed, layouts, QTE windows)
+const pad2 = (x) => String(x).padStart(2, '0');
+const dailyKey = (d = new Date()) => URLQ.get('daily')?.match(/^\d{4}-\d{2}-\d{2}$/) ? URLQ.get('daily') : `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const dailyLabel = (key) => { const [, m, d] = key.split('-').map(Number); return `${m}/${d}`; };
+function dailyInfo(key = dailyKey()) {
+  const seed = hashStr('tipbait-daily-' + key), o = ORDERS[seed % ORDERS.length], tip = o.tip;
+  return { key, label: dailyLabel(key), seed, def: { ...o, tip, note: K.pickLine(K.NOTES, mulberry(seed)).replace('$TIP', '$' + tip) } };
+}
+const dailyState = () => store.get('daily', { key: null, best: 0, tries: 0, done: false, streak: 0, last: null });
 const orderDef = (n) => { const o = ORDERS[(n - 1) % ORDERS.length]; const tip = o.tip * (1 + Math.floor((n - 1) / ORDERS.length)); return { ...o, tip, note: n === 1 ? o.note : K.pickLine(K.NOTES, mulberry(n * 31 + 7)).replace('$TIP', '$' + tip) }; };
 
 // ---------------------------------------------------------------- renderer + scene
@@ -98,7 +108,7 @@ async function initSky() { // Poly Haven pure-sky panoramas (CC0): partly cloudy
 // ---------------------------------------------------------------- world build per order
 let cityData = null, routes = null;
 async function buildWorld(n) {
-  G.def = orderDef(n);
+  G.def = G.daily ? G.daily.def : orderDef(n);
   if (G.world) { scene.remove(G.world); G.world.traverse((o) => { if (o.geometry && !o.userData.keepGeo) o.geometry.dispose?.(); }); }
   const world = new THREE.Group(); scene.add(world); G.world = world;
   const route = new Route(routes[G.def.route]); G.route = route;
@@ -112,7 +122,7 @@ async function buildWorld(n) {
   if (G.def.route === 'orange') City.starbucks(world, route, 4, 1);
   await City.dressing(world, route, G.streetInfo, skip);
   G.citi = await citiTower(world);
-  G.seed = URLQ.has('seed') ? Number(URLQ.get('seed')) : QA ? n : Math.floor(Math.random() * 1e9);
+  G.seed = G.daily ? G.daily.seed : URLQ.has('seed') ? Number(URLQ.get('seed')) : QA ? n : Math.floor(Math.random() * 1e9);
   G.lv = await buildLevel(world, route, { order: n, seed: G.seed, cross: G.streetInfo.cross, rail: G.rail, storm: G.def.storm });
   G.pop = await populate(world, route, G.lv);
   G.tut = TUT; EV.bind(G.pop.events);
@@ -147,6 +157,7 @@ function resetRun(atS = 0) {
   if (atS === 0) {
     G.base = Math.min(21, 15.2 + (G.order - 1) * 1.0);
     G.eta = Math.round(G.route.length / (G.base * 0.98) + 8); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
+    seedRun(G.seed); // every gameplay roll this run comes off the seed (daily = same run for everyone)
     G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.banked = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {}; G.qteMisses = 0; G.tumbleT = 0;
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
     for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.on = false; o.teched = false; }
@@ -192,6 +203,7 @@ window.addEventListener('keydown', (e) => {
   if (G.state === 'crashed' && k === 'r') { document.getElementById('rs')?.click(); return; }
   if (G.state === 'title' && k === 's') { e.preventDefault(); openStore(); return; }
   if (G.state === 'title' && k === 'b') { e.preventDefault(); openPass(); return; }
+  if (G.state === 'title' && k === 'd') { e.preventDefault(); document.getElementById('dailybtn')?.click(); return; }
   if (G.state === 'results' && k === 'enter') { document.getElementById('next')?.click(); return; }
   if (k === 'm') { Audio.unlock(); Audio.setMuted(!Audio.muted); UI.toast(Audio.muted ? 'Sound off' : 'Sound on', 900); return; }
   if ((k === 'escape' || k === 'p') && (G.state === 'run' || G.state === 'paused')) { G.state === 'run' ? pause() : resume(); return; }
@@ -234,8 +246,8 @@ function grabPower(p) {
 }
 // ---------------------------------------------------------------- the Akira slide into Citi Tower's front spot
 function startAkira() {
-  const first = !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
-  const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = QA ? mulberry(G.seed + 3) : Math.random;
+  const first = !G.daily && !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
+  const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = () => rnd('akira');
   const seq = ['arrowdown']; for (let k = 1; k < (first ? 3 : 4); k++) { let n; do n = pool[Math.floor(rr() * 4)]; while (n === seq[k - 1]); seq.push(n); }
   G.akira = { seq, idx: 0, t: 0, dur: first ? 3.0 : 2.15, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
   const st = G.pop.stepper; if (st) { st.t = 0; st.c.root.visible = true; }
@@ -259,8 +271,8 @@ function resolveAkira(res, why = '') {
 }
 // ---------------------------------------------------------------- tech landing: come down on a car → a split-second kick off its roof
 function startTech(o) {
-  const first = !TUT.tech; if (first) { TUT.tech = 1; store.set('tut', TUT); }
-  let dir = Math.random() < 0.5 ? -1 : 1; if (G.lane + dir < 0 || G.lane + dir > 2) dir = -dir;
+  const first = !G.daily && !TUT.tech; if (first) { TUT.tech = 1; store.set('tut', TUT); }
+  let dir = rnd('tech') < 0.5 ? -1 : 1; if (G.lane + dir < 0 || G.lane + dir > 2) dir = -dir;
   const key = dir < 0 ? 'arrowleft' : 'arrowright';
   G.tech = { o, dir, key, t: 0, dur: first ? 0.7 : 0.5, ui: UI.qte({ key, label: 'TECH IT!' }) };
   G.slowmo = 0.06; Audio.rate(0.6); Audio.sfx('skid', 0.9, 1.4); G.shake = 0.15;
@@ -281,7 +293,7 @@ const QALIAS = { w: 'arrowup', a: 'arrowleft', d: 'arrowright', s: 'arrowdown', 
 const TRICKS = { arrowup: ['BACKFLIP', 'flip'], arrowleft: ['TAIL WHIP', 'whip'], arrowright: ['TAIL WHIP', 'whip'], arrowdown: ['NO-HANDER', 'nohand'] };
 function startQTE(kind) {
   // a trick is a key combo punched in mid-air: 2 keys over the tracks, 3 over the bus (4 on later orders); fast = PERFECT
-  const rr = QA ? mulberry(Math.floor(G.s * 7)) : Math.random, first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
+  const rr = () => rnd('trick'), first = !G.daily && !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
   const n = (kind === 'rail' ? 2 : 3) + (G.order >= 4 ? 1 : 0), seq = []; for (let i = 0; i < n; i++) { let k; do k = QKEYS[Math.floor(rr() * 4)]; while (k === seq[i - 1]); seq.push(k); }
   const key = seq[n - 1];
   G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.35 : 0.75) + n * 0.25, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
@@ -807,12 +819,13 @@ function updateShadowCam(at) {
 let hud = null;
 async function startOrder(restart = false) {
   UI.clear();
-  if (restart || !G.world || G.builtFor !== G.order) { const ld = UI.loading(); progress.onChange = (d, t) => ld.set(t ? d / t : 0); await buildWorld(G.order); G.builtFor = G.order; UI.remove('load'); }
+  const built = G.daily ? 'daily:' + G.daily.key : G.order;
+  if (restart || !G.world || G.builtFor !== built) { const ld = UI.loading(); progress.onChange = (d, t) => ld.set(t ? d / t : 0); await buildWorld(G.order); G.builtFor = built; UI.remove('load'); }
   else resetRun();
   G.state = 'order';
   Audio.music('chill');
   const def = G.def;
-  UI.orderCard({ n: G.order, thought: K.introThought(G.delivered, mulberry(G.seed)), tip: def.tip, note: def.note, pickup: def.pickup, dropoff: 'Citi Tower · 101 Lake Ave', eta: G.eta, onAccept: () => { Audio.sfx('ding'); UI.remove('order'); countdownGo(); } });
+  UI.orderCard({ n: G.daily ? `DAILY · ${G.daily.label}` : G.order, thought: K.introThought(G.daily ? Math.max(1, G.delivered) : G.delivered, mulberry(G.seed)), tip: def.tip, note: def.note, pickup: def.pickup, dropoff: 'Citi Tower · 101 Lake Ave', eta: G.eta, onAccept: () => { Audio.sfx('ding'); UI.remove('order'); countdownGo(); } });
   Audio.sfx('ding', 0.8);
 }
 function countdownGo() {
@@ -828,6 +841,25 @@ function arrive() {
   finale = new Finale({ renderer, scene, camera, G, Audio, UI, sun, onDone: showResults }); window.__F = finale;
   finale.start();
 }
+// after a run: a normal order moves the career on; the daily hands back the career order untouched
+function leaveRun() { if (G.daily) { G.order = G.careerOrder ?? G.order; G.daily = null; G.builtFor = null; } else { G.order++; store.set('order', G.order); } }
+function startDaily() { if (!G.daily) G.careerOrder = G.order; G.daily = dailyInfo(); G.order = DAILY_ORDER; startOrder(); }
+window.__startDaily = startDaily;
+const SQ = { PERFECT: '🟩', GREAT: '🟦', GOOD: '🟨', OK: '🟧', BAD: '🟥' };
+// the copy-paste brag: multi-line, one line per section, a Wordle-style strip on top so a chat can compare at a glance
+function shareText({ total, grade, rows, perfect, daily }) {
+  const played = rows.filter((x) => x.r), paid = G.fin?.tipPaid || 0;
+  const L = [daily ? `🛵 TIP BAIT DAILY · ${daily.label}${daily.tries > 1 ? ` · try #${daily.tries}` : ''}` : `🛵 TIP BAIT · Order #${G.order}`,
+    `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}${perfect ? ' · ⭐ PERFECT RUN' : ''}`,
+    played.map((x) => SQ[x.r.badge] || '⬛').join(''), ''];
+  for (const x of played) L.push(`${SQ[x.r.badge] || '⬛'} ${x.icon} ${x.name}: ${x.r.badge}${x.r.label ? ` (${String(x.r.label).replace(/<[^>]+>/g, '')})` : ''}`);
+  L.push('', `⏱️ ${UI.fmtTime(G.time)} · 💥 ${G.crashes} crash${G.crashes === 1 ? '' : 'es'} · 🪙 ${G.coins} coins · 🔥 x${G.bestMult || 1} best combo`);
+  L.push(perfect ? `🤯 Kyle actually tipped ${UI.money(G.tip)}` : paid > 0 ? `💸 Kyle tipped ${UI.money(paid)} of ${UI.money(G.def.tip)}` : `🙄 Kyle tipped $0.00 of ${UI.money(G.def.tip)}`);
+  if (daily) L.push(`${daily.streak > 1 ? `🔥 ${daily.streak}-day streak · ` : ''}same route + same rolls for everyone today`, `👉 hit PLAY DAILY: ${SHARE_URL}`);
+  else L.push(`👉 beat it: ${SHARE_URL}`);
+  return L.join('\n');
+}
+window.__shareText = () => G.lastShare;
 window.__showResults = (line = 'kinda melted ngl') => showResults(line); // QA: preview the results screen
 function showResults(line) {
   G.state = 'results';
@@ -847,20 +879,32 @@ function showResults(line) {
   const secs = rated.rows.filter((x) => x.r), mean = secs.reduce((a, x) => a + x.r.pct, 0) / Math.max(1, secs.length);
   const grade = perfect || mean >= 0.95 ? 'S' : mean >= 0.82 ? 'A' : mean >= 0.66 ? 'B' : mean >= 0.5 ? 'C' : 'D';
   G.lastGrade = grade;
+  let daily = null;
+  if (G.daily) { // first clear of the day pays a streak bonus; retries only chase the best score
+    const ds = dailyState(), k = G.daily.key, same = ds.key === k, first = !same || !ds.done;
+    const prev = (() => { const [y, m, d] = k.split('-').map(Number), t = new Date(y, m - 1, d - 1); return `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; })();
+    const nd = { ...ds, key: k, tries: (same ? ds.tries : 0) + 1, best: Math.max(same ? ds.best : 0, total), done: true };
+    if (first) { nd.streak = ds.last === prev ? (ds.streak || 0) + 1 : 1; nd.last = k; }
+    store.set('daily', nd);
+    daily = { ...G.daily, tries: nd.tries, best: nd.best, streak: nd.streak, gain: first ? { coins: 250 + 50 * Math.min(nd.streak - 1, 6), xp: 500 } : null };
+  }
+  G.lastShare = shareText({ total, grade, rows: rated.rows, perfect, daily });
   UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line, rows: rated.rows,
     score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, perfect, tipPaid: G.fin?.tipPaid || 0, tipShare: G.fin?.tipShare || 0, fin: G.fin, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira, dog: G.fin?.dog, rival: G.fin?.rival, crane: G.fin?.crane },
-    onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
-    onShare: () => { const paid = G.fin?.tipPaid || 0, txt = `🛵 TIP BAIT · ${total.toLocaleString('en-US')} pts (${grade}) delivering Kyle S his iced coffee to Citi Tower, floor 20. He promised ${UI.money(G.def.tip)}. ${perfect ? `PERFECT RUN — he actually tipped ${UI.money(G.tip)} 🤯` : paid > 0 ? `He tipped ${UI.money(paid)}. Progress.` : 'He tipped $0.00. Again. 🙄'}\nBeat my score 👉 ${SHARE_URL}`; UI.copyText(txt, 'Score copied — paste it anywhere. Go tag your Kyle.'); } });
+    onNext: () => { const wasDaily = !!G.daily; leaveRun(); finale?.dispose(); finale = null; scene.add(G.world); if (wasDaily) { G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); } else startOrder(true); },
+    onShare: (btn) => UI.copyText(G.lastShare, daily ? 'Daily copied — drop it in the chat.' : 'Score copied — paste it anywhere.', btn),
+    daily });
   // tip-coins → wallet: what you picked up plus a grade bonus (a perfect run pays big)
-  const bonus = ({ S: 200, A: 120, B: 70, C: 35, D: 15 }[grade] || 0) + (perfect ? 500 : 0), got = G.coins - (G.banked || 0), earned = bankCoins(bonus);
+  const bonus = ({ S: 200, A: 120, B: 70, C: 35, D: 15 }[grade] || 0) + (perfect ? 500 : 0) + (daily?.gain?.coins || 0), got = G.coins - (G.banked || 0), earned = bankCoins(bonus);
   const res = document.querySelector('#results .res');
   if (res) {
     const w = document.createElement('div'); w.className = 'walletline';
-    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} grade bonus → wallet</span><button class="btn ghost shopbtn" id="tomenu">⌂ MAIN MENU</button><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
+    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} ${daily?.gain ? `bonus (daily 🔥${daily.streak})` : 'grade bonus'} → wallet</span><button class="btn ghost shopbtn" id="tomenu">⌂ MAIN MENU</button><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
     (res.querySelector('.nextup') || res.lastElementChild).before(w);
-    const toMenu = (shop) => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); if (shop) openStore(); };
+    const toMenu = (shop) => { leaveRun(); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); if (shop) openStore(); };
     w.querySelector('#toshop').onclick = () => toMenu(true); w.querySelector('#tomenu').onclick = () => toMenu(false);
-    const xp = runXP({ rows: rated.rows, grade, perfect, coins: G.coins, dist: G.dist }), aw = awardXP(store, xp.total);
+    const xp = runXP({ rows: rated.rows, grade, perfect, coins: G.coins, dist: G.dist }); if (daily?.gain) { xp.parts.push(['daily', daily.gain.xp]); xp.total += daily.gain.xp; }
+    const aw = awardXP(store, xp.total);
     const xw = xpWidget(document.createElement('div'), { before: aw.before, after: aw.after, gained: aw.after - aw.before, parts: xp.parts, sfx: (n, g, r) => Audio.sfx(n, g, r), onOpen: () => { toMenu(false); openPass(); } });
     w.after(xw);
     UI.pouchFly({ from: w.querySelector('span'), before: store.get('wallet', 0) - (got + bonus), after: store.get('wallet', 0), n: Math.min(40, 8 + Math.round((got + bonus) / 15)) });
@@ -972,7 +1016,9 @@ window.__openStore = openStore;
 function bpReadyCount() { const s = bpState(store), lv = levelOf(s.xp).tier; let n = 0; for (let t = 1; t <= lv; t++) { if (!s.claimed.free.includes(t)) n++; if (s.premium && !s.claimed.prem.includes(t)) n++; } return n; }
 function showTitle() {
   G.state = 'title';
-  UI.title({ wallet: store.get('wallet', 0), onShop: openStore, onBP: openPass, bpTier: levelOf(bpState(store).xp).tier, bpReady: bpReadyCount(), bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
+  const di = dailyInfo(), ds = dailyState(), today = ds.key === di.key;
+  UI.title({ daily: { label: di.label, best: today ? ds.best : 0, done: today && ds.done, streak: ds.streak || 0, live: ds.last === di.key || ds.last === (() => { const t = new Date(); t.setDate(t.getDate() - 1); return dailyKey(t); })() }, onDaily: () => { Audio.unlock(); UI.remove('title'); startDaily(); },
+    wallet: store.get('wallet', 0), onShop: openStore, onBP: openPass, bpTier: levelOf(bpState(store).xp).tier, bpReady: bpReadyCount(), bestScore: G.bestScore, best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
 }
 requestAnimationFrame(frame);
 boot();

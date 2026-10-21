@@ -5,7 +5,7 @@
 //  • CRANE: a tower crane's load snaps over a construction site. Slow-mo, high camera: every piece's landing spot
 //    is marked on the road (the ring closes as it falls). Thread the lanes, then hop the I-beam that lands across all
 //    three. Close calls pay; getting clonked costs speed, ice and coins (never a wipeout).
-import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mulberry, mat, box, cyl, canvasTex, tex, mesh } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mulberry, rnd, mat, box, cyl, canvasTex, tex, mesh } from './core.js';
 import { character, ik2, helmet } from './chars.js';
 
 const LANES = [-2.4, 0, 2.4];
@@ -203,7 +203,7 @@ export function createEvents(ctx) {
     ev.rl = G.lane + ev.side; ev.ds = -15; ev.st = 'approach'; ev.t = 0; ev.bi = -1; ev.res = []; ev.flinch = 0; ev.push = 0; ev.roll = 0; ev.off = 0; ev.arm = 0;
     ev.flinchCd = 0; ev.hitStop = 0; ev.base = G.lat + ev.side * 3.8; ev.said = false; ev.boom = false; ev.fk = false;
     ev.toward = ev.side > 0 ? 'arrowright' : 'arrowleft'; ev.away = ev.side > 0 ? 'arrowleft' : 'arrowright';
-    ev.first = !G.tut?.rival;
+    ev.first = !G.daily && !G.tut?.rival;
     E.locked = true; E.cur = ev; p.root.visible = true;
     clearTraffic(G.s - 6, ev.s + ev.len + 30); // nothing drives into a duel you can't steer out of
     const reals = ev.beats.filter((b) => b === 'real').length;
@@ -215,7 +215,7 @@ export function createEvents(ctx) {
     ev.bi++;
     if (ev.bi >= ev.beats.length) { rivalFinish(ev); return; }
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length;
-    ev.st = 'gap'; ev.t = 0; ev.gap = (0.3 + Math.random() * 0.35) * (ev.bi === 0 ? 1.4 : 1);
+    ev.st = 'gap'; ev.t = 0; ev.gap = (0.3 + rnd('rival') * 0.35) * (ev.bi === 0 ? 1.4 : 1);
     ev.W = (ev.first && k === 0 ? 0.9 : [0.75, 0.68, 0.6][Math.min(2, k)]) * (1 - d * 0.1);
     ev.pressed = null;
   }
@@ -223,7 +223,7 @@ export function createEvents(ctx) {
   const HITS = { shove: { label: 'SHOVE', ok: 'countered' }, grab: { label: 'GRAB', ok: 'bag saved' }, kick: { label: 'KICK', ok: 'hopped it' } };
   function startCombo(ev) {
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(4, 2 + k + (d > 0.6 && k >= 2 ? 1 : 0));
-    ev.combo = [{ type: 'shove' }]; for (let i = 1; i < n; i++) { const opts = ['shove', 'grab', 'kick'].filter((t) => t !== ev.combo[i - 1].type); ev.combo.push({ type: opts[Math.floor(Math.random() * opts.length)] }); }
+    ev.combo = [{ type: 'shove' }]; for (let i = 1; i < n; i++) { const opts = ['shove', 'grab', 'kick'].filter((t) => t !== ev.combo[i - 1].type); ev.combo.push({ type: opts[Math.floor(rnd('rival') * opts.length)] }); }
     for (const h of ev.combo) h.key = h.type === 'shove' ? ev.toward : h.type === 'grab' ? 'arrowdown' : 'arrowup';
     ev.hit = 0; ev.late = 0; ev.W0 = ev.W; nextHit(ev, true);
   }
@@ -293,7 +293,7 @@ export function createEvents(ctx) {
     ev.hitStop = Math.max(0, ev.hitStop - dt);
     switch (ev.st) {
       case 'approach': ev.ds = lerp(-15, 0.35, easeOut(seg(ev.t, 0, 1.3))); E.slow = null;
-        if (ev.t > 0.7 && !ev.said) { ev.said = true; UI.say('DashDash guy', ['that’s MY order, pal 😤', 'move, gobbl boy', 'nice bag. shame if it… fell 😏'][Math.floor(Math.random() * 3)]); Audio.sfx('horn', 0.35, 2.2); }
+        if (ev.t > 0.7 && !ev.said) { ev.said = true; UI.say('DashDash guy', ['that’s MY order, pal 😤', 'move, gobbl boy', 'nice bag. shame if it… fell 😏'][Math.floor(rnd('lines') * 3)]); Audio.sfx('horn', 0.35, 2.2); }
         if (ev.t > 1.45) rivalBeat(ev); break;
       case 'gap': E.slow = null; lean = Math.sin(ev.t * 3) * 0.05;
         if (ev.t > ev.gap) { ev.st = 'tell'; ev.t = 0; ev.real = ev.beats[ev.bi] === 'real'; Audio.sfx('skid', 0.4, 1.8); } break;

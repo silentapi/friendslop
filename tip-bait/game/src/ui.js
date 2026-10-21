@@ -14,7 +14,7 @@ export function loading() {
   return { set(p) { el.querySelector('.bar i').style.width = `${Math.round(p * 100)}%`; } };
 }
 
-export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMute, onShop, onBP, bpTier = 0, bpReady = 0 }) {
+export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMute, onShop, onBP, bpTier = 0, bpReady = 0, daily = null, onDaily }) {
   const el = layer('title', `
     <div class="top">
       <div class="logo">Tip<b>Bait</b></div>
@@ -27,12 +27,14 @@ export function title({ bestScore, best, orders, muted, wallet = 0, onPlay, onMu
         <div><small>BEST SCORE</small><b>${bestScore ? bestScore.toLocaleString('en-US') : '—'}</b></div>
         <div><small>DELIVERED</small><b>${orders || 0}</b></div>
       </div>
+      ${daily ? `<button class="btn daily${daily.done ? ' done' : ''}" id="dailybtn"><span class="dl-k">📅 PLAY DAILY · ${daily.label}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">D</small>'}</span><span class="dl-s">${daily.done ? `best ${daily.best.toLocaleString('en-US')} · retry for a better score` : 'same route for everyone · <b>+250 🪙 +500 XP</b>'}${daily.streak > 1 && daily.live ? ` · 🔥 ${daily.streak}` : ''}</span></button>` : ''}
       <button class="btn" id="play">${orders ? 'NEXT ORDER' : 'START SHIFT'}${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
       <div class="menu-row"><button class="btn ghost menu-shop" id="shop">STORE${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">S</small>'}</button><button class="btn ghost menu-shop menu-bp" id="bpbtn"><span class="bpb">${bpTier}</span>BATTLE PASS${bpReady ? `<em>${bpReady}</em>` : ''}${TOUCH ? '' : ' <small style="opacity:.6;font-size:13px">B</small>'}</button></div>
       <div class="small">${TOUCH ? 'Swipe to dodge · swipe up to jump · tap BOOST' : '← → dodge · ↑ / Space jump · Shift boost · M mute'} · best time ${best || '—'}</div>
     </div>
     <button class="mute" id="mute" aria-label="Sound">${muted ? '🔇' : '🔊'}</button>`);
   el.querySelector('#play').onclick = onPlay;
+  el.querySelector('#dailybtn')?.addEventListener('click', (e) => { e.stopPropagation(); onDaily?.(); });
   el.querySelector('#shop').onclick = (e) => { e.stopPropagation(); onShop?.(); };
   el.querySelector('#bpbtn').onclick = (e) => { e.stopPropagation(); onBP?.(); };
   el.querySelector('#mute').onclick = (e) => { e.stopPropagation(); const m = onMute(); e.currentTarget.textContent = m ? '🔇' : '🔊'; };
@@ -43,7 +45,7 @@ export function orderCard({ tip, note, pickup, dropoff, eta, n, thought = '', on
   const el = layer('order', `
     ${thought ? `<div class="othought">💭 ${thought}</div>` : ''}
     <div class="card">
-      <div class="hd">gobbl <span>NEW ORDER #${n}</span></div>
+      <div class="hd">gobbl <span>${typeof n === 'number' ? `NEW ORDER #${n}` : n}</span></div>
       <div class="bd">
         <div class="who"><div class="av">K</div><div class="nm">Kyle S<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
         <div class="tip">${money(tip)}<small>TIP</small></div>
@@ -293,17 +295,28 @@ export function pouchFly({ from, before, after, n = 20 }) {
       .onfinish = () => { c.remove(); landed++; val.textContent = Math.round(landed >= n ? after : before + step * landed).toLocaleString('en-US'); p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); try { window.__sfx?.('ice', 0.35, 1.5 + landed / n * 0.6); } catch {} };
   }
 }
-// copy that works inside sandboxed iframes too: async clipboard → execCommand → a sheet with the text selected
-export function copyText(txt, ok = 'Copied!') {
-  const fallback = () => {
-    const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select();
-    let done = false; try { done = document.execCommand('copy'); } catch {} ta.remove();
-    if (done) { toast(ok); return; }
-    remove('copysheet');
-    const el = layer('copysheet', `<div class="copysheet"><b>Copy your score</b><textarea readonly>${txt.replace(/</g, '&lt;')}</textarea><button class="btn" id="cclose">DONE</button></div>`);
-    const t = el.querySelector('textarea'); t.focus(); t.select(); el.querySelector('#cclose').onclick = () => el.remove();
+// copy that works everywhere we ship: plain http (no async clipboard there), sandboxed iframes, iOS. Copy synchronously
+// inside the click first (execCommand on a real, selectable textarea), then the async API, and as a last resort a
+// sheet with the text selected. The button itself flips to "✓ Copied" so success can't hide behind another layer.
+export function copyText(txt, ok = 'Copied!', btn = null) {
+  const done = () => {
+    toast(ok);
+    if (btn) { clearTimeout(btn._ct); btn._lbl ??= btn.innerHTML; btn.innerHTML = '✓ Copied'; btn.classList.add('copied'); btn._ct = setTimeout(() => { btn.innerHTML = btn._lbl; btn.classList.remove('copied'); }, 2200); }
   };
-  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(() => toast(ok), fallback); else fallback();
+  const sheet = () => {
+    remove('copysheet');
+    const el = layer('copysheet', `<div class="copysheet"><b>Copy your score</b><textarea>${txt.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea><button class="btn" id="cclose">DONE</button></div>`);
+    const t = el.querySelector('textarea'); t.focus(); t.select(); t.setSelectionRange(0, txt.length); el.querySelector('#cclose').onclick = () => el.remove();
+  };
+  let copied = false;
+  try {
+    const ta = document.createElement('textarea'); ta.value = txt;
+    ta.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;font-size:16px;-webkit-user-select:text;user-select:text;pointer-events:none';
+    document.body.appendChild(ta); ta.focus({ preventScroll: true }); ta.select(); ta.setSelectionRange(0, txt.length);
+    copied = document.execCommand('copy'); ta.remove();
+  } catch {}
+  if (copied) return done();
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(done, sheet); else sheet();
 }
 export function say(who, text, ttl = 2200) {
   root().querySelectorAll('.say').forEach((p) => p.remove());
@@ -394,7 +407,7 @@ export function rateAll(d) {
   const reached = rows.filter((x) => x.r);
   return { rows, perfect: reached.length >= 6 && reached.every((x) => x.r.badge === 'PERFECT') };
 }
-export function results({ next, nextN, tip, promised, pay, time, eta, ice, crashes, nearMiss, order, line, score: S, rows, onNext, onShare }) {
+export function results({ next, nextN, tip, promised, pay, time, eta, ice, crashes, nearMiss, order, line, score: S, rows, onNext, onShare, daily = null }) {
   const onTime = time <= eta, perfect = !!S.perfect;
   rows ||= rateAll({ ...(S.fin || {}), time, eta, ice, crashes, nearMiss, coins: S.coins, tricks: S.tricks }).rows;
   const bar = (x, i) => x.r
@@ -411,11 +424,11 @@ export function results({ next, nextN, tip, promised, pay, time, eta, ice, crash
       <div class="ledger1">${perfect ? `Kyle promised ${money(promised ?? tip)} · tipped <b class="tipwon">${money(tip)}</b> 🤯` : `Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b${S.tipPaid > 0 ? ' class="tipwon"' : ''}>${money(S.tipPaid || 0)}</b>${S.tipPaid > 0 ? ` (${Math.round((S.tipShare || 0) * 100)}%)` : ''}`} · you earned <b>${money(pay + (perfect ? tip : S.tipPaid || 0))}</b></div>
       <div class="srows">${rows.map(bar).join('')}</div>
       <div class="small rline">Kyle S: “${line}” · ${nearMiss} near misses · best combo x${S.bestMult}</div>
-      <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>
-      <div class="row"><button class="btn" id="next">NEXT ORDER${TOUCH ? '' : ' ⏎'}</button><button class="btn ghost" id="share" style="flex:.6">Copy score</button></div>
+      ${daily ? `<div class="nextup dailyup">📅 Daily ${daily.label} · ${daily.tries > 1 ? `try #${daily.tries} · ` : ''}best <b>${daily.best.toLocaleString('en-US')}</b>${daily.streak > 1 ? ` · 🔥 ${daily.streak}-day streak` : ''}${daily.gain ? ` · <b>+${daily.gain.coins} 🪙 +${daily.gain.xp} XP</b> daily bonus` : ' · bonus already claimed today'}</div>` : `<div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>`}
+      <div class="row"><button class="btn" id="next">${daily ? 'MAIN MENU' : 'NEXT ORDER'}${TOUCH ? '' : ' ⏎'}</button><button class="btn ghost" id="share" style="flex:.6">${daily ? '📋 Share daily' : '📋 Copy score'}</button></div>
     </div>`);
   el.querySelector('#next').onclick = onNext;
-  el.querySelector('#share').onclick = onShare;
+  const sh = el.querySelector('#share'); sh.onclick = () => onShare(sh);
   return el;
 }
 // time-penalty chip: "−2.4 s · label" pops near the action, then flies into the ETA pill (or fades top-centre)

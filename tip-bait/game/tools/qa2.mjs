@@ -30,7 +30,7 @@ const shot = async (name) => { await tick(1, true); await page.screenshot({ path
 const key = (k) => page.evaluate((k) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k })), k);
 const G = () => page.evaluate(() => { const g = window.__G; return { st: g.state, s: +g.s.toFixed(1), L: Math.round(g.route.length), lane: g.lane, y: +g.y.toFixed(2), v: +g.v.toFixed(1), ice: Math.round(g.ice), boost: +g.boostCharge.toFixed(2), crashes: g.crashes, nm: g.nearMiss, eta: Math.round(g.eta), time: Math.round(g.time) }; });
 await shot('00_title');
-await page.click('#play');
+await page.click(process.env.DAILY ? '#dailybtn' : '#play'); // DAILY=1: play today's daily (DAILY=2026-10-21 → that date via ?daily=)
 await page.waitForSelector('#accept', { timeout: 180000 });
 await tick(3); await shot('01_order');
 await page.click('#accept');
@@ -184,6 +184,8 @@ if ((await G()).st === 'finale') {
   if (process.env.BP) for (let k = 0; k < 8; k++) { await page.waitForTimeout(250); await page.screenshot({ path: `${out}/fin_xp_${k}.jpg`, type: 'jpeg', quality: 82 }); } // battle pass XP count-up + tier pops (DOM timers, real time)
   await page.waitForTimeout(2600); await shot('fin_results_pouch');
   await page.click('#share').catch(() => {}); await page.waitForTimeout(400); await shot('fin_results_share');
+  console.log('share btn:', await page.evaluate(() => document.querySelector('#share')?.textContent), '| sheet:', await page.evaluate(() => !!document.querySelector('#copysheet')));
+  console.log('SHARE TEXT ↓\n' + await page.evaluate(() => window.__shareText?.()));
 }
 console.log('errors', errors.length, errors.slice(0, 5));
 await browser.close();

@@ -6,14 +6,14 @@
 //    meter: tap ← → to keep the needle centred (it drifts away from the middle), and when your foot SLIPS the needle
 //    kicks hard one way — counter with the opposite key before you go over. Wrong key or too slow: SPLAT.
 // Both end like the dog: grade into G.fin.hall / hallT / hallKind, then the finale walks you to Kyle's door.
-import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mat, box, cyl, canvasTex, tex } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, mat, box, cyl, canvasTex, tex, rnd, tnoise } from './core.js';
 import * as Sets from './sets.js';
 import { character, ik2 } from './chars.js';
 
 const HC = { c0: 3.0, c: -1.5, cx: 0.25 }, DOOR_Z = -9;
 // reaction windows, tight; a touch more lenient on your very first delivery
 // reaction windows for every hallway encounter: tight enough to need attention, always humanly doable (~0.25 s to react + a key)
-export const hallWindows = (G) => (G.delivered === 0 ? [0.85, 0.75, 0.66] : [0.72, 0.62, 0.54]);
+export const hallWindows = (G) => (G.delivered === 0 && !G.daily ? [0.85, 0.75, 0.66] : [0.72, 0.62, 0.54]);
 const DODGE_X = { arrowleft: -0.52, arrowright: 0.52 };
 const FLAT_T = 2.6, FLAT_COST = 2.0; // ladder: the second hit knocks you flat; the slow get-up costs time
 const KEYMAP = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup', s: 'arrowdown' };
@@ -129,7 +129,7 @@ async function buildLadder(F, scene) {
   const lad = ladderMesh(); scene.add(lad);
   const bang = bangSprite('❗', '#ff2a1a'), note = bangSprite('🎵', '#2b2f36'), stars = bangSprite('💫', '#3a2a6a'); scene.add(bang, note, stars);
   const zone = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), new THREE.MeshBasicMaterial({ color: 0xff2a1a, transparent: true, opacity: 0, depthWrite: false })); zone.rotation.x = -Math.PI / 2; zone.renderOrder = 3; scene.add(zone);
-  const KINDS = ['swingL', 'swingR', 'high', 'low'], beats = [...KINDS].sort(() => Math.random() - 0.5).slice(0, 3);
+  const KINDS = ['swingL', 'swingR', 'high', 'low'], beats = [...KINDS].sort(() => rnd('hall') - 0.5).slice(0, 3);
   const KEY = { swingL: 'arrowright', swingR: 'arrowleft', high: 'arrowdown', low: 'arrowup' };
   const LBL = { swingL: 'ladder at your <b>LEFT</b> — dodge right', swingR: 'ladder at your <b>RIGHT</b> — dodge left', high: 'coming at your <b>HEAD</b> — duck', low: 'sweeping your <b>SHINS</b> — hop' };
   const DOORS = { swingL: '2003?', swingR: '2004…?', high: 'where’s 2007', low: 'yo is this 2005' };
@@ -166,7 +166,7 @@ async function buildLadder(F, scene) {
         if (t > 2.2 && !h.l1) { h.l1 = true; caption(F, 'maintenance guy', '🎵 mmm-hmm-hmm (can’t hear a thing)', 2000); A.sfx('creak', 0.5, 1.8); }
         camK = t < 2.0 ? 'follow' : t < 3.5 ? 'guycu' : 'game';
         if (t > 3.5) {
-          h.st = 'wait'; h.t = 0; h.wait = 0.9 + Math.random() * 0.4;
+          h.st = 'wait'; h.t = 0; h.wait = 0.9 + rnd('hall') * 0.4;
           ui = UI.evUI({ title: '🪜 LADDER GUY', pips: 3, hint: 'his head turn tells you where it’s going · <b>←/→</b> sidestep · <b>↓</b> duck · <b>↑</b> hop', keys: ['arrowleft', 'arrowdown', 'arrowup', 'arrowright'] });
           ui.el.querySelector('.dogui').classList.remove('run'); ui.bind((k) => E.key(k));
         }
@@ -212,7 +212,7 @@ async function buildLadder(F, scene) {
           h.flatT = null; h.flatThud = 0;
           h.i++; h.dodge = null; h.hit = false; h.said = false; h.t = 0; stars.visible = false; h.look = 0;
           if (h.i >= 3) { h.st = 'outro'; E.finish(); const n = h.res.filter(Boolean).length; UI.pop(GRADES.ladder[n][0], n === 3 ? `not a scratch · +${GRADES.ladder[n][1]}` : `${3 - n} hit${3 - n > 1 ? 's' : ''} · +${GRADES.ladder[n][1]}`, { top: 24 }); A.sfx(n === 3 ? 'jingle' : 'pop', 0.7); setTimeout(() => UI.remove('evui'), 1500); }
-          else { h.st = 'wait'; h.wait = [1.0, 0.75, 0.55][h.i] * 0.8 + Math.random() * 0.5; }
+          else { h.st = 'wait'; h.wait = [1.0, 0.75, 0.55][h.i] * 0.8 + rnd('hall') * 0.5; }
         }
       } else if (h.st === 'outro') {
         // he finally notices you, pulls a headphone off, flattens himself against the wall
@@ -324,7 +324,7 @@ async function buildMop(F, scene) {
       h.fallT = 1.7; h.fallDur = 1.7; h.pen += 1.6; G.ice = Math.max(0, G.ice - 7); G.combo = 0; G.mult = 1; h.shake = 0.9; h.b = 0; h.bv = 0;
       UI.pop('SPLAT', `${why} · ice −7`, { top: 24 }); UI.timeCost?.(1.6, 'slipped on the wet floor'); A.sfx('splash', 1, 0.8); A.sfx('crash', 0.5, 1.3); navigator.vibrate?.(60);
       splash.visible = true;
-      if (!h.fl) { h.fl = true; caption(F, 'janitor', ['AY. I JUST MOPPED THAT', 'that’s gonna leave a mark', 'bro is SWIMMING'][Math.floor(Math.random() * 3)], 1500); }
+      if (!h.fl) { h.fl = true; caption(F, 'janitor', ['AY. I JUST MOPPED THAT', 'that’s gonna leave a mark', 'bro is SWIMMING'][Math.floor(rnd('lines') * 3)], 1500); }
     },
     hide() { jan.root.visible = false; mp.visible = false; bucket.visible = false; sign.visible = sign2.visible = false; wet.visible = sheen.visible = false; bang.visible = splash.visible = false; },
     dispose() { jan.root.removeFromParent(); },
@@ -346,7 +346,7 @@ async function buildMop(F, scene) {
           ui = UI.evUI({ title: '🧽 WET FLOOR', pips: 3, hint: 'keep the needle centred: tap <b>←</b> <b>→</b> · when you <b>SLIP</b>, hit the <b>opposite</b> key fast · wrong way = SPLAT', keys: ['arrowleft', 'arrowright'] });
           ui.el.querySelector('.dogui').classList.remove('run'); ui.bind((k) => E.key(k)); bar = balanceBar(ui);
           // three slips spread over the slide, never evenly
-          let tt = 0.9 + Math.random() * 0.5; for (let i = 0; i < 3; i++) { h.slips.push(tt); tt += 1.15 + Math.random() * 0.55; }
+          let tt = 0.9 + rnd('hall') * 0.5; for (let i = 0; i < 3; i++) { h.slips.push(tt); tt += 1.15 + rnd('hall') * 0.55; }
         }
       } else if (h.st === 'slide') {
         arms = 1;
@@ -359,11 +359,11 @@ async function buildMop(F, scene) {
             q?.set(1 - s.t / s.W);
             if (Math.abs(h.b) >= 1) E.fall(s.t >= s.W * 0.98 ? 'too slow' : 'went over');
           } else {
-            h.bv += (Math.sin(F.t * 2.3) * 0.55 + (Math.random() - 0.5) * 1.9) * dt + h.b * 0.95 * dt; h.bv *= Math.exp(-2.4 * dt); h.b += h.bv * dt;
+            h.bv += (Math.sin(F.t * 2.3) * 0.55 + tnoise('mop', F.t) * 1.9) * dt + h.b * 0.95 * dt; h.bv *= Math.exp(-2.4 * dt); h.b += h.bv * dt;
             if (Math.abs(h.b) >= 1) E.fall('lost it');
             // a slip: your foot finds a puddle, the needle gets kicked
             if (h.nextSlip < 3 && h.t >= h.slips[h.nextSlip]) {
-              const side = Math.abs(h.b) > 0.25 ? Math.sign(h.b) : (Math.random() < 0.5 ? -1 : 1), W = hallWindows(G)[h.nextSlip];
+              const side = Math.abs(h.b) > 0.25 ? Math.sign(h.b) : (rnd('hall') < 0.5 ? -1 : 1), W = hallWindows(G)[h.nextSlip];
               h.slip = { side, W, t: 0, b0: h.b, key: side < 0 ? 'arrowright' : 'arrowleft' }; h.nextSlip++;
               q = UI.qte({ key: h.slip.key, label: side < 0 ? 'SLIPPING <b>LEFT</b> — lean right' : 'SLIPPING <b>RIGHT</b> — lean left' }); A.sfx('skid', 1, 1.2); A.sfx('pop', 0.7, 0.6); bang.visible = true; h.shake = 0.35;
             }
@@ -539,7 +539,7 @@ async function buildBeam(F, scene) {
           h.st = 'cross'; h.t = 0;
           ui = UI.evUI({ title: '🕳️ THE PLANK', pips: 3, hint: 'stay centred: tap <b>←</b> <b>→</b> against the sway · when the plank <b>LURCHES</b>, hit the <b>opposite</b> key fast · fall = floor 19', keys: ['arrowleft', 'arrowright'] });
           ui.el.querySelector('.dogui').classList.remove('run'); ui.bind((k) => E.key(k)); bar = balanceBar(ui);
-          let tt = 0.9 + Math.random() * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + Math.random() * 0.6; }
+          let tt = 0.9 + rnd('hall') * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + rnd('hall') * 0.6; }
         }
       } else if (h.st === 'cross') {
         // step by step along the plank; the sway feeds on itself and on how far you've leaned
@@ -548,10 +548,10 @@ async function buildBeam(F, scene) {
           const s = h.lurch; s.t += dt; h.bv = (s.side * 1.05 - s.b0) / s.W; h.b += h.bv * dt; q?.set(1 - s.t / s.W);
           if (Math.abs(h.b) >= 1) E.fall(s.t >= s.W * 0.98 ? 'too slow' : 'went over');
         } else {
-          h.bv += (Math.sin(F.t * 2.9) * 0.75 + (Math.random() - 0.5) * 2.2) * dt + h.b * 1.3 * dt; h.bv *= Math.exp(-2.25 * dt); h.b += h.bv * dt;
+          h.bv += (Math.sin(F.t * 2.9) * 0.75 + tnoise('beam', F.t) * 2.2) * dt + h.b * 1.3 * dt; h.bv *= Math.exp(-2.25 * dt); h.b += h.bv * dt;
           if (Math.abs(h.b) >= 1) E.fall('lost your balance');
           if (h.next < 3 && h.t >= h.at[h.next]) {
-            const side = Math.abs(h.b) > 0.2 ? Math.sign(h.b) : (Math.random() < 0.5 ? -1 : 1), W = hallWindows(G)[h.next];
+            const side = Math.abs(h.b) > 0.2 ? Math.sign(h.b) : (rnd('hall') < 0.5 ? -1 : 1), W = hallWindows(G)[h.next];
             h.lurch = { side, W, t: 0, b0: h.b, key: side < 0 ? 'arrowright' : 'arrowleft' }; h.next++;
             q = UI.qte({ key: h.lurch.key, label: side < 0 ? 'plank LURCHES <b>LEFT</b> — lean right' : 'plank LURCHES <b>RIGHT</b> — lean left' }); A.sfx('creak', 1.1, 0.7); A.sfx('crash', 0.25, 2.2); bang.visible = true; h.shake = 0.45;
           }
@@ -594,7 +594,7 @@ async function buildBeam(F, scene) {
         if (t > 0.2 && !h.l4) { h.l4 = true; UI.sceneCap('', { extra: '<div class="notif"><div class="ic">↑</div><div><b>Floor 19 → 20</b><small>the stairs. again.</small></div></div>' }); }
         if (t > 1.0) { // straight back to the start of the plank: try it again
           h.st = 'cross'; h.t = 0; UI.remove('scene'); h.cz = HOLE.z0 + 0.55; h.cx = HOLE.x; h.b = 0; h.bv = 0; h.res = []; ui?.set(h.res); h.next = 0; h.i = 0; h.lurch = null; h.at = [];
-          let tt = 0.9 + Math.random() * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + Math.random() * 0.6; }
+          let tt = 0.9 + rnd('hall') * 0.5; for (let i = 0; i < 3; i++) { h.at.push(tt); tt += 1.35 + rnd('hall') * 0.6; }
           A.sfx('creak', 0.8, 0.8);
         }
       } else if (h.st === 'back') {

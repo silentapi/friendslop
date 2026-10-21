@@ -1,6 +1,6 @@
 // The delivery finale: pull up at the CITITOWER 101 canopy (real-life vs in-game panel) → elevator OUT OF ORDER
 // → climb 20 floors (alternate LEFT/RIGHT taps) → Kyle S opens 2004, takes it, sips, complains → takes the tip.
-import { THREE, V, clamp, lerp, seg, smooth, easeIn, easeOut, easeInOut, damp, box, cyl, mat } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeIn, easeOut, easeInOut, damp, box, cyl, mat, rnd } from './core.js';
 import { character, ik2, coldCup } from './chars.js';
 import * as Sets from './sets.js';
 import * as KY from './kyle.js';
@@ -83,7 +83,7 @@ export class Finale {
     R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.8, 0, 5.0);
     this.cup = coldCup(); s.add(this.cup);
     this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 42; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
-    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 0 ? 0.55 : 0.8, glanceIn: null });
+    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 0 || G.daily ? 0.55 : 0.8, glanceIn: null });
     this.bui = UI.deskUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (this.phase === 'locked') { if (k === 'arrowleft' || k === 'a') this.wave(0); else if (k === 'arrowright' || k === 'd') this.wave(1); else if (k === ' ' || k === 'arrowup' || k === 'w' || k === 'enter') { e.preventDefault(); this.knock(); } } else if (this.phase === 'stairs') this.stairKey(k, e); };
     window.addEventListener('keydown', this.keyH);
@@ -92,7 +92,7 @@ export class Finale {
   wave(side) {
     if (!this.inputOn || this.buzzed != null || side === this.lastSide) return;
     this.lastSide = side; this.waveT = 0.3; this.wavePh = side; this.Audio.sfx('whoosh', 0.2, 1.8);
-    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.065); if (this.notice >= 1 && this.glanceIn == null) this.glanceIn = 0.25 + Math.random() * 1.6; } // full: she'll glance up at some point — keep waving
+    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.065); if (this.notice >= 1 && this.glanceIn == null) this.glanceIn = 0.25 + rnd('desk') * 1.6; } // full: she'll glance up at some point — keep waving
   }
   knock() {
     if (!this.inputOn || this.buzzed != null || this.knockCd > 0) return;
@@ -207,7 +207,7 @@ export class Finale {
     cam.updateProjectionMatrix();
     if (t > sign + 0.2 && !this.c1) { this.c1 = true; UI.sceneCap('elevator: <em>out of order.</em>'); }
     if (t > line && !this.c2) { this.c2 = true; UI.sceneCap('…20 floors.'); }
-    if (t > (this.G.delivered > 0 ? 4.0 : 5.0)) this.toStairs();
+    if (t > (this.G.delivered > 0 || this.G.daily ? 4.0 : 5.0)) this.toStairs();
   }
   // ---------------------------------------------------------------- stairs: rhythm climb with landing hazards
   toStairs() {
@@ -227,7 +227,7 @@ export class Finale {
     const R = G.R; s.add(R.root);
     this.cup.removeFromParent(); s.add(this.cup);
     // hazards on three landings (random floors + kinds): a dog, a wet floor, a mop bucket
-    const kinds = ['dog', 'wet', 'bucket'].sort(() => Math.random() - 0.5), floors = [5 + Math.floor(Math.random() * 3), 10 + Math.floor(Math.random() * 3), 15 + Math.floor(Math.random() * 3)];
+    const kinds = ['dog', 'wet', 'bucket'].sort(() => rnd('stairs') - 0.5), floors = [5 + Math.floor(rnd('stairs') * 3), 10 + Math.floor(rnd('stairs') * 3), 15 + Math.floor(rnd('stairs') * 3)];
     this.hazards = []; void floors; void kinds; // no landing QTEs: the stairs are pure rhythm — never the same foot twice, as fast as you can
     Object.assign(this, { flights: 0, sCur: 0, beat: 0, stumble: 0, perfects: 0, misses: 0, haz: null, hazT: 0, dodge: 0 });
     UI.skipChip(false);
@@ -333,7 +333,7 @@ export class Finale {
     const hall = Sets.hallway(); s.add(hall);
     this.hall = hall; this.d = hall.userData.doors[2004];
     // one of three floor-20 encounters each run: the pitbull, the ladder guy, or the freshly mopped floor
-    const kind = this.hallKind = globalThis.__hallKind || HALL_KINDS[Math.floor(Math.random() * HALL_KINDS.length)];
+    const kind = this.hallKind = globalThis.__hallKind || HALL_KINDS[Math.floor(rnd('hallkind') * HALL_KINDS.length)];
     this.enc = null;
     const K = await prefetchKyle();
     s.add(K.root); K.root.visible = false; this.K = K;
@@ -364,7 +364,7 @@ export class Finale {
     }
     this.W.wave = 0;
     // three attacks, never the same side twice in a row, each faster than the last
-    const sides = []; for (let i = 0; i < 3; i++) { const opts = [-1, 0, 1].filter((v) => v !== sides[i - 1]); sides.push(opts[Math.floor(Math.random() * opts.length)]); }
+    const sides = []; for (let i = 0; i < 3; i++) { const opts = [-1, 0, 1].filter((v) => v !== sides[i - 1]); sides.push(opts[Math.floor(rnd('dog') * opts.length)]); }
     this.h = { st: 'intro', t: 0, i: 0, sides, res: [], pen: 0, slow: 1, cx: HALL.cx, cz: HALL.c0, dx: HALL.dx, dz: HALL.d0, wz: HALL.w0, gait: 0, barkT: 9, nextBark: 0, shake: 0, jawK: 0, dodge: null, atk: null, look: 0, bit: 0 };
     this.keyH = (e) => { if (!e.repeat && this.phase === 'hall') this.hallKey(e.key.toLowerCase(), e); };
     window.addEventListener('keydown', this.keyH);
@@ -424,7 +424,7 @@ export class Finale {
       if (t > 2.05 && h.nextBark < 4 && h.barkT > 0.28) { h.nextBark++; this.bark(); }
       if (t > 2.4 && !h.l1) { h.l1 = true; this.hallLine('BRUNO. he’s never like this i swear', 2100); }
       camK = t < 2.0 ? 'follow' : t < 3.6 ? 'dogcu' : 'game';
-      if (t > 3.6) { h.st = 'standoff'; h.t = 0; h.wait = 1.0 + Math.random() * 0.5; this.dui = UI.dogUI(); this.dui.bind((k) => this.hallKey(k)); }
+      if (t > 3.6) { h.st = 'standoff'; h.t = 0; h.wait = 1.0 + rnd('dog') * 0.5; this.dui = UI.dogUI(); this.dui.bind((k) => this.hallKey(k)); }
     } else if (h.st === 'standoff') {
       // pacing at the end of the leash, barking
       dp.crouch = 0.3; h.dx = HALL.dx + Math.sin(this.t * 3.1) * 0.13; dp.stride = 0.35; h.gait += dt * 7; dp.headYaw = Math.sin(this.t * 2.3) * 0.12;
@@ -475,7 +475,7 @@ export class Finale {
       if (h.t > hold + 0.75 && (h.downT == null || h.downT > DOWN_T)) {
         if (h.downT != null) { h.downAt = null; h.downT = null; }
         h.i++; h.bit = 0; h.dodge = null; h.yank = false; h.t = 0;
-        if (h.i >= 3) { h.st = 'bored'; this.finishDog(); } else { h.st = 'standoff'; h.wait = [1.1, 0.8, 0.6][h.i] * 0.7 + Math.random() * 0.55; }
+        if (h.i >= 3) { h.st = 'bored'; this.finishDog(); } else { h.st = 'standoff'; h.wait = [1.1, 0.8, 0.6][h.i] * 0.7 + rnd('dog') * 0.55; }
       }
     } else if (h.st === 'bored') {
       // gets bored: sits, yawns, scratches nothing in particular, tail starts going
@@ -523,7 +523,7 @@ export class Finale {
         for (const [s, side] of [[1, 'Left'], [-1, 'Right']]) ik2(R.C.bone(side + 'Arm'), R.C.bone(side + 'ForeArm'), R.C.bone(side + 'Hand'), sh.clone().add(R.root.localToWorld(V(s * 0.07, 0, 0)).sub(R.root.position)), R.root.localToWorld(V(s * 0.6, 0.6, -0.3)));
       }
       R.root.rotateZ(Math.sin(dT * 23) * 0.012 * sit); // shaking
-      if (dT > 0.6 && !h.ow) { h.ow = 1; this.UI.thought(['OW. ow ow ow.', 'my LEG', 'he got the bone. the BONE.'][Math.floor(Math.random() * 3)], 1800); A.sfx('growl', 0.4, 1.4); }
+      if (dT > 0.6 && !h.ow) { h.ow = 1; this.UI.thought(['OW. ow ow ow.', 'my LEG', 'he got the bone. the BONE.'][Math.floor(rnd('lines') * 3)], 1800); A.sfx('growl', 0.4, 1.4); }
       if (dT > DOWN_T - 0.9 && h.ow === 1) { h.ow = 2; A.sfx('step', 0.8, 0.6); }
     } else if (cWalk > 0.05) R.walk(h.st === 'pass' ? (h.limp ? 'walk' : 'jog') : 'walk', this.t * (h.st === 'pass' ? (h.limp ? 0.8 : 1.05) : 1.0), { offset: V(0, 0, 0), yaw: 0 });
     else if (bitK > 0 && h.downT == null) { R.C.root.position.set(0, 0, 0); R.C.root.rotation.set(0, 0, 0); R.C.pose([['idle', this.t, 1], ['reaction', 0.25 + h.t * 1.4, 0.45 * bitK, false]]); }
@@ -628,7 +628,7 @@ export class Finale {
       this.perfect = this.isPerfect() && this.allRowsPerfect(); const share = this.perfect ? 1 : this.tipShare(), paid = Math.round(this.G.tip * share * 4) / 4;
       this.paid = paid; this.G.fin = { ...(this.G.fin || {}), perfect: this.perfect, tipShare: share, tipPaid: paid };
       if (this.perfect) this.line = 'ok… that was actually insane. respect 🫡';
-      else if (paid > 0) this.line = ['fine. it was… acceptable', 'ok it’s mostly cold. mostly', 'decent. don’t let it go to ur head'][Math.floor(Math.random() * 3)];
+      else if (paid > 0) this.line = ['fine. it was… acceptable', 'ok it’s mostly cold. mostly', 'decent. don’t let it go to ur head'][Math.floor(rnd('lines') * 3)];
     }
     const t = (this.t += dt), R = this.G.R, K = this.K, cam = this.camera, A = this.Audio, UI = this.UI;
     const open = 0.05, take = 0.6, sip = 1.95, line = 2.35, close = 3.2, tipT = 3.6;
