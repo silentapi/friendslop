@@ -846,10 +846,10 @@ function leaveRun() { if (G.daily) { G.order = G.careerOrder ?? G.order; G.daily
 function startDaily() { if (!G.daily) G.careerOrder = G.order; G.daily = dailyInfo(); G.order = DAILY_ORDER; startOrder(); }
 window.__startDaily = startDaily;
 const SQ = { PERFECT: '🟩', GREAT: '🟦', GOOD: '🟨', OK: '🟧', BAD: '🟥' };
-// the copy-paste brag: score + grade, a Wordle-style strip (one square per section), and the link
-function shareText({ total, grade, rows, perfect, daily }) {
-  const head = daily ? `🛵 TIP BAIT Daily ${daily.label}` : `🛵 TIP BAIT #${G.order}`;
-  return [head, `🏆 ${total.toLocaleString('en-US')} pts · grade ${grade}${perfect ? ' ⭐' : ''}`, rows.filter((x) => x.r).map((x) => SQ[x.r.badge] || '⬛').join(''), SHARE_URL].join('\n');
+// the copy-paste brag, four lines: title + date, points + grade, one square per stage, link with a call to action
+function shareText({ total, grade, rows, daily }) {
+  return [daily ? `TIP BAIT Daily ${daily.label}` : `TIP BAIT #${G.order}`, `${total.toLocaleString('en-US')} pts · ${grade}`,
+    rows.filter((x) => x.r).map((x) => SQ[x.r.badge] || '⬛').join(''), `Beat me: ${SHARE_URL}`].join('\n');
 }
 window.__shareText = () => G.lastShare;
 window.__showResults = (line = 'kinda melted ngl') => showResults(line); // QA: preview the results screen
