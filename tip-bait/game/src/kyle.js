@@ -22,10 +22,10 @@ export const RIDE_TEXTS = [
   [0.07, ['hey where r u', 'did u pick it up yet?', 'is that u on the map? why r u so slow']],
   [0.3, ['i can see u on the map 👀', 'u went the wrong way i think', 'my zoom call starts soon fyi']],
   [0.55, ['my ice is gonna melt 😤', 'hurry its getting warm', 'is it still cold?? it better be cold']],
-  [0.78, ['almost here? im starving', 'ok i see u turning onto my street', 'pls hurry the tip is waiting 🙂']],
+  [0.78, ['almost here? im starving', 'we hungry', 'ok i see u turning onto my street', 'pls hurry the tip is waiting 🙂']],
   [0.93, ['im on the 20th floor btw', 'front desk will let u in. maybe', 'elevator might be broken lol. good luck']],
 ];
-export const LATE_TEXTS = ['bro ur late. tip going down 📉', 'its been forever. lowering ur tip', 'why is this taking so long?? -$5', 'my coffee is probably warm now. tip lowered', 'tick tock 🙄 tip going down'];
+export const LATE_TEXTS = ['bro ur late. tip going down 📉', 'we hungry', 'its been forever. lowering ur tip', 'why is this taking so long?? -$5', 'my coffee is probably warm now. tip lowered', 'tick tock 🙄 tip going down'];
 export const CRASH_TEXTS = ['bro did u just fall off ur bike??', 'the app says ur not moving. what happened', 'pls tell me my drink is ok', 'i saw that on the map lol', 'u ok? more importantly is my coffee ok'];
 export const FAST_TEXTS = ['ok ur actually fast 👀', 'wow ur making good time', 'nice. keep that energy'];
 export const RAIL_TEXTS = ['the train is coming i can hear it from here 🚆', 'dont get stuck at the train tracks pls'];
