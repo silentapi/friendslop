@@ -12,5 +12,5 @@ const js = readFileSync(join(dist, 'game.js'), 'utf8').replace(/<\/script/gi, '<
 const html = readFileSync(join(here, 'index.html'), 'utf8').replace('<script type="module" src="./game.js"></script>', () => `<script type="module">\n${js}\n</script>`);
 writeFileSync(join(dist, 'index.html'), html);
 rmSync(join(dist, 'game.js'));
-cpSync(join(here, 'assets'), join(dist, 'assets'), { recursive: true });
+cpSync(join(here, 'assets'), join(dist, 'assets'), { recursive: true, filter: (f) => !f.endsWith('.glb') });
 console.log('built', (html.length / 1024).toFixed(0), 'KB page');

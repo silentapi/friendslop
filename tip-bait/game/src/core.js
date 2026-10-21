@@ -38,7 +38,20 @@ export function floatGeo(g) {
   }
   return g;
 }
-export const loadGLB = (p) => once('glb:' + p, () => track(gltf.loadAsync(ASSETS + p)));
+// models ship as glTF JSON with the binary buffer embedded (base64); rebuild a GLB in memory and parse it, so no
+// data: URL is ever fetched (strict CSPs) and hosts only need to serve .json
+function toGLB(j) {
+  const b64 = j.buffers[0].uri.split(',')[1]; delete j.buffers[0].uri;
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const enc = new TextEncoder().encode(JSON.stringify(j));
+  const jl = Math.ceil(enc.length / 4) * 4, bl = Math.ceil(bin.length / 4) * 4;
+  const out = new Uint8Array(12 + 8 + jl + 8 + bl), dv = new DataView(out.buffer);
+  dv.setUint32(0, 0x46546c67, true); dv.setUint32(4, 2, true); dv.setUint32(8, out.length, true);
+  dv.setUint32(12, jl, true); dv.setUint32(16, 0x4e4f534a, true); out.set(enc, 20); for (let i = enc.length; i < jl; i++) out[20 + i] = 0x20;
+  dv.setUint32(20 + jl, bl, true); dv.setUint32(24 + jl, 0x004e4942, true); out.set(bin, 28 + jl);
+  return out.buffer;
+}
+export const loadGLB = (p) => once('glb:' + p, () => track(fetch(ASSETS + p.replace(/\.glb$/, '.json')).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); }).then((j) => gltf.parseAsync(toGLB(j), ''))));
 export const loadJSON = (p) => once('json:' + p, () => track(fetch(ASSETS + p).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); })));
 const texLoader = new THREE.TextureLoader();
 export function tex(p, { srgb = true, repeat = true } = {}) {
