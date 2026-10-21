@@ -213,7 +213,7 @@ export function createEvents(ctx) {
     ev.bi++;
     if (ev.bi >= ev.beats.length) { rivalFinish(ev); return; }
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length;
-    ev.st = 'gap'; ev.t = 0; ev.gap = (0.4 + Math.random() * 0.55) * (ev.bi === 0 ? 1.5 : 1);
+    ev.st = 'gap'; ev.t = 0; ev.gap = (0.3 + Math.random() * 0.35) * (ev.bi === 0 ? 1.4 : 1);
     ev.W = (ev.first && k === 0 ? 1.1 : [0.95, 0.88, 0.8][Math.min(2, k)]) * (1 - d * 0.1);
     ev.pressed = null;
   }
@@ -330,6 +330,10 @@ export function createEvents(ctx) {
     if (ev.hitStop > 0) E.slow = 0.35;
     if (ev.st === 'done') return;
     if (!p.root.visible) p.root.visible = true; // never ride against an invisible rival
+    if (E.locked) { // you can't steer while you're locked in the duel, so the road ahead is kept clear for as long as it lasts
+      for (const o of G.lv.obs) if (!o.dead && o.s > G.s - 2 && o.s < G.s + 70 && o.kind !== 'gate' && !o.drop) o.dead = true;
+      for (const w of G.pop.walkers) if (!w.gone && w.s > G.s - 2 && w.s < G.s + 70) w.gone = true;
+    }
     // place him: his lane, pushed out when you shove him, in toward you when he swings
     // shoulder to shoulder (≈1.5 m off your line), swinging wide while he catches up so he never brushes the lens
     const wide = ev.st === 'approach' ? 1 - smooth(seg(ev.ds, -6, -1)) : 0;
