@@ -26,6 +26,18 @@ export const progress = { onChange: null };
 function track(p) { total++; progress.onChange?.(done, total); return p.finally(() => { done++; progress.onChange?.(done, total); }); }
 export function once(key, fn) { if (!cache.has(key)) cache.set(key, fn()); return cache.get(key); }
 const gltf = new GLTFLoader();
+// quantized glTF attributes (int16/int8 normalized) can't hold baked transforms: expand to float first
+export function floatGeo(g) {
+  g = g.clone();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    if (a.isInterleavedBufferAttribute || a.normalized || !(a.array instanceof Float32Array)) {
+      const n = a.count, k = a.itemSize, arr = new Float32Array(n * k);
+      for (let i = 0; i < n; i++) for (let j = 0; j < k; j++) arr[i * k + j] = a.getComponent ? a.getComponent(i, j) : [a.getX(i), a.getY(i), a.getZ(i), a.getW(i)][j];
+      g.setAttribute(name, new THREE.BufferAttribute(arr, k));
+    }
+  }
+  return g;
+}
 export const loadGLB = (p) => once('glb:' + p, () => track(gltf.loadAsync(ASSETS + p)));
 export const loadJSON = (p) => once('json:' + p, () => track(fetch(ASSETS + p).then((r) => { if (!r.ok) throw new Error(p + ' ' + r.status); return r.json(); })));
 const texLoader = new THREE.TextureLoader();

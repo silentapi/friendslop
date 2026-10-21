@@ -150,7 +150,7 @@ window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (e.repeat && G.state !== 'order') return;
   if (G.state === 'title' && (k === 'enter' || k === ' ')) { e.preventDefault(); document.getElementById('play')?.click(); return; }
-  if (G.state === 'crashed' && k === 'enter') { document.getElementById('ad')?.click(); return; }
+  if (G.state === 'crashed' && k === 'enter') { document.getElementById('watchad')?.click(); return; }
   if (G.state === 'crashed' && k === 'r') { document.getElementById('rs')?.click(); return; }
   if (G.state === 'results' && k === 'enter') { document.getElementById('next')?.click(); return; }
   if (k === 'm') { Audio.unlock(); Audio.setMuted(!Audio.muted); UI.toast(Audio.muted ? 'Sound off' : 'Sound on', 900); return; }
@@ -353,6 +353,7 @@ async function startOrder(restart = false) {
 }
 function countdownGo() {
   G.state = 'count'; hud = UI.hud(); hud.onBoost(useBoost); hud.hint(true);
+  hud.update({ eta: G.eta, prog: 0, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: 0 });
   let n = 3; const step = () => { if (n > 0) { UI.countdown(n); Audio.sfx('pop', 0.8, 0.8 + (3 - n) * 0.15); n--; setTimeout(step, 600); } else { UI.countdown('GO!'); Audio.sfx('boom', 0.7); Audio.music('full'); G.state = 'run'; G.runT = 0; setTimeout(() => hud?.hint(false), 4200); } };
   step();
 }
@@ -376,7 +377,7 @@ function showResults(line) {
 function titleCamera(t) {
   const route = G.route, p = route.world(2, 0, 0);
   const a = t * 0.12 + 2.2;
-  camera.position.set(p.x + Math.sin(a) * 9, 3.4, p.z + Math.cos(a) * 9); camera.lookAt(p.x, 1.4, p.z);
+  camera.position.set(p.x + Math.sin(a) * 7.5, 2.6, p.z + Math.cos(a) * 7.5); camera.lookAt(p.x, 2.9, p.z);
   camera.fov = baseFov(); camera.updateProjectionMatrix();
   sun.target.position.copy(p); sun.position.copy(p).addScaledVector(SUN_DIR, 120);
   const f = route.at(2); G.R.root.position.copy(p); G.R.root.rotation.set(0, f.yaw, 0);

@@ -97,6 +97,7 @@ export function dm(text, { who = 'Kyle S', ttl = 3200 } = {}) {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 320); }, ttl);
 }
 export function pop(text, sub = '', { top = 34 } = {}) {
+  root().querySelectorAll('.pop').forEach((p) => p.remove());
   const el = h(`<div class="pop" style="top:${top}%">${text}${sub ? `<small>${sub}</small>` : ''}</div>`);
   root().appendChild(el); setTimeout(() => el.remove(), 950);
 }
@@ -111,9 +112,9 @@ export function crash({ tip, onAd, onRestart }) {
   const el = layer('crash', `
     <div class="wo">WIPED<br>OUT 💥</div>
     <div class="wsub">your <b>${money(tip)}</b> tip is in danger 😬</div>
-    <button class="btn" id="ad">📺 WATCH AD TO CONTINUE<small>keep your spot · keep the tip (lol)${TOUCH ? '' : ' · ⏎'}</small></button>
+    <button class="btn" id="watchad">📺 WATCH AD TO CONTINUE<small>keep your spot · keep the tip (lol)${TOUCH ? '' : ' · ⏎'}</small></button>
     <button class="btn ghost" id="rs">Restart order${TOUCH ? '' : ' (R)'}</button>`);
-  el.querySelector('#ad').onclick = onAd; el.querySelector('#rs').onclick = onRestart;
+  el.querySelector('#watchad').onclick = onAd; el.querySelector('#rs').onclick = onRestart;
   return el;
 }
 const ADS = [

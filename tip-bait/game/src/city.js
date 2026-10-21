@@ -1,6 +1,6 @@
 // Real Downtown Orlando corridor (OpenStreetMap © contributors, ODbL): building footprints + heights, street
 // widths and surfaces (asphalt / brick), the level street with lanes and curbs, palms and twin-globe lamps.
-import { THREE, BGU, V, mat, lam, emissive, mesh, box, cyl, tex, mulberry, loadGLB, canvasTex, plane, signTex } from './core.js';
+import { THREE, BGU, V, mat, lam, emissive, mesh, box, cyl, tex, mulberry, loadGLB, canvasTex, plane, signTex, floatGeo } from './core.js';
 
 const HERO = new Set(['615948622']); // Citi Tower is the hand-built model
 const PALETTE = [[0.93, 0.91, 0.87], [0.87, 0.83, 0.75], [0.96, 0.95, 0.93], [0.8, 0.78, 0.74], [0.84, 0.76, 0.64], [0.66, 0.64, 0.62], [0.9, 0.88, 0.82], [0.74, 0.58, 0.48]];
@@ -152,7 +152,7 @@ export async function dressing(scene, route, { cross, half }, skip = []) {
   const pg = await loadGLB('m/palm_tall.glb');
   const parts = [];
   pg.scene.updateMatrixWorld(true);
-  pg.scene.traverse((o) => { if (o.isMesh) parts.push({ geo: o.geometry.clone().applyMatrix4(o.matrixWorld), mat: o.material }); });
+  pg.scene.traverse((o) => { if (o.isMesh) parts.push({ geo: floatGeo(o.geometry).applyMatrix4(o.matrixWorld), mat: o.material }); });
   const bb = new THREE.Box3(); for (const p of parts) { p.geo.computeBoundingBox(); bb.union(p.geo.boundingBox); }
   const r = mulberry(5);
   const spots = [], lamps = [];
@@ -160,8 +160,8 @@ export async function dressing(scene, route, { cross, half }, skip = []) {
   for (let s = 8; s < route.length; s += 15) {
     if (blocked(s)) continue;
     for (const side of [-1, 1]) {
-      if (r() < 0.35) continue;
-      spots.push([s + r() * 4, side * (half(s) + 1.6 + r() * 0.6), 7.5 + r() * 4]);
+      if (r() < 0.6) continue;
+      spots.push([s + r() * 4, side * (half(s) + 2.6 + r() * 0.8), 6.5 + r() * 3]);
     }
     if ((s / 15) % 2 < 1) lamps.push([s + 7, half(s) + 0.9]), lamps.push([s + 7, -(half(s) + 0.9)]);
   }

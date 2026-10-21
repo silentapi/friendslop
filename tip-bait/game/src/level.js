@@ -1,6 +1,6 @@
 // Level content along a route: obstacles, boost pads, ramps, ice cubes, tourist crossings, the SunRail crossing.
 // Everything lives in route space (s along the street, lat across it: lanes at -2.6 / 0 / +2.6).
-import { THREE, BGU, V, mat, lam, mesh, box, cyl, mulberry, loadGLB, canvasTex, clamp } from './core.js';
+import { THREE, BGU, V, mat, lam, mesh, box, cyl, mulberry, loadGLB, canvasTex, clamp, floatGeo } from './core.js';
 import { character } from './chars.js';
 
 export const LANES = [-2.4, 0, 2.4];
@@ -10,7 +10,7 @@ const CAR_PAINT = [0xb8152a, 0xf2f2f0, 0x1b1d22, 0x2a4f8a, 0x8a8f96, 0x0e5c4a, 0
 function instancer(src, count, { length = null, height = null, paint = null } = {}) {
   src.updateMatrixWorld(true);
   const parts = [];
-  src.traverse((o) => { if (o.isMesh) parts.push({ geo: o.geometry.clone().applyMatrix4(o.matrixWorld), mat: o.material }); });
+  src.traverse((o) => { if (o.isMesh) parts.push({ geo: floatGeo(o.geometry).applyMatrix4(o.matrixWorld), mat: o.material }); });
   const bb = new THREE.Box3(); for (const p of parts) { p.geo.computeBoundingBox(); bb.union(p.geo.boundingBox); }
   const size = bb.getSize(V()), k = length ? length / Math.max(size.x, size.z) : height ? height / size.y : 1;
   const fix = new THREE.Matrix4().makeScale(k, k, k).multiply(new THREE.Matrix4().makeTranslation(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2));

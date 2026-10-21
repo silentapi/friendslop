@@ -58,7 +58,7 @@ while (i < 4000) {
   if (g.st === 'crashing') { await tick(12); await shot(`crash_${i}`); }
   if (g.st === 'crashed') {
     await shot(`crashui_${i}`);
-    await page.click('#ad'); await page.waitForTimeout(500); await shot(`ad_${i}`);
+    await page.click('#watchad'); await page.waitForTimeout(500); await shot(`ad_${i}`);
     await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
     await tick(2); await shot(`continue_${i}`);
     if (mode === 'crash' && crashedOnce) break;
