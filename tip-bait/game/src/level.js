@@ -2,6 +2,7 @@
 // Everything lives in route space (s along the street, lat across it: lanes at -2.6 / 0 / +2.6).
 import { THREE, BGU, V, mat, lam, mesh, box, cyl, mulberry, loadGLB, canvasTex, clamp, floatGeo } from './core.js';
 import { character } from './chars.js';
+import { coinParts, rampParts, padParts, pickupMesh } from './props3d.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 export const LANES = [-2.4, 0, 2.4];
@@ -70,12 +71,16 @@ function lynxBusMesh() {
   return g;
 }
 
-function boostPadTex() {
-  const t = canvasTex('boostpad', 128, 256, (c, w, h) => {
-    c.fillStyle = '#0a7a35'; c.fillRect(0, 0, w, h);
-    c.strokeStyle = '#8dffbd'; c.lineWidth = 18;
-    for (let i = -1; i < 4; i++) { const y = i * 64 + 20; c.beginPath(); c.moveTo(12, y + 40); c.lineTo(w / 2, y); c.lineTo(w - 12, y + 40); c.stroke(); }
-    c.strokeStyle = '#e8fff0'; c.lineWidth = 6; c.strokeRect(3, 3, w - 6, h - 6);
+function boostPadTex() { // neon chevrons on a dark panel; scrolls along the pad
+  const t = canvasTex('boostpad2', 256, 512, (c, w, h) => {
+    const bg = c.createLinearGradient(0, 0, w, 0); bg.addColorStop(0, '#04150b'); bg.addColorStop(0.5, '#0b3a1e'); bg.addColorStop(1, '#04150b'); c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 4; i++) {
+      const y = i * 128 + 24;
+      c.save(); c.shadowColor = '#46ff8f'; c.shadowBlur = 28;
+      const g = c.createLinearGradient(0, y, 0, y + 80); g.addColorStop(0, '#eafff2'); g.addColorStop(1, '#2ee66f'); c.fillStyle = g;
+      c.beginPath(); c.moveTo(w / 2, y); c.lineTo(w - 24, y + 70); c.lineTo(w - 70, y + 70); c.lineTo(w / 2, y + 30); c.lineTo(70, y + 70); c.lineTo(24, y + 70); c.closePath(); c.fill(); c.restore();
+    }
+    c.fillStyle = 'rgba(70,255,150,.55)'; c.fillRect(0, 0, 8, h); c.fillRect(w - 8, 0, 8, h);
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
 }
@@ -125,7 +130,7 @@ export async function buildLevel(scene, route, { order, seed = order, cross, rai
   const P = {
     cars(s, safe) { const n = r() < 0.5 + d * 0.4 ? 2 : 1, lanes = [0, 1, 2].filter((l) => l !== safe).sort(() => r() - 0.5).slice(0, n), v = 3 + r() * 3; lanes.forEach((li, k) => mover(s + k * 7, li, v)); ground(s - 2, safe, 8); return 12; },
     cones(s, safe) { const blocked = [0, 1, 2].filter((l) => l !== safe); for (const li of blocked) obs.push({ kind: r() < 0.5 ? 'cone' : 'barrier', s, lat: LANES[li], len: 0.6, w: 1.2, h: 0.75, v: 0 }); const jl = blocked[ri(blocked.length)]; arc(s - 3.6, jl, PHYS.JUMP, 0, vb, 8, 0.075); return 4; },
-    rampcar(s, safe) { const li = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; ramps.push({ s, lat: LANES[li] }); obs.push({ ...CAR, s: s + 11, lat: LANES[li], v: 0 }); arc(s + 1.7, li, PHYS.RAMP, 1.1, vb, 14, 0.07); ground(s - 12, li, 4); if (d > 0.3 && r() < 0.5) obs.push({ kind: 'cone', s: s + 4, lat: LANES[3 - li - safe], len: 0.6, w: 1.2, h: 0.75, v: 0 }); return 16; },
+    rampcar(s, safe) { const li = [0, 1, 2].filter((l) => l !== safe)[ri(2)]; ramps.push({ s, lat: LANES[li] }); obs.push({ ...CAR, s: s + 7.2, lat: LANES[li], v: 0 }); /* inside the jump's clearance at base speed */ arc(s + 1.7, li, PHYS.RAMP, 1.1, vb, 14, 0.07); ground(s - 12, li, 4); if (d > 0.3 && r() < 0.5) obs.push({ kind: 'cone', s: s + 4, lat: LANES[3 - li - safe], len: 0.6, w: 1.2, h: 0.75, v: 0 }); return 16; },
     bus(s, safe) { const li = safe === 0 ? 2 : safe === 2 ? 0 : (r() < 0.5 ? 0 : 2); obs.push({ kind: 'bus', s, lat: LANES[li] + (li ? 1.2 : -1.2), len: 12, w: 2.6, h: 3.1, v: 4, pull: LANES[li], t0: null }); ground(s - 6, safe, 7); return 22; },
     merge(s, safe) { const a = safe === 1 ? (r() < 0.5 ? 0 : 2) : safe; const v = 4 + r() * 1.5; const ru = runUp(s, v); obs.push({ ...CAR, merge: true, s: s - ru.drift, act: ru.act, lat: LANES[a], to: LANES[1], v, t0: null, meet: s }); if (r() < 0.3 + d * 0.5) mover(s + 4, 2 - a, 4); ground(s + 7, a, 5); return 14; },
     chicane(s, safe) { const b = safe === 1 ? (r() < 0.5 ? 0 : 2) : (r() < 0.3 + d * 0.4 ? 2 - safe : 1), gap = lerpN(18, 13, d) * vb / 13.2; for (const [row, keep] of [[s, safe], [s + gap, b]]) for (let li = 0; li < 3; li++) if (li !== keep) obs.push({ kind: 'jersey', s: row, lat: LANES[li], len: 0.8, w: 2.2, h: 1.4, v: 0 }); ground(s - 4, safe, 3); ground(s + gap - 3, b, 3); return { len: gap + 2, exit: b }; },
@@ -237,33 +242,26 @@ export async function populate(scene, route, lv) {
   const arrowTex = (dir) => canvasTex('merge' + dir, 128, 96, (c, w, h) => { c.translate(w / 2, h / 2); c.scale(dir, 1); c.fillStyle = '#ffa21a'; c.strokeStyle = '#1a1206'; c.lineWidth = 8; c.lineJoin = 'round'; c.beginPath(); c.moveTo(-50, -18); c.lineTo(8, -18); c.lineTo(8, -40); c.lineTo(54, 0); c.lineTo(8, 40); c.lineTo(8, 18); c.lineTo(-50, 18); c.closePath(); c.stroke(); c.fill(); });
   const arrowMat = { 1: new THREE.SpriteMaterial({ map: arrowTex(1), depthTest: false }), [-1]: new THREE.SpriteMaterial({ map: arrowTex(-1), depthTest: false }) };
   for (const o of out.mergers) { o.arrow = new THREE.Sprite(arrowMat[Math.sign(o.to - o.lat)]); o.arrow.scale.set(2.2, 1.6, 1); o.arrow.renderOrder = 5; o.arrow.visible = false; scene.add(o.arrow); }
-  // boost pads (scrolling chevrons)
-  const padT = boostPadTex();
-  const pim = new THREE.InstancedMesh(new THREE.PlaneGeometry(2.3, 5).rotateX(-Math.PI / 2).rotateY(Math.PI) /* chevrons point (and scroll) the way you ride */, new THREE.MeshBasicMaterial({ map: padT, transparent: true, opacity: 0.95, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -16 }), Math.max(1, lv.pads.length));
-  lv.pads.forEach((o, i) => pim.setMatrixAt(i, place(o.s, o.lat, 0.09)));
-  scene.add(pim); out.padTex = padT;
-  // ramps (orange wedge with chevrons)
-  const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(3.4, 0); sh.lineTo(3.4, 1.1); sh.lineTo(0, 0);
-  const rg = new THREE.ExtrudeGeometry(sh, { depth: 2.2, bevelEnabled: false }); rg.translate(-1.7, 0, -1.1); rg.rotateY(-Math.PI / 2);
-  const rim = new THREE.InstancedMesh(rg, new THREE.MeshLambertMaterial({ color: 0xff6a00, emissive: 0x401400 }), Math.max(1, lv.ramps.length));
-  lv.ramps.forEach((o, i) => rim.setMatrixAt(i, place(o.s, o.lat, 0, 0, V(o.mega ? 1.15 : 1, (o.h ?? 1.1) / 1.1, (o.len ?? 3.4) / 3.4))));
-  rim.castShadow = true; scene.add(rim);
+  // boost pads: raised metal frame, glowing scrolling chevrons, a pulsing halo
+  const padT = boostPadTex(), pp = padParts(padT);
+  out.padParts = pp.geos.map((g, k) => { const im = new THREE.InstancedMesh(g, pp.mats[k], Math.max(1, lv.pads.length)); lv.pads.forEach((o, i) => im.setMatrixAt(i, place(o.s, o.lat, 0.03))); im.receiveShadow = k === 0; scene.add(im); return im; });
+  out.padTex = padT; out.padHalo = pp.mats[2];
+  // ramps: diamond-plate deck with a hazard lip, painted sides, rails and struts (instanced per part)
+  const rp = rampParts();
+  rp.geos.forEach((g, k) => { const im = new THREE.InstancedMesh(g, rp.mats[k], Math.max(1, lv.ramps.length)); lv.ramps.forEach((o, i) => im.setMatrixAt(i, place(o.s, o.lat, 0, 0, V(o.mega ? 1.15 : 1, (o.h ?? 1.1) / 1.1, (o.len ?? 3.4) / 3.4)))); im.castShadow = true; im.receiveShadow = true; scene.add(im); });
   // ice cubes
   const iceG = new THREE.BoxGeometry(0.42, 0.42, 0.42);
   const iim = new THREE.InstancedMesh(iceG, new THREE.MeshStandardMaterial({ color: 0xc8f2ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.85, emissive: 0x2a6a88, emissiveIntensity: 0.6 }), Math.max(1, lv.ice.length));
   iim.frustumCulled = false; scene.add(iim); out.iceMesh = iim;
   // tip coins (spinning gold discs)
-  const coinG = new THREE.CylinderGeometry(0.32, 0.32, 0.07, 20).rotateX(Math.PI / 2);
-  out.coinMesh = new THREE.InstancedMesh(coinG, new THREE.MeshStandardMaterial({ color: 0xffc21a, metalness: 0.85, roughness: 0.28, emissive: 0x7a4a00, emissiveIntensity: 0.7 }), Math.max(1, lv.coins.length));
+  const cp = coinParts();
+  out.coinMesh = new THREE.InstancedMesh(cp.geo, cp.mats, Math.max(1, lv.coins.length));
   out.coinMesh.frustumCulled = false; scene.add(out.coinMesh);
   // power-up pickups: glowing badge sprites over a ground ring
   const PU = { magnet: ['🧲', '#ff3d5a'], shield: ['🪖', '#3d8bff'], cool: ['❄️', '#46d8ff'], x2: ['✖2', '#ffc83d'] };
   out.pickMeshes = lv.pickups.map((p) => {
-    const [icon, col] = PU[p.kind];
-    const t = canvasTex('pu' + p.kind, 128, 128, (c, w, h) => { const g = c.createRadialGradient(64, 64, 10, 64, 64, 64); g.addColorStop(0, '#fff'); g.addColorStop(0.55, col); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.beginPath(); c.arc(64, 64, 62, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(64, 64, 40, 0, 7); c.fill(); c.font = '900 50px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#111'; c.fillText(icon, 64, 68); });
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true })); sp.scale.set(1.5, 1.5, 1);
-    const ring = mesh(new THREE.RingGeometry(0.7, 0.95, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 }), { cast: false });
-    const g = new THREE.Group(); g.add(sp, ring); route.world(p.s, p.lat, 0.07, g.position); scene.add(g); p.mesh = g; p.sprite = sp; return g;
+    const [icon, col] = PU[p.kind], g = pickupMesh(icon, col);
+    route.world(p.s, p.lat, 0, g.position); scene.add(g); p.mesh = g; p.sprite = g.userData.orbG; return g;
   });
   // puddles
   const pud = new THREE.InstancedMesh(new THREE.CircleGeometry(1.4, 20).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x223040, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.7 }), Math.max(1, lv.puddles.length));

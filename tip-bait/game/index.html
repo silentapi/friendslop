@@ -99,6 +99,10 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
 .pop small { display: block; font: 900 22px var(--display); color: var(--gobbl); -webkit-text-stroke: 5px #0d0f12; }
 @keyframes popA { 0% { transform: translate(-50%, -50%) scale(.3) rotate(-5deg); } 25% { transform: translate(-50%, -50%) scale(1.1) rotate(-5deg); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -80%) scale(1) rotate(-5deg); } }
 .speed { position: absolute; inset: -10%; pointer-events: none; opacity: 0; transition: opacity .15s; background: repeating-conic-gradient(from 0deg at 50% 46%, transparent 0deg 4deg, rgba(255,255,255,.7) 4deg 4.5deg, transparent 4.5deg 9deg, rgba(160,255,200,.55) 9deg 9.4deg, transparent 9.4deg 14deg); -webkit-mask: radial-gradient(circle at 50% 46%, transparent 32%, rgba(0,0,0,.6) 55%, #000 78%); mask: radial-gradient(circle at 50% 46%, transparent 32%, rgba(0,0,0,.6) 55%, #000 78%); }
+.bglow { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .2s; box-shadow: inset 0 0 120px 30px rgba(46,230,111,.55); animation: bglow .5s infinite alternate; }
+@keyframes bglow { to { box-shadow: inset 0 0 160px 50px rgba(46,230,111,.35); } }
+.flash { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 60%, rgba(220,255,235,.85), rgba(46,230,111,.35) 45%, transparent 75%); animation: flashA .42s forwards; z-index: 6; }
+@keyframes flashA { from { opacity: 1; } to { opacity: 0; } }
 .hint { position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + 150px); text-align: center; font: 800 18px var(--body); color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.8); transition: opacity .4s; }
 .hint b { display: inline-block; padding: 4px 10px; margin: 0 3px; border-radius: 8px; background: rgba(13,15,18,.7); }
 .place { position: absolute; left: 50%; top: calc(var(--st) + 156px); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 9px 16px 9px 10px; border-radius: 16px; background: rgba(13,15,18,.78); white-space: nowrap; animation: dmIn .3s both; }

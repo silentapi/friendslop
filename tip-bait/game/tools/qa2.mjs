@@ -45,6 +45,7 @@ const pilot = () => page.evaluate((crashMode) => {
   const g = window.__G, LANES = g.LANES;
   if (g.state !== 'run' || crashMode) return null;
   const cap = (k) => 'Arrow' + k.slice(5, 6).toUpperCase() + k.slice(6);
+  if (g.tech) return cap(g.tech.key);
   if (g.akira && !g.akira.res) return globalThis.__akiraFail && g.akira.idx === 1 ? 'ArrowUp' === cap(g.akira.seq[1]) ? 'ArrowLeft' : 'ArrowUp' : cap(g.akira.seq[g.akira.idx]);
   if (g.qte) return (1 - g.qte.t / g.qte.dur) < 0.22 ? g.qte.key.replace('arrow', 'Arrow').replace('Arrowup', 'ArrowUp').replace('Arrowdown', 'ArrowDown').replace('Arrowleft', 'ArrowLeft').replace('Arrowright', 'ArrowRight') : null;
   { const m = g.lv.ramps.find((r) => r.mega && r.s - g.s > 0 && r.s - g.s < 45); if (m && g.lane !== 1) return g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; if (m) return null; }
@@ -103,7 +104,7 @@ if ((await G()).st === 'finale') {
   k = 0;
   while ((f = await F()).ph === 'stairs' && k < 1500) {
     if (f.haz) { if (f.haz[1] > 0.3) await key(f.haz[0].replace('arrow', 'Arrow').replace(/Arrow(.)/, (m, c) => 'Arrow' + c.toUpperCase())); }
-    else if (Math.abs(f.u - 0.5) < 0.035) await key('ArrowUp');
+    else if (Math.abs(f.u - 0.5) < 0.035 || (process.env.STAIR_MISS && k % 23 === 5)) await key('ArrowUp');
     await tick(1); k++;
     if (k % 60 === 20 || (f.haz && f.haz[1] < 0.05)) await shot(`fin_stairs_${String(k).padStart(4, '0')}`);
   }

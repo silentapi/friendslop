@@ -1,5 +1,5 @@
 // Interior sets ported from the trailer: Citi Tower lobby (elevators OUT OF ORDER), 21-floor stairwell, 20th-floor hallway.
-import { THREE, V, mat, emissive, mesh, box, cyl, canvasTex, mulberry } from './core.js';
+import { THREE, V, mat, emissive, mesh, box, cyl, canvasTex, mulberry, tex } from './core.js';
 const pbr = (id, o = {}) => new THREE.MeshLambertMaterial({ color: o.color ?? 0xcccccc });
 const signTex = (key, text, { w = 1024, h = 256, font = '800 150px system-ui, sans-serif', color = '#fff', bg = 'rgba(0,0,0,0)', align = 'center' } = {}) =>
   canvasTex('set:' + key, w, h, (c) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.font = font; c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = color; c.fillText(text, align === 'center' ? w / 2 : 40, h / 2 + 6); });
@@ -62,26 +62,61 @@ export function lobby(ctx) {
   return g;
 }
 export const FH = 3.1;
+// The stairwell, built as a dollhouse cutaway (no +x wall): painted block walls with a colour band, concrete steps
+// with yellow anti-slip nosing on solid stringers, steel rails with balusters, and on every landing a metal door,
+// a glowing EXIT sign, a stencilled floor number, strip lights and a red sprinkler riser.
 export function stairwell(ctx, floors = 21) {
-  const g = new THREE.Group();
-  const conc = pbr('concrete_pavement', { world: 2, color: 0xa8a49c });
-  const paint = mat(0xdcd8cc, { roughness: 0.9 });
-  const yellow = mat(0xe8b800, { roughness: 0.6 }), rail = mat(0x2a6a3a, { roughness: 0.4, metalness: 0.5 });
-  const Ht = floors * FH + 4;
-  box(0.3, Ht, 6, paint, -3.15, Ht / 2, 0, g); box(0.3, Ht, 6, paint, 3.15, Ht / 2, 0, g); box(6.6, Ht, 0.3, paint, 0, Ht / 2, -3.15, g);
-  const stepG = new THREE.BoxGeometry(1.3, 0.18, 0.3); const steps = [];
+  const g = new THREE.Group(), Ht = floors * FH + 4;
+  const tiled = (path, rx, ry, color = 0xffffff) => { const t = tex(path).clone(); t.needsUpdate = true; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return new THREE.MeshLambertMaterial({ map: t, color }); };
+  // walls: back (-x) and both ends (±z); the +x side stays open for the camera
+  box(0.3, Ht, 6.6, tiled('tex/cmu_wall.jpg', 6.6 / 1.6, Ht / 1.6, 0xf2eee4), -3.15, Ht / 2, 0, g);
+  for (const z of [-3.15, 3.15]) box(6.6, Ht, 0.3, tiled('tex/cmu_wall.jpg', 6.6 / 1.6, Ht / 1.6, 0xf2eee4), 0, Ht / 2, z, g);
+  const concM = tiled('tex/stair_concrete.jpg', 1, 1, 0xd8d4cc), slabM = tiled('tex/stair_concrete.jpg', 3, 1, 0xcfcac2);
+  const band = new THREE.MeshLambertMaterial({ color: 0x2f6f8f }), yellow = new THREE.MeshLambertMaterial({ color: 0xf2c200 }), steel = mat(0x5d656e, { metalness: 0.7, roughness: 0.35 }), red = mat(0xb3261e, { roughness: 0.5 });
+  const steps = [], noses = [], stringers = [], balusters = [];
+  const doorTex = canvasTex('stairdoor', 256, 512, (c, w, h) => { c.fillStyle = '#7d8790'; c.fillRect(0, 0, w, h); c.fillStyle = '#6a737b'; c.fillRect(14, 14, w - 28, h - 28); c.fillStyle = '#20272e'; c.fillRect(60, 70, 70, 120); c.fillStyle = 'rgba(160,190,210,.6)'; c.fillRect(66, 76, 58, 108); c.fillStyle = '#c9ccd0'; c.fillRect(40, 270, w - 80, 16); c.fillStyle = '#a7abb0'; c.fillRect(w - 50, 250, 14, 60); });
+  const exitTex = canvasTex('exitsign', 256, 96, (c, w, h) => { c.fillStyle = '#0d3b1d'; c.fillRect(0, 0, w, h); c.fillStyle = '#4dff8a'; c.font = '900 64px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('EXIT', w / 2, h / 2 + 3); });
+  const doorM = new THREE.MeshLambertMaterial({ map: doorTex }), exitM = new THREE.MeshBasicMaterial({ map: exitTex, toneMapped: false });
   for (let f = 0; f < floors; f++) {
     const y0 = f * FH;
-    box(6, 0.2, 1.6, conc, 0, y0 - 0.1, 2.2, g); box(6, 0.2, 1.4, conc, 0, y0 + FH / 2 - 0.1, -2.2, g);
-    box(6, 0.04, 0.08, yellow, 0, y0 + 0.01, 1.42, g);
-    for (let k = 0; k < 9; k++) steps.push([-1.5, y0 + (k + 1) * FH / 18 - 0.09, 1.25 - k * 0.32], [1.5, y0 + FH / 2 + (k + 1) * FH / 18 - 0.09, -1.3 + k * 0.32]);
-    for (const [x, ya, za, zb] of [[-0.75, y0, 1.4, -1.5], [0.75, y0 + FH / 2, -1.5, 1.4]]) { const a = V(x, ya + 1, za), b = V(x, ya + FH / 2 + 1, zb), d = b.clone().sub(a); const r = mesh(new THREE.CylinderGeometry(0.03, 0.03, d.length(), 8), rail); r.position.copy(a).add(b).multiplyScalar(0.5); r.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); g.add(r); }
-    const num = plane(signTex('fl' + (f + 1), String(f + 1), { w: 256, h: 256, font: '900 190px system-ui, sans-serif', color: '#1a1a1a', bg: '#dcd8cc' }), 1.5, 1.5, { transparent: false }); num.position.set(2.99, y0 + 1.7, 2.2); num.rotation.y = -Math.PI / 2; g.add(num);
-    box(1.4, 0.06, 0.1, emissive(0xeef4ff, 4), 0, y0 + FH - 0.25, 2.9, g);
-    if (f % 3 === 0) { const pl = new THREE.PointLight(0xe8f0ff, 10, 9, 2); pl.position.set(0, y0 + FH - 0.6, 2); g.add(pl); }
+    // landings (floor level at the front, half-landing at the back) with a yellow safety edge
+    box(5.7, 0.22, 1.6, slabM, 0, y0 - 0.11, 2.2, g); box(5.7, 0.04, 0.08, yellow, 0, y0 + 0.011, 1.42, g);
+    box(5.7, 0.22, 1.4, slabM, 0, y0 + FH / 2 - 0.11, -2.2, g); box(5.7, 0.04, 0.08, yellow, 0, y0 + FH / 2 + 0.011, -1.52, g);
+    // the painted colour band along the walls at this storey
+    box(0.02, 0.32, 6.3, band, -2.99, y0 + 1.05, 0, g);
+    // flights: 9 steps each way; nosing strips; a solid sloped stringer under each flight
+    for (let k = 0; k < 9; k++) {
+      steps.push([-1.5, y0 + (k + 1) * FH / 18 - 0.09, 1.25 - k * 0.32], [1.5, y0 + FH / 2 + (k + 1) * FH / 18 - 0.09, -1.3 + k * 0.32]);
+      noses.push([-1.5, y0 + (k + 1) * FH / 18 + 0.005, 1.25 - k * 0.32 - 0.13], [1.5, y0 + FH / 2 + (k + 1) * FH / 18 + 0.005, -1.3 + k * 0.32 + 0.13]);
+    }
+    stringers.push([-1.5, y0 + FH / 4 - 0.25, -0.05, 1], [1.5, y0 + FH * 0.75 - 0.25, 0.0, -1]);
+    // rails: a sloped steel tube with posts and balusters on the open side of each flight
+    for (const [x, ya, za, zb] of [[-0.8, y0, 1.4, -1.5], [0.8, y0 + FH / 2, -1.5, 1.4]]) {
+      const a = V(x, ya + 1.0, za), b2 = V(x, ya + FH / 2 + 1.0, zb), d = b2.clone().sub(a);
+      const r = mesh(new THREE.CylinderGeometry(0.035, 0.035, d.length(), 8), steel); r.position.copy(a).add(b2).multiplyScalar(0.5); r.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize()); g.add(r);
+      for (let k = 0; k <= 10; k++) { const p = a.clone().lerp(b2, k / 10); balusters.push([x, p.y - 0.5, p.z]); }
+    }
+    // landing furniture (visible wall = back wall at x = -3)
+    const door = mesh(new THREE.PlaneGeometry(1.0, 2.1), doorM); door.position.set(-2.99, y0 + 1.05, 2.25); door.rotation.y = Math.PI / 2; g.add(door);
+    box(0.06, 2.2, 0.08, steel, -2.98, y0 + 1.1, 1.72, g); box(0.06, 2.2, 0.08, steel, -2.98, y0 + 1.1, 2.78, g); box(0.06, 0.08, 1.14, steel, -2.98, y0 + 2.18, 2.25, g);
+    const ex = mesh(new THREE.PlaneGeometry(0.5, 0.19), exitM, { cast: false }); ex.position.set(-2.97, y0 + 2.45, 2.25); ex.rotation.y = Math.PI / 2; g.add(ex);
+    const num = mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshLambertMaterial({ map: signTex('stfl' + (f + 1), String(f + 1), { w: 256, h: 256, font: '900 190px system-ui, sans-serif', color: '#1d2a33' }), transparent: true }), { cast: false });
+    num.position.set(-2.98, y0 + 1.9, 0.95); num.rotation.y = Math.PI / 2; g.add(num);
+    const lab = mesh(new THREE.PlaneGeometry(1.0, 0.18), new THREE.MeshLambertMaterial({ map: signTex('stlab', 'FLOOR', { w: 512, h: 96, font: '800 64px system-ui, sans-serif', color: '#1d2a33' }), transparent: true }), { cast: false });
+    lab.position.set(-2.98, y0 + 1.05, 0.95); lab.rotation.y = Math.PI / 2; g.add(lab);
+    box(0.08, 0.05, 1.5, emissive(0xf4f8ff, 3), -2.6, y0 + FH - 0.3, 2.2, g); box(0.08, 0.05, 1.3, emissive(0xf4f8ff, 3), -2.6, y0 + FH / 2 - 0.3 + FH / 2 - 0.2, -2.2, g);
+    box(0.12, 0.08, 6.0, red, -2.85, y0 + FH - 0.12, 0, g); // sprinkler branch
+    if (f % 4 === 1) { cyl(0.09, 0.09, 0.5, red, 12, -2.85, y0 + 0.55, 0.3, g); box(0.06, 0.12, 0.06, mat(0x222222), -2.85, y0 + 0.85, 0.3, g); } // extinguisher
+    if (f % 3 === 0) { const pl = new THREE.PointLight(0xf0f4ff, 10, 10, 2); pl.position.set(-1, y0 + FH - 0.6, 1.6); g.add(pl); }
   }
-  const im = new THREE.InstancedMesh(stepG, conc, steps.length); const m4 = new THREE.Matrix4();
-  steps.forEach(([x, y, z], i) => im.setMatrixAt(i, m4.makeTranslation(x, y, z))); im.castShadow = im.receiveShadow = true; g.add(im);
+  cyl(0.07, 0.07, Ht, red, 10, -2.85, Ht / 2, -2.85, g); // sprinkler riser
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+  const inst = (geo, material, list, fn) => { const im = new THREE.InstancedMesh(geo, material, list.length); list.forEach((it, i) => { fn(it, m4); im.setMatrixAt(i, m4); }); im.castShadow = im.receiveShadow = true; g.add(im); return im; };
+  inst(new THREE.BoxGeometry(1.3, 0.18, 0.32), concM, steps, ([x, y, z], m) => m.makeTranslation(x, y, z));
+  inst(new THREE.BoxGeometry(1.3, 0.02, 0.06), yellow, noses, ([x, y, z], m) => m.makeTranslation(x, y, z));
+  const flightLen = Math.hypot(9 * 0.32, FH / 2), slope = Math.atan2(FH / 2, 9 * 0.32);
+  inst(new THREE.BoxGeometry(1.3, 0.25, flightLen), slabM, stringers, ([x, y, z, dir], m) => { q.setFromAxisAngle(V(1, 0, 0), dir * slope); m.compose(V(x, y, z), q, sc.set(1, 1, 1)); });
+  inst(new THREE.CylinderGeometry(0.012, 0.012, 1.0, 5), steel, balusters, ([x, y, z], m) => m.makeTranslation(x, y, z));
   return g;
 }
 export function stairPath(s) {

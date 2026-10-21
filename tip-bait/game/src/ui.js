@@ -66,11 +66,11 @@ export function hud(marks = []) {
     <div class="scorebox"><div class="score" id="score">0</div><div class="mult" id="mult">x1</div><div class="coins" id="coins"><i></i><span>0</span></div></div>
     <div class="pups" id="pups"></div>
     <div class="icem" id="icem"><div class="tube"><i id="icef"></i></div><span>ICE</span></div>
-    <div class="speed" id="speed"></div>
+    <div class="speed" id="speed"></div><div class="bglow" id="bglow"></div>
     <div class="hint" id="hint">${TOUCH ? 'Swipe <b>⟵ ⟶</b> to switch lanes · <b>↑</b> to jump' : '<b>← →</b> or <b>A D</b> switch lanes · <b>↑ W Space</b> jump · <b>Shift</b> boost'}</div>
     <button class="boostb" id="boost" aria-label="Boost"><span>BOOST${TOUCH ? '' : '<br><small>SHIFT</small>'}</span></button>`);
   const q = (s) => el.querySelector(s);
-  const me = q('#me'), etaEl = q('#eta'), etaS = q('#eta span'), prog = q('#progf'), ice = q('#icef'), icem = q('#icem'), boost = q('#boost'), tipv = q('#tipv'), speed = q('#speed');
+  const me = q('#me'), etaEl = q('#eta'), etaS = q('#eta span'), prog = q('#progf'), ice = q('#icef'), icem = q('#icem'), boost = q('#boost'), tipv = q('#tipv'), speed = q('#speed'), bglow = q('#bglow');
   const scoreEl = q('#score'), multEl = q('#mult'), coinsEl = q('#coins span'), pups = q('#pups');
   let last = {};
   return {
@@ -86,7 +86,7 @@ export function hud(marks = []) {
       ice.style.height = `${Math.max(0, ic)}%`; icem.classList.toggle('low', ic < 25);
       boost.style.setProperty('--p', `${Math.min(100, bo * 100)}%`); boost.classList.toggle('ready', bo >= 1);
       if (tip !== last.tip) { if (last.tip != null && tip < last.tip) { const d = h(`<div class="tipdelta">-${money(last.tip - tip)}</div>`); tipv.parentElement.appendChild(d); setTimeout(() => d.remove(), 1400); tipv.parentElement.classList.remove('hit'); void tipv.offsetWidth; tipv.parentElement.classList.add('hit'); } tipv.textContent = money(tip); last.tip = tip; }
-      speed.style.opacity = sp;
+      speed.style.opacity = sp; bglow.style.opacity = sp;
     },
     hint(show) { q('#hint').style.opacity = show ? 1 : 0; },
     onBoost(fn) { boost.addEventListener('pointerdown', (e) => { e.stopPropagation(); fn(); }); },
@@ -148,7 +148,7 @@ export function qte({ key, label = '' }) {
   const el = layer('qte', `<div class="qbox"><div class="qring" id="qring"></div><div class="qkey">${KEYCAP[key] || key.toUpperCase()}</div><div class="qlab">${label}</div></div>`);
   const ring = el.querySelector('#qring');
   return {
-    set(u) { ring.style.transform = `translate(-50%,-50%) scale(${0.55 + u * 1.6})`; ring.classList.toggle('hot', u < 0.28 && u > 0.02); },
+    set(u) { ring.style.transform = `translate(-50%,-50%) scale(${0.55 + u * 1.6})`; ring.classList.toggle('hot', u < 0.2 && u > 0.02); },
     result(grade, sub = '') { el.querySelector('.qbox').classList.add('g-' + grade.toLowerCase()); el.querySelector('.qlab').innerHTML = `<b>${grade}</b>${sub ? ' · ' + sub : ''}`; setTimeout(() => el.remove(), 700); },
     remove() { el.remove(); },
   };
@@ -168,6 +168,7 @@ export function holdFrame() {
   remove('akira');
   return layer('akira', `<div class="lbx t"></div><div class="lbx b"></div>`);
 }
+export function flash() { const el = h('<div class="flash"></div>'); root().appendChild(el); setTimeout(() => el.remove(), 420); }
 export function countdown(n) { remove('count'); const el = layer('count', `<div class="count">${n}</div>`); el.style.padding = 0; setTimeout(() => el.remove(), 700); }
 export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl); }
 
@@ -235,7 +236,7 @@ export function deskUI() {
       <div class="knocknow" id="knocknow"><div class="qring" id="kring"></div><b>KNOCK NOW!</b><small>${TOUCH ? 'tap KNOCK' : 'press Space'}</small></div>
       <div class="bstat" id="bstat">📱 she’s on her phone</div>
       <div class="bbar"><i id="bm"></i><em>GET NOTICED</em></div>
-      <div class="bhint">${TOUCH ? '<b>WAVE</b> fast to get noticed · <b>KNOCK</b> only when she looks up' : 'Mash <b>←</b> <b>→</b> to wave · when she looks up, <b>Space</b> to knock · knock early and she ignores you'}</div>
+      <div class="bhint">${TOUCH ? '<b>WAVE</b> fast to get noticed · <b>KNOCK</b> only when she looks up' : 'Mash <b>←</b> <b>→</b> to fill the meter · keep it full · she glances up for a split second — <b>Space</b> to knock right then'}</div>
       ${TOUCH ? '<div class="stairs"><button id="bw">👋 WAVE</button><button id="bk">✊ KNOCK</button></div>' : ''}
     </div>`);
   const st = el.querySelector('#bstat'), kn = el.querySelector('#knocknow'), ring = el.querySelector('#kring');

@@ -72,7 +72,7 @@ export class Finale {
     R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.8, 0, 5.0);
     this.cup = coldCup(); s.add(this.cup);
     this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 42; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
-    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 1 ? 1.1 : 1.5 });
+    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 0 ? 0.55 : 0.8, glanceIn: null });
     this.bui = UI.deskUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (this.phase === 'locked') { if (k === 'arrowleft' || k === 'a') this.wave(0); else if (k === 'arrowright' || k === 'd') this.wave(1); else if (k === ' ' || k === 'arrowup' || k === 'w' || k === 'enter') { e.preventDefault(); this.knock(); } } else if (this.phase === 'stairs') this.stairKey(k, e); };
     window.addEventListener('keydown', this.keyH);
@@ -81,7 +81,7 @@ export class Finale {
   wave(side) {
     if (!this.inputOn || this.buzzed != null || side === this.lastSide) return;
     this.lastSide = side; this.waveT = 0.3; this.wavePh = side; this.Audio.sfx('whoosh', 0.2, 1.8);
-    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.075); if (this.notice >= 1) this.setDesk('looking'); }
+    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.075); if (this.notice >= 1 && this.glanceIn == null) this.glanceIn = 0.25 + Math.random() * 1.3; } // full: she'll glance up at some point — keep waving
   }
   knock() {
     if (!this.inputOn || this.buzzed != null || this.knockCd > 0) return;
@@ -101,7 +101,8 @@ export class Finale {
     if (this.inputOn && this.buzzed == null) {
       const el = t - this.t0; this.phaseT += dt;
       if (this.dphase === 'phone') this.notice = Math.max(0, this.notice - dt * 0.16);
-      if (this.dphase === 'looking' && this.phaseT > this.window) { this.setDesk('phone'); this.notice = 0.3; this.penalty += 0.5; UI.pop('MISSED HER', 'back to her phone'); A.sfx('bwomp', 0.4, 1.2); }
+      if (this.glanceIn != null && this.dphase === 'phone') { if (this.notice < 0.85) this.glanceIn = null; else if ((this.glanceIn -= dt) <= 0) { this.glanceIn = null; this.setDesk('looking'); } }
+      if (this.dphase === 'looking' && this.phaseT > this.window) { this.setDesk('phone'); this.notice = 0.5; this.penalty += 0.5; UI.pop('MISSED HER', 'back to her phone'); A.sfx('bwomp', 0.4, 1.2); }
       if (this.dphase === 'eyeroll' && this.phaseT > 0.9) this.setDesk('phone');
       if (el > 3.2 && !this.tx2) { this.tx2 = true; UI.dm(KY.pickLine(KY.LOBBY_TEXTS.slice(2))); }
       if (el > 20) this.buzz(el + this.penalty);
@@ -205,7 +206,7 @@ export class Finale {
     // dollhouse cutaway: drop the +x wall so the camera can watch him zig-zag up the flights in profile
     for (const o of well.children) if (o.isMesh && Math.abs(o.position.x - 3.15) < 0.01) o.visible = false;
     for (const o of well.children) if (o.isMesh && o.geometry?.type === 'PlaneGeometry' && o.position.x > 2.9) o.visible = false;
-    const top = new THREE.DirectionalLight(0xeef4ff, 0.6); top.position.set(0, 80, 0); s.add(top);
+    const top = new THREE.DirectionalLight(0xeef4ff, 0.9); top.position.set(6, 80, 4); s.add(top); s.add(new THREE.AmbientLight(0xfff6ea, 0.9)); const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(10, 40, 3); s.add(key);
     this.scene = s;
     const R = G.R; s.add(R.root);
     this.cup.removeFromParent(); s.add(this.cup);
@@ -224,15 +225,17 @@ export class Finale {
     if (k === 'arrowup' || k === 'w' || k === ' ' || k === 'enter') { e?.preventDefault(); this.step(); }
   }
   // the beat marker ping-pongs across the bar; hit it in the green
-  zone() { const f = Math.min(1, this.flights / 38); return { zone: 0.15 - f * 0.05, perfect: 0.045 - f * 0.012 }; }
+  zone() { const f = Math.min(1, this.flights / 38); return { zone: 0.11 - f * 0.04, perfect: 0.03 - f * 0.008 }; }
   step() {
-    if (this.phase !== 'stairs' || this.climbed || this.stumble > 0) return;
+    if (this.phase !== 'stairs' || this.climbed || this.stumble > 0 || this.tripT > 0) return;
     if (this.haz) return;
     const u = this.u ?? 0.5, d = Math.abs(u - 0.5), { zone, perfect } = this.zone(), A = this.Audio, G = this.G;
     if (d <= perfect) { this.flights = Math.min(38, this.flights + 3); this.perfects++; this.ui.flash('perf'); A.sfx('step', 1, 1.2); A.sfx('ice', 0.4, 1.4); G.score += 60; this.UI.pop('PERFECT', 'two at a time', { top: 20 }); }
     else if (d <= zone) { this.flights = Math.min(38, this.flights + 2); this.ui.flash('hit'); A.sfx('step', 1, 0.9 + Math.random() * 0.2); G.score += 25; }
-    else { this.misses++; this.flights = Math.max(0, this.flights - 1); this.stumble = 0.85; this.ui.flash('miss'); A.sfx('step', 1.2, 0.5); A.sfx('pop', 0.6, 0.5); G.ice = Math.max(0, G.ice - 3); this.UI.pop('TRIPPED', 'slid back down a step', { top: 20 }); navigator.vibrate?.(30); } // spamming costs you ground
+    else { this.misses++; this.trip(); this.ui.flash('miss'); G.ice = Math.max(0, G.ice - 3); this.UI.pop('TRIPPED', 'off the beat · get up!', { top: 20 }); } // spamming costs time, never progress
   }
+  // fall over on the steps where you are, lie there a beat, get back up — costs time, keeps your progress
+  trip(dur = 1.4) { if (this.tripT > 0) return; this.tripT = dur; this.tripDur = dur; this.stumble = dur; this.Audio.sfx('crash', 0.45, 1.5); this.Audio.sfx('step', 1.2, 0.5); navigator.vibrate?.(40); }
   hazPress(k) {
     const h = this.haz, q = this.hq; if (!h) return;
     const ok = k === h.key && this.hazT > 0.12;
@@ -242,15 +245,15 @@ export class Finale {
     const h = this.haz, G = this.G, A = this.Audio; this.haz = null; h.done = true;
     const NAMES = { dog: ['STEPPED AROUND THE DOG', 'the dog got you'], wet: ['HOPPED THE WET FLOOR', 'slipped on the wet floor'], bucket: ['DODGED THE MOP BUCKET', 'kicked the mop bucket'] };
     if (ok) { this.hq.result('NICE', NAMES[h.kind][0]); G.score += 200; A.sfx('ding', 0.6, 1.4); this.dodge = 1; this.dodgeDir = h.key === 'arrowleft' ? -1 : h.key === 'arrowright' ? 1 : 0; }
-    else { this.hq.result('MISS', why || NAMES[h.kind][1]); this.flights = Math.max(0, this.flights - 2); this.stumble = 1.0; this.misses++; G.ice = Math.max(0, G.ice - 6); A.sfx('crash', 0.5, 1.4); if (h.kind === 'dog') A.sfx('horn', 0.2, 2.4); }
+    else { this.hq.result('MISS', why || NAMES[h.kind][1]); this.trip(1.8); this.misses++; G.ice = Math.max(0, G.ice - 6); if (h.kind === 'dog') A.sfx('horn', 0.2, 2.4); }
   }
   updateStairs(dt) {
     const R = this.G.R, cam = this.camera, UI = this.UI;
     this.t += dt;
-    this.stumble = Math.max(0, this.stumble - dt); this.dodge = Math.max(0, this.dodge - dt * 1.5);
+    this.stumble = Math.max(0, this.stumble - dt); this.dodge = Math.max(0, this.dodge - dt * 1.5); this.tripT = Math.max(0, (this.tripT || 0) - dt);
     // marker speed rises as you climb
     const f = Math.min(1, this.flights / 38);
-    if (!this.haz) this.beat += dt * (1.7 + f * 0.9);
+    if (!this.haz) this.beat += dt * (2.0 + f * 1.0);
     this.u = Math.abs((this.beat % 2) - 1);
     const target = this.flights;
     this.sCur = damp(this.sCur, target, this.stumble > 0 ? 2 : 6, dt);
@@ -259,7 +262,13 @@ export class Finale {
     R.root.position.copy(p).add(V(side, 0.04 + (this.dodge > 0 && !this.dodgeDir ? Math.sin(Math.PI * this.dodge) * 0.4 : 0), 0)); R.root.rotation.set(0, Math.atan2(dir.x, dir.z), 0);
     const moving = target - this.sCur > 0.05;
     R.walk(moving ? 'jog' : 'idle', this.t * 1.6, { offset: V(0, 0, 0), yaw: 0 });
-    if (this.stumble > 0) { const sp = R.C.bone('Spine'); sp.rotateX(0.5 * Math.sin(Math.PI * Math.min(1, this.stumble))); sp.updateMatrixWorld(true); }
+    if (this.tripT > 0) { // down onto the steps and back up
+      const u = 1 - this.tripT / this.tripDur, fall = smooth(seg(u, 0, 0.22)), rise = smooth(seg(u, 0.62, 0.95)), k = fall * (1 - rise);
+      R.walk(u < 0.62 ? 'idle' : 'defeated', u < 0.62 ? 1 : (u - 0.62) * 2.5, { offset: V(0, 0, 0), yaw: 0, loop: u < 0.62 });
+      R.root.rotateX(1.15 * k); R.root.position.y += 0.15 * k;
+      const sp = R.C.bone('Spine'); sp.rotateX(0.4 * k); sp.updateMatrixWorld(true);
+      if (u > 0.2 && u < 0.6 && !this.tripTxt) { this.tripTxt = true; }
+    } else this.tripTxt = false;
     R.C.root.updateMatrixWorld(true);
     palmCup(this.cup, R.C);
     const look = R.root.position.clone().add(V(0, 0.9, 0));
@@ -275,7 +284,7 @@ export class Finale {
       this.hq = UI.qte({ key: hz.key, label: LBL[hz.kind] });
       if (hz.kind === 'dog') this.Audio.sfx('pop', 0.8, 0.6);
     }
-    if (this.haz) { this.hazT += dt; this.hq.set(1 - this.hazT / 1.5); if (this.hazT > 1.5) this.endHaz(false, 'too slow'); }
+    if (this.haz) { this.hazT += dt; this.hq.set(1 - this.hazT / 1.05); if (this.hazT > 1.05) this.endHaz(false, 'too slow'); }
     for (const h of this.hazards) if (h.kind === 'dog') h.m.rotation.y = Math.sin(this.t * 6) * 0.15;
     const { zone, perfect } = this.zone();
     this.ui.set({ floor, u: this.u, zone, perfect, hide: !!this.haz });
