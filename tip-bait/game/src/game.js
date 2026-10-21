@@ -179,18 +179,18 @@ function update(dt, t) {
   const target = G.base * (G.boostT > 0 ? 1.75 : 1) * (G.slowT > 0 ? 0.6 : 1) * smooth(seg(G.runT, 0, 1.2));
   G.runT += sdt;
   G.v = damp(G.v, target, G.boostT > 0 ? 6 : 2.5, sdt);
+  const prevS = G.s;
   G.s = Math.min(L, G.s + G.v * sdt); G.dist += G.v * sdt;
   // lanes + jump + ramps
   const tl = LANES[G.lane]; const prevLat = G.lat; G.lat = damp(G.lat, tl, 13, sdt); const latV = (G.lat - prevLat) / Math.max(1e-4, sdt);
   const rh = rampHeight(G.s, G.lat);
   G.vy -= 24 * sdt; G.y += G.vy * sdt;
-  if (G.y <= rh) {
-    if (G.onRamp && rh === 0 && G.lastRh > 0.9) { // left the lip → launch
-      G.vy = 9.2; G.y = G.lastRh; Audio.sfx('whoosh', 1, 0.7); UI.pop('AIR TIME!', '+$0.00');
-      const rr = G.lv.ramps.find((r) => Math.abs(G.s - (r.s + 1.7)) < 2 && Math.abs(G.lat - r.lat) < 1.2);
-      if (rr?.rail) { G.cine = 1.25; G.slowmo = 0.42; Audio.rate(0.7); }
-    } else { if (G.vy < -6) Audio.sfx('step', 1.2, 0.6); G.y = rh; G.vy = Math.max(0, G.vy); }
-  }
+  // ramps: launch when the bike crosses the lip in the ramp's lane (frame-rate and speed independent)
+  const rr = G.lv.ramps.find((r) => prevS < r.s + 1.7 && G.s >= r.s + 1.7 && Math.abs(G.lat - r.lat) < 1.15 && G.y < 1.3);
+  if (rr) {
+    G.vy = 9.2; G.y = Math.max(G.y, 1.1); Audio.sfx('whoosh', 1, 0.7); UI.pop('AIR TIME!', '+$0.00');
+    if (rr.rail) { G.cine = 1.25; G.slowmo = 0.42; Audio.rate(0.7); }
+  } else if (G.y <= rh) { if (G.vy < -6) Audio.sfx('step', 1.2, 0.6); G.y = rh; G.vy = Math.max(0, G.vy); }
   G.onRamp = rh > 0; G.lastRh = rh;
   if (G.cine > 0) { G.cine -= dt; G.slowmo = G.cine > 0.25 ? 0.42 : damp(G.slowmo, 1, 8, dt); if (G.cine <= 0) { G.slowmo = 1; Audio.rate(1); } }
   // pads, ice, puddles
@@ -200,8 +200,8 @@ function update(dt, t) {
   // obstacles: moving traffic, buses pulling out, tourists crossing, the train
   for (const o of G.lv.obs) {
     if (o.dead) continue;
-    if (o.v && o.kind !== 'bus') o.s += o.v * sdt;
-    if (o.kind === 'bus') { if (o.s - G.s < 42 && !o.t0) o.t0 = G.time; if (o.t0) { o.lat = lerp(o.lat0, o.pull, smooth(seg(G.time - o.t0, 0, 1.4))); o.s += o.v * sdt; } }
+    if (o.v && o.kind !== 'bus') { o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; }
+    if (o.kind === 'bus') { if (o.s - G.s < 42 && !o.t0) o.t0 = G.time; if (o.t0) { o.lat = lerp(o.lat0, o.pull, smooth(seg(G.time - o.t0, 0, 1.4))); o.s += o.v * sdt; if (o.s > L - 40) o.dead = true; } }
   }
   for (const w of G.pop.walkers) {
     if (w.t == null && w.s - G.s < 75) w.t = 0;

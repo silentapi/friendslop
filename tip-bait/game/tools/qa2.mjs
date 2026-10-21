@@ -28,6 +28,17 @@ const hb = await page.locator('#hold').boundingBox();
 await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up();
 await page.waitForTimeout(600); await shot('02_count');
 await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
+if (mode === 'ramp') {
+  await page.evaluate(() => { const g = window.__G; g.s = g.rail.s - 48; g.lane = 1; g.lat = 0; g.runT = 5; g.v = g.base; });
+  for (let k = 0; k < 70; k++) {
+    await tick(2);
+    const r = await page.evaluate(() => { const g = window.__G; return { st: g.state, ds: +(g.s - g.rail.s).toFixed(1), y: +g.y.toFixed(2), v: +g.v.toFixed(1), cab: g.trainCab == null ? null : +g.trainCab.toFixed(1), slow: +g.slowmo.toFixed(2), kind: g.crashKind }; });
+    if (k % 3 === 0 || r.st !== 'run') console.log(JSON.stringify(r));
+    if ([12, 18, 22, 26, 30].includes(k)) await shot(`ramp_${k}`);
+    if (r.st !== 'run' || r.ds > 30) break;
+  }
+  await browser.close(); process.exit(0);
+}
 // autopilot: pick the lane with the farthest clear road; jump low obstacles; take ramps when lined up
 const pilot = () => page.evaluate((crashMode) => {
   const g = window.__G, LANES = g.LANES;
@@ -46,6 +57,7 @@ const pilot = () => page.evaluate((crashMode) => {
   if (!act && g.boostCharge >= 1) act = 'Shift';
   return act;
 }, mode === 'crash');
+if (mode === 'finale') await page.evaluate(() => { const g = window.__G; g.s = g.route.length - 30; g.invT = 999; g.runT = 5; g.v = g.base; });
 let i = 0, crashedOnce = false;
 const t0 = Date.now();
 while (i < 4000) {
@@ -72,7 +84,7 @@ if ((await G()).st === 'finale') {
   await page.waitForTimeout(400);
   await page.mouse.click(640, 360); await tick(2);
   for (let k = 0; k < 6; k++) { await tick(18); await shot(`fin_elev_${k}`); }
-  await page.waitForFunction(() => !!document.getElementById('sl'), null, { timeout: 20000 }).catch(() => console.log('no stairs ui'));
+  for (let w = 0; w < 30 && !(await page.evaluate(() => !!document.getElementById('sl'))); w++) await tick(10);
   for (let k = 0; k < 46; k++) { await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); await tick(4); if (k % 12 === 6) await shot(`fin_stairs_${k}`); }
   for (let k = 0; k < 40; k++) { await tick(6); if (await page.evaluate(() => !!window.__G && document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');

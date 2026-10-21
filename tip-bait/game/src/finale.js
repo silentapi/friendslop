@@ -31,8 +31,7 @@ export class Finale {
     this.door = ud.door.clone(); this.sign = ud.signMid.clone(); this.corner = ud.corner.clone();
     this.stop = G.R.root.position.clone(); this.stop.y = 0;
     this.yaw0 = G.R.root.rotation.y;
-    setTimeout(() => { UI.place('Citi Tower', '101 Lake Ave · Church St', 4200); UI.dm('fl 20. hurry 🙄'); Audio.sfx('pop', 0.7); }, 900);
-    setTimeout(() => this.showReal(), 1700);
+
   }
   showReal() {
     if (this.phase !== 'arrive') return;
@@ -99,6 +98,9 @@ export class Finale {
     const well = Sets.stairwell(null, 21); s.add(well);
     // keep only a few of the stairwell's lights (mobile GPUs pay per light)
     let n = 0; well.traverse((o) => { if (o.isPointLight && n++ % 3) o.visible = false; });
+    // dollhouse cutaway: drop the +x wall so the camera can watch him zig-zag up the flights in profile
+    for (const o of well.children) if (o.isMesh && Math.abs(o.position.x - 3.15) < 0.01) o.visible = false;
+    for (const o of well.children) if (o.isMesh && o.geometry?.type === 'PlaneGeometry' && o.position.x > 2.9) o.visible = false;
     const top = new THREE.DirectionalLight(0xeef4ff, 0.6); top.position.set(0, 80, 0); s.add(top);
     this.scene = s;
     const R = G.R; s.add(R.root);
@@ -130,7 +132,9 @@ export class Finale {
     R.C.root.updateMatrixWorld(true);
     this.cup.position.copy(R.C.boneWorld('RightHand')).add(V(0, -0.1, 0));
     const look = R.root.position.clone().add(V(0, 0.9, 0));
-    cam.position.lerp(V(0.15, R.root.position.y + 3.6, 0.35), 1 - Math.exp(-6 * dt)); cam.lookAt(look); cam.fov = 70; cam.updateProjectionMatrix();
+    const want = V(9.5, R.root.position.y + 1.6, 0.2);
+    if (!this.camInit) { this.camInit = true; cam.position.copy(want); }
+    cam.position.lerp(want, 1 - Math.exp(-5 * dt)); cam.lookAt(0.4, cam.position.y - 0.7, 0); cam.fov = 52; cam.updateProjectionMatrix();
     const floor = Math.min(20, 1 + Math.floor(this.sCur / 2 + 0.001));
     this.ui.set({ floor, next: this.next, time: this.timeLeft / 11 });
     if (floor >= 10 && !this.dm1) { this.dm1 = true; this.UI.dm('hello??'); this.Audio.sfx('pop', 0.7); }
@@ -215,6 +219,8 @@ export class Finale {
     cam.position.copy(this.c0.clone().lerp(head, k)); cam.lookAt(this.l0.clone().lerp(tgt, k));
     cam.fov = damp(cam.fov, 70, 3, dt); cam.updateProjectionMatrix();
     this.sun.target.position.copy(this.corner); this.sun.position.copy(this.corner).add(V(-80, 60, 90));
+    if (t > 0.9 && !this.placed) { this.placed = true; this.UI.place('Citi Tower', '101 Lake Ave · Church St', 4200); this.UI.dm('fl 20. hurry 🙄'); this.Audio.sfx('pop', 0.7); }
+    if (t > 1.9 && !this.realShown) { this.realShown = true; this.showReal(); }
   }
   update(dt, T) {
     if (this.phase === 'arrive') this.updateArrive(dt);

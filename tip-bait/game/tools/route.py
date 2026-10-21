@@ -11,10 +11,22 @@ def street(name, axis, a, b):
         for p in r['pts']:
             if min(a, b) - 1 <= p[ax] <= max(a, b) + 1: pts.append(p); ws.append(r['w']); surf = surf or r.get('surface')
     pts = sorted(set(map(tuple, pts)), key=lambda p: p[ax], reverse=a > b)
-    # thin duplicates closer than 4 m
+    # one clean centerline: streets with parallel carriageways or side branches zig-zag when sorted, so bin
+    # along the street's axis every 8 m and average the cross coordinate (dropping outliers > 6 m off the median)
+    bins = {}
+    for p in pts: bins.setdefault(round(p[ax] / 8), []).append(p)
     out = []
-    for p in pts:
-        if not out or math.hypot(p[0] - out[-1][0], p[1] - out[-1][1]) > 4: out.append(p)
+    keys = sorted(bins, reverse=a > b)
+    for k in keys:
+        q = bins[k]; oc = sorted(x[1 - ax] for x in q); med = oc[len(oc) // 2]
+        q = [x for x in q if abs(x[1 - ax] - med) < 6] or q
+        c = [0, 0]; c[ax] = sum(x[ax] for x in q) / len(q); c[1 - ax] = sum(x[1 - ax] for x in q) / len(q)
+        out.append(tuple(c))
+    # moving median (5 bins) then mean (3) on the cross coordinate: no kinks from stray branches
+    cr = [p[1 - ax] for p in out]
+    med = [sorted(cr[max(0, i - 2): i + 3])[len(cr[max(0, i - 2): i + 3]) // 2] for i in range(len(cr))]
+    sm = [sum(med[max(0, i - 1): i + 2]) / len(med[max(0, i - 1): i + 2]) for i in range(len(med))]
+    out = [tuple([p[0], sm[i]] if ax == 0 else [sm[i], p[1]]) for i, p in enumerate(out)]
     return out, max(ws), surf
 def build(legs):
     pts, streets, s = [], [], 0.0
