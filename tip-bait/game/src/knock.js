@@ -5,7 +5,6 @@
 // Input: click / tap the circle, or Z / X anywhere (osu keys: they hit whichever note is due; held, they track sliders).
 // Timing runs off the AudioContext clock (sample-locked to the track); under ?qa=1 it runs off the game clock.
 import { THREE, V, clamp, lerp, seg, smooth, easeInOut, easeOut, mulberry } from './core.js';
-import { ik2 } from './chars.js';
 import * as Sets from './sets.js';
 import { KNOCK_BPM, KNOCK_INTRO, KNOCK_BARS, knockBeat } from './audio.js';
 
@@ -73,7 +72,7 @@ export class Knock {
     this.tut = !seen;
     this.objs = buildMap(this.lvl, this.tut, 7 + G.order * 31);
     this.notes = this.objs.filter((o) => o.kind !== 'spin'); this.spin = this.objs.find((o) => o.kind === 'spin');
-    Object.assign(this, { st: 'intro', t: 0, T: 0, clk: 0, useAudio: false, hp: 1, combo: 0, maxCombo: 0, fails: 0, pen: 0, forced: false, keys: new Set(), down: false, kc: [0, 0], fx: [], trail: [], cur: { x: -99, y: -99, on: 0, touch: false }, knockK: 9, shake: 0, muffle: 0 });
+    Object.assign(this, { st: 'intro', t: 0, T: 0, clk: 0, useAudio: false, hp: 1, combo: 0, maxCombo: 0, fails: 0, pen: 0, forced: false, keys: new Set(), down: false, kc: [0, 0], fx: [], trail: [], cur: { x: -99, y: -99, on: 0, touch: false }, shake: 0, muffle: 0 });
     const cam = F.camera; this.c0 = cam.position.clone(); this.q0 = cam.quaternion.clone(); this.f0 = cam.fov;
     this.p0 = G.R.root.position.clone(); this.y0 = G.R.root.rotation.y;
     this.tmp = V(); this.W = innerWidth; this.H = innerHeight; this.r = 40; this.pts = 0; this.secPts = {};
@@ -156,7 +155,7 @@ export class Knock {
     } else this.breakCombo(u, w, o.kind === 'circle');
     this.fx.push({ k: 'j', v, u, w, t: this.T, fin: o.fin });
   }
-  addCombo() { this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); this.comboPop = this.T; this.knockK = 0; this.setMuffle(); }
+  addCombo() { this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo); this.comboPop = this.T; this.setMuffle(); }
   breakCombo(u, w, hpHit) {
     if (this.combo >= 5) this.F.Audio.sfx('cbreak', 0.7);
     this.combo = 0; this.setMuffle(); if (hpHit) this.hp -= this.L.miss;
@@ -228,12 +227,12 @@ export class Knock {
   // ------------------------------------------------------------------ per frame
   update(dt) {
     const F = this.F, cam = F.camera, A = F.Audio;
-    this.t += dt; this.T += dt; this.knockK += dt; this.shake = Math.max(0, this.shake - dt * 3);
+    this.t += dt; this.T += dt; this.shake = Math.max(0, this.shake - dt * 3);
     // intro: hall camera → the door, a normal knock, Kyle won't open, the card, then the count-in
     if (this.st === 'intro') {
       const t = this.t;
-      if (t > 0.45 && !this.k1) { this.k1 = true; A.sfx('knock', 0.9); this.knockK = 0; }
-      if (t > 0.7 && !this.k2) { this.k2 = true; A.sfx('knock', 0.9, 1.05); this.knockK = 0; }
+      if (t > 0.45 && !this.k1) { this.k1 = true; A.sfx('knock', 0.9); }
+      if (t > 0.7 && !this.k2) { this.k2 = true; A.sfx('knock', 0.9, 1.05); }
       if (t > 1.05 && !this.sh) { this.sh = true; this.shout('who is it??'); A.sfx('bwomp', 0.25, 1.6); }
       if (t > 1.5 && !this.cd) { this.cd = true; this.$('.kn-card').classList.add('in'); A.sfx('rise', 0.5); }
       if (t > 3.5) { this.$('.kn-card').classList.remove('in'); this.st = 'play'; this.fresh = this.T; this.startSong(this.tut ? 0 : Math.max(0, knockBeat(4) - 0.05)); }
@@ -266,20 +265,15 @@ export class Knock {
     else { cam.position.copy(p); cam.lookAt(l); cam.fov = fov; }
     cam.updateProjectionMatrix(); cam.updateMatrixWorld();
   }
-  pose(dt) { // courier beside the door, cup in his right hand, knocking with his left on every hit
-    const F = this.F, R = F.G.R, A = V(0.66, 0, Sets.DOOR_Z + 0.72), B = V(0.15, 0, Sets.DOOR_Z - 0.15);
+  pose(dt) { // the courier waits just behind the knock camera (the door stays a clean playfield), then steps up as it opens
+    const F = this.F, R = F.G.R, A = V(-0.95, 0, Sets.DOOR_Z + 0.05), B = V(0.15, 0, Sets.DOOR_Z - 0.15);
     if (this.st === 'out') {
       const u = smooth(clamp(this.ot / 0.85)); R.root.position.copy(A).lerp(B, u); R.root.rotation.set(0, Math.PI / 2, 0);
-      R.walk(u < 0.95 ? 'walk' : 'idle', this.ot * 1.2, { offset: V(0, 0, 0), yaw: 0 });
+      R.walk(u < 0.97 ? 'walk' : 'idle', this.ot * 1.3, { offset: V(0, 0, 0), yaw: 0 });
     } else {
-      const u = this.st === 'intro' ? smooth(clamp(this.t / 0.5)) : 1;
+      const u = this.st === 'intro' ? smooth(clamp(this.t / 0.9)) : 1;
       R.root.position.copy(this.p0).lerp(A, u); R.root.rotation.set(0, lerp(this.y0, Math.PI / 2, u), 0);
       R.walk('idle', 1 + this.T, { offset: V(0, 0, 0), yaw: 0 });
-      const k = Math.sin(Math.PI * clamp(this.knockK / 0.16));
-      if (k > 0.01) {
-        const C = R.C, hand = C.boneWorld('LeftHand'), spot = V(FACE_X - 0.06, 1.32, Sets.DOOR_Z + 0.4);
-        ik2(C.bone('LeftArm'), C.bone('LeftForeArm'), C.bone('LeftHand'), hand.lerp(spot, k), R.root.localToWorld(V(0.6, 0.8, -0.4)));
-      }
     }
     F.palmCup?.(F.cup, R.C); F.cup.visible = true;
   }
@@ -321,7 +315,7 @@ export class Knock {
     const cv = this.cv, dpr = Math.min(2, window.devicePixelRatio || 1), W = cv.clientWidth, H = cv.clientHeight;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     this.W = W; this.H = H; const c = this.cx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
-    const top = this.scr(0, 1), bot = this.scr(0, -1); this.r = clamp(Math.abs(bot[1] - top[1]) * 0.085, 24, 62); const r = this.r;
+    const top = this.scr(0, 1), bot = this.scr(0, -1); this.r = clamp(Math.abs(bot[1] - top[1]) * 0.095, 26, 64); const r = this.r;
     [this.cx0, this.cy0] = this.scr(0, 0);
     // Kyle's shout sits over the door's head jamb
     const sp = this.scr(0, 1.55); this.el.style.setProperty('--shx', sp[0] + 'px'); this.el.style.setProperty('--shy', Math.max(70, sp[1]) + 'px');

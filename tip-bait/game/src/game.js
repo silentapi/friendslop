@@ -633,7 +633,7 @@ function continueRun() {
   for (const o of G.lv.obs) if (o.s > at - 3 && o.s < at + 28) o.dead = true;
   for (const w of G.pop.walkers) if (Math.abs(w.s - at) < 28) w.gone = true;
   const keep = { time: G.time, eta: G.eta, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, boostCharge: G.boostCharge, dist: G.dist, dmDone: G.dmDone, trainCab: G.trainCab, trainGone: G.trainGone, score: G.score, coins: G.coins, lateT: G.lateT, tricks: G.tricks, smashes: G.smashes, bestMult: G.bestMult };
-  G.R.bike.position.set(0, 0, 0); G.clip = null; G.crashThud = 0; G.crashRoof = false;
+  G.R.bike.position.set(0, 0, 0); G.clip = null; G.crashThud = 0; G.crashRoof = false; CAM.p = null; // cut straight back to the chase cam
   resetRun(at); Object.assign(G, keep);
   // the wipeout itself costs time: picking yourself (and the bike) up off the road
   const lost = G.crashKind === 'train' ? 6 : 4; G.time += lost; G.eta -= lost;
