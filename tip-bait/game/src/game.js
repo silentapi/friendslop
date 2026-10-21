@@ -725,6 +725,7 @@ const CAM = { p: null, v: {} }, CKEYS = ['ds', 'lat', 'y', 'lds', 'llat', 'ly', 
 const SMOOTH = { ds: 0.22, lat: 0.2, y: 0.28, lds: 0.14, llat: 0.16, ly: 0.18, fov: 0.35 };
 function smoothDamp(cur, tgt, k, T, dt) { const o = 2 / T, x = o * dt, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x), ch = cur - tgt, t = ((CAM.v[k] || 0) + o * ch) * dt; CAM.v[k] = ((CAM.v[k] || 0) - o * t) * e; return tgt + (ch + t) * e; }
 const halfAt = (s) => Math.max(10.4, G.route.street(Math.max(0, Math.min(G.route.length, s))).w) / 2;
+function crashShot() { const c = chaseShot(); return { ...c, ds: c.ds + 1.2, y: c.y + 2.4, lds: 2.5, ly: 0.5 }; } // a wipeout: lift the lens over traffic and look down at where you land
 function clipShot() { // train clip: from up the road looking back, so the cab sweeps through behind you as you're thrown at the lens
   const sd = -Math.sign(G.clip.vl || 1), h = halfAt(G.s);
   return { ds: 8.5, lat: clamp(G.lat + sd * 2.5, -h + 0.8, h - 0.8), y: 2.6 + G.y * 0.4, lds: -1.5, llat: G.lat, ly: 0.7 + G.y * 0.7, fov: baseFov() + 4 };
@@ -896,7 +897,7 @@ function step(dt, draw) {
   else if (G.state === 'shop') { titleCamera(T, dt); G.introT = 0; }
   else if (G.state === 'count') { G.introT = (G.introT || 0) + dt; countdownTick(); G.R.ride(0, { lean: 0.28 + 0.14 * clamp(G.introT / 1.8), footDown: 1 - clamp(G.introT / 1.6), look: 0 }); introCamera(dt, G.introT / COUNT); }
   else if (G.state === 'run') { update(dt, T); if (G.state === 'run') { animateLevel(T, dt); runCamera(dt); } }
-  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(G.clip ? clipShot() : chaseShot(), dt, { scale: G.clip ? 1.2 : 3, snap: !!G.clip && !G.clip.cut && (G.clip.cut = true) });  }
+  if (G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad') { if (G.state === 'crashing') updateCrash(dt); animateLevel(T, 0); applyCam(G.clip ? clipShot() : crashShot(), dt, { scale: G.clip ? 1.2 : 3, snap: !!G.clip && !G.clip.cut && (G.clip.cut = true) });  }
   else if (G.state === 'finale' || G.state === 'results') finale?.update(dt, T);
   // effects run alongside (never in the state chain above: that once swallowed the crash update)
   FX.group.visible = G.state === 'run' || G.state === 'crashing' || G.state === 'crashed' || G.state === 'ad' || G.state === 'paused'; // speed streaks never freeze into the cutscenes
