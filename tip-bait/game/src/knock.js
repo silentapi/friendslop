@@ -20,48 +20,138 @@ const A0 = KNOCK_INTRO * 4, SECS = [['A', A0], ['B', A0 + 12], ['C', A0 + 20], [
 const END_B = (KNOCK_INTRO + KNOCK_BARS) * 4 + 2; // the ring-out stab, then straight to the ranking (no spinner)
 // per difficulty (order 1 / 2 / 3+): approach time, hit windows ±s for 300/100/50, HP drain per s, HP lost per miss
 const LV = [{ ar: 1.3, w: [0.095, 0.16, 0.22], drain: 0.0225, miss: 0.145 }, { ar: 1.1, w: [0.083, 0.14, 0.195], drain: 0.034, miss: 0.17 }, { ar: 0.95, w: [0.073, 0.13, 0.18], drain: 0.045, miss: 0.195 }];
-// rhythm per bar: c = circle, s = slider (beat:length, r = with a reverse), f = finisher (clap + whistle)
-const PAT = [
-  { A: ['c0 c1 c2', 'c0 c1 s2:1', 's0:1 c2 c3'], B: ['c0 c1 c1.5 c2 c3', 's0:1.5 c2 c3'], C: ['c0 c1 c2 c2.5 c3', 's0:1 c2 c3'], D: ['f0 f1.5 f3'] },
-  { A: ['c0 c1 c1.5 c2 c3', 's0:1 c1.5 c2 c3', 'c0 c0.5 c1 c2 c3'], B: ['c0 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c3'], C: ['c0 c0.5 c1 s2:1 c3.5', 'c0 c1 c1.5 s2:1.5'], D: ['f0 f1.5 f3'] },
-  { A: ['c0 c0.5 c1 c1.5 c2 c3', 's0:1r c1.5 c2 c3', 'c0 c0.5 c1 c1.5 c2 c3'], B: ['c0 c0.5 c1 c2 c2.5 c3', 's0:0.5 c1 s1.5:1 c3 c3.5'], C: ['c0 c0.5 c1 c1.5 c2 c2.5 c3', 's0:1r c1.5 c2 c2.5 c3'], D: ['f0 f1.5 f3'] },
+// ------------------------------------------------------------------ the beatmap: generated under hard rules
+// Every map (every level, every seed) is built bar by bar from rhythm cells and then checked by validateMap(); a map
+// that breaks a rule throws under ?qa=1 (and is regenerated with the next seed in play, so a player never sees one).
+//  R1 tempo   one BPM (KNOCK_BPM) for the whole song; every object starts on the 8th-note grid of that one tempo.
+//             level 0 (order 1): quarter notes only. levels 1–2: quarters plus eighth PAIRS (an on-beat note and the
+//             "and" right after it) — never a lone off-beat note, never syncopation. level 1: a pair is followed by ≥ 1
+//             beat of air; level 2 may run on-and-on (a 3-note burst), never 4 eighths in a row.
+//             sliders start on a beat and last exactly 1 or 2 beats (no reverses).
+//  R2 spacing end of one object → start of the next ≥ 1 beat (level 0) / ≥ ½ beat (levels 1–2), ≥ 1 beat after any
+//             slider. No two objects at the same time, no stacks.
+//  R3 motion  on-door distance between consecutive objects is capped by the time between them (½ beat ≤ 0.27 m,
+//             1 beat ≤ 0.42 m, longer ≤ 0.6 m) — big jumps only after ≥ 1 beat; pairs sit close (0.22–0.27 m).
+//             Nothing on screen at the same time overlaps (centres ≥ 2 radii apart, slider bodies included).
+//  R4 phrases 4-beat phrases (one bar): a new combo on every bar's first object; at least one empty beat in every
+//             2 bars (a breath).
+//  R5 audio   the song (audio.js knockG) has a hit on every beat and every 8th through the map bars, and the finisher
+//             stabs sit on beats 1, 3 and 4 of the last bar — so every object lands on something you can hear.
+const RAD = 0.1064, MINSEP = RAD * 2 + 0.01; // circle radius on the door (m) = 0.095 × door height (see draw)
+const toM = (u, v) => [u * PW, v * PH]; // door units → metres (u spans 2·PW, v spans 2·PH)
+const dM = (a, b) => { const [ax, ay] = toM(a[0], a[1]), [bx, by] = toM(b[0], b[1]); return Math.hypot(ax - bx, ay - by); };
+const MAXD = (gap) => (gap <= 0.5 ? 0.27 : gap <= 1 ? 0.42 : 0.6);
+const MIND = (gap) => (gap <= 0.5 ? 0.22 : 0.24);
+// rhythm cells, one bar each: c = circle, s = slider (beat:length), f = finisher; a = easy cells (section A)
+const CELLS = [
+  { a: ['c0 c1 c2', 'c0 c2 c3', 's0:1 c2 c3', 'c0 s2:1'], x: ['c0 c1 c2 c3', 's0:2 c3', 'c0 c1 s2:1', 'c0 c2'] },
+  { a: ['c0 c1 c2', 'c0 c2 c3', 's0:1 c2 c3', 'c0 c0.5 c2 c3'], x: ['c0 c0.5 c2 c3', 'c0 c1 c1.5 c3', 'c0 c1 c2 c2.5', 's0:1 c2 c2.5', 'c0 c1 c2 c3', 'c0 s2:1'] },
+  { a: ['c0 c0.5 c2 c3', 'c0 c1 c2 c2.5', 's0:1 c2 c3'], x: ['c0 c0.5 c1 c2 c3', 'c0 c1 c1.5 c2', 's0:1 c2 c2.5 c3', 'c0 c0.5 c2 c2.5', 'c0 c1 c2 c2.5', 'c0 c0.5 c1 s2:1'] },
 ];
-const bez = (p, s) => { const [a, b, c] = p, k = 1 - s; return [k * k * a[0] + 2 * k * s * b[0] + s * s * c[0], k * k * a[1] + 2 * k * s * b[1] + s * s * c[1]]; };
-const inside = (x, y) => Math.abs(x) <= 0.86 && Math.abs(y) <= 0.86;
-
-// the beatmap: built from the song's BPM/offset constants, positions flow like a mapper's (spacing ∝ time gap)
-export function buildMap(lvl, tut, seed = 1) {
-  const r = mulberry(seed), objs = [];
-  const add = (b0, tok, nc) => { const m = /^([csf])([\d.]+)(?::([\d.]+)(r?))?$/.exec(tok); objs.push({ kind: m[1] === 's' ? 'slider' : 'circle', fin: m[1] === 'f', b: b0 + +m[2], len: m[3] ? +m[3] : 0, rep: m[4] ? 1 : 0, nc }); };
+const FIN = 'f0 f2 f3'; // the stop-time finisher bar (audio.js plays the stabs on these beats)
+const BARS = [['A', 3], ['B', 2], ['C', 2], ['D', 1]];
+export function validateMap(objs, lvl) {
+  const n = objs.filter((o) => o.kind !== 'spin'), bad = []; let minGap = 9, maxSpeed = 0, offGrid = 0, overlaps = 0;
+  const minG = lvl === 0 ? 1 : 0.5;
+  for (let i = 0; i < n.length; i++) {
+    const o = n[i], p = n[i - 1], q = n[i + 1];
+    if (Math.abs(o.b * 2 - Math.round(o.b * 2)) > 1e-9) { offGrid++; bad.push(`off-grid ${o.b}`); }
+    const off = Math.abs(o.b % 1 - 0.5) < 1e-9;
+    if (off) {
+      if (lvl === 0) bad.push(`eighth on level 0 @${o.b}`);
+      if (!p || Math.abs(o.b - 0.5 - p.b) > 1e-9 || p.b % 1 !== 0 || p.kind !== 'circle') bad.push(`lone off-beat @${o.b}`);
+      if (lvl === 1 && q && q.b - o.b < 1.5 - 1e-9) bad.push(`level-1 pair not followed by air @${o.b}`);
+      if (p && n[i - 2] && n[i - 3] && o.b - n[i - 3].b <= 1.5 + 1e-9) bad.push(`4 eighths in a row @${o.b}`);
+    }
+    if (o.kind === 'slider' && (o.b % 1 !== 0 || !(o.len === 1 || o.len === 2) || o.rep)) bad.push(`bad slider @${o.b}`);
+    if (p) {
+      const pe = p.b + p.len, gap = o.b - pe, need = p.kind === 'slider' ? 1 : minG;
+      minGap = Math.min(minGap, gap); if (gap < need - 1e-9) bad.push(`gap ${gap} < ${need} @${o.b}`);
+      const pp = p.kind === 'slider' ? p.path[2] : [p.u, p.v], d = dM(pp, [o.u, o.v]);
+      maxSpeed = Math.max(maxSpeed, d / Math.max(gap, 0.5)); if (d > MAXD(gap) + 1e-6) bad.push(`jump ${d.toFixed(2)}m over ${gap} beats @${o.b}`);
+    }
+    for (let j = i - 1; j >= 0 && o.b - n[j].b <= 3.5; j--) { // everything that can be on screen together
+      const a = n[j], pts = a.kind === 'slider' ? [0, 0.25, 0.5, 0.75, 1].map((k) => bez(a.path, k)) : [[a.u, a.v]];
+      const mine = o.kind === 'slider' ? [0, 0.25, 0.5, 0.75, 1].map((k) => bez(o.path, k)) : [[o.u, o.v]];
+      let m = 9; for (const x of pts) for (const y of mine) m = Math.min(m, dM(x, y));
+      if (m < MINSEP - 1e-6) { overlaps++; bad.push(`overlap ${m.toFixed(2)}m @${a.b}/${o.b}`); }
+    }
+    if (o.b >= A0 && o.nc !== (i === 0 || Math.floor(o.b / 4) !== Math.floor(p.b / 4))) bad.push(`combo not on the bar @${o.b}`);
+  }
+  for (let b0 = A0; b0 < A0 + 32; b0 += 8) { // a breath in every 2 bars
+    let rest = false;
+    for (let b = b0; b < b0 + 8 && !rest; b++) rest = !n.some((o) => (o.b >= b && o.b < b + 1) || (o.b < b && o.b + o.len > b));
+    if (!rest) bad.push(`no rest beat in bars at ${b0}`);
+  }
+  return { ok: !bad.length, bad, minGap, maxSpeed: +maxSpeed.toFixed(3), offGrid, overlaps, notes: n.length };
+}
+function rhythm(lvl, tut, r) {
+  const objs = [], add = (b0, tok, nc) => { const m = /^([csf])([\d.]+)(?::([\d.]+))?$/.exec(tok); objs.push({ kind: m[1] === 's' ? 'slider' : 'circle', fin: m[1] === 'f', b: b0 + +m[2], len: m[3] ? +m[3] : 0, rep: 0, nc }); };
   if (tut) [3, 5, 7].forEach((b, i) => add(b, 'c0', i === 0));
-  let bar = KNOCK_INTRO;
-  for (const s of ['A', 'B', 'C', 'D']) for (const p of PAT[lvl][s]) { p.split(' ').forEach((tok, i) => add(bar * 4, tok, i === 0 && ((bar - KNOCK_INTRO) % 2 === 0 || s === 'D'))); bar++; }
-  let x = -0.45, y = 0.35, ang = -0.5, prev = null, n = 0, ci = -1;
+  let bar = KNOCK_INTRO, prevCell = '';
+  const cellsFor = (sec) => (sec === 'A' ? CELLS[lvl].a : [...CELLS[lvl].a, ...CELLS[lvl].x, ...CELLS[lvl].x]);
+  for (const [sec, nb] of BARS) for (let k = 0; k < nb; k++, bar++) {
+    if (sec === 'D') { FIN.split(' ').forEach((t, i) => add(bar * 4, t, i === 0)); continue; }
+    const pool = cellsFor(sec);
+    let cell; for (let tries = 0; tries < 12; tries++) { cell = pool[Math.floor(r() * pool.length)]; if (cell !== prevCell) break; }
+    // a breath every 2 bars: if this is the 2nd bar of a pair and the 1st had no empty beat, take a cell that has one
+    const pairStart = (bar - KNOCK_INTRO) % 2 === 1, has = (c) => [0, 1, 2, 3].some((b) => !c.split(' ').some((t) => { const m = /^[csf]([\d.]+)(?::([\d.]+))?/.exec(t), s0 = +m[1], ln = +(m[2] || 0); return (s0 >= b && s0 < b + 1) || (s0 < b && s0 + ln > b); }));
+    if (pairStart && !has(prevCell) && !has(cell)) cell = pool.find(has) || cell;
+    cell.split(' ').forEach((t, i) => add(bar * 4, t, i === 0)); prevCell = cell;
+  }
+  return objs;
+}
+function place(objs, tut, r) {
+  let x = -0.35, y = 0.3, ang = -0.4, prev = null, n = 0, ci = -1;
+  const placed = [];
+  const clear = (pts, b) => { let m = 9; for (const a of placed) { if (b - a.b > 3.5) continue; const ap = a.kind === 'slider' ? [0, 0.25, 0.5, 0.75, 1].map((k) => bez(a.path, k)) : [[a.u, a.v]]; for (const p of ap) for (const q of pts) m = Math.min(m, dM(p, q)); } return m; };
+  const inF = (u, v) => Math.abs(u) <= 0.86 && Math.abs(v) <= 0.86;
   for (const o of objs) {
     o.t = knockBeat(o.b); o.tEnd = knockBeat(o.b + o.len);
     if (o.nc || ci < 0) { ci++; n = 0; } o.n = ++n; o.col = COLS[ci % COLS.length];
-    if (tut && o.b < A0) { [o.u, o.v] = [[-0.5, 0.1], [0, -0.25], [0.5, 0.1]][o.n - 1]; x = o.u; y = o.v; prev = o; continue; }
+    if (tut && o.b < A0) { [o.u, o.v] = [[-0.5, 0.1], [0, -0.25], [0.5, 0.1]][o.n - 1]; x = o.u; y = o.v; placed.push(o); prev = o; continue; }
     if (prev) {
-      const gap = o.b - (prev.b + prev.len), d = clamp(0.2 + gap * 0.72, 0.36, 1.15);
-      ang += o.nc ? 1.6 + (r() - 0.5) * 1.6 : (r() - 0.5) * 0.9 + (gap <= 0.5 ? 0.3 : 0.7);
-      let nx = x, ny = y;
-      for (let k = 0; k < 12; k++) { nx = x + Math.cos(ang) * d; ny = y + Math.sin(ang) * d; if (inside(nx, ny)) break; ang += 0.55; }
-      x = clamp(nx, -0.86, 0.86); y = clamp(ny, -0.86, 0.86);
+      const gap = o.b - (prev.b + prev.len), lo = MIND(gap), hi = MAXD(gap);
+      let best = null;
+      for (let k = 0; k < 40; k++) { // spacing ∝ time; turn more at a new phrase; keep clear of anything still on screen
+        const a = ang + (o.nc ? 1.4 : 0.5) * (r() - 0.5) * 2 + (k > 12 ? (k - 12) * 0.45 : 0), d = lo + (hi - lo) * (0.25 + r() * 0.6);
+        const nx = x + Math.cos(a) * d / PW, ny = y + Math.sin(a) * d / PH;
+        if (!inF(nx, ny)) continue;
+        const c = clear([[nx, ny]], o.b);
+        if (!best || c > best.c) best = { nx, ny, a, c };
+        if (c >= MINSEP) break;
+      }
+      if (best) { x = best.nx; y = best.ny; ang = best.a; }
     }
     o.u = x; o.v = y;
     if (o.kind === 'slider') {
-      const L = clamp(0.32 + (o.len / (o.rep + 1)) * 0.38, 0.32, 0.8); let sa = ang + (r() - 0.5) * 1.2, ex = x, ey = y;
-      for (let k = 0; k < 12; k++) { ex = x + Math.cos(sa) * L; ey = y + Math.sin(sa) * L; if (inside(ex, ey)) break; sa += 0.55; }
-      ex = clamp(ex, -0.86, 0.86); ey = clamp(ey, -0.86, 0.86);
-      const bend = (r() - 0.5) * 0.7 * L, mx = (x + ex) / 2 - Math.sin(sa) * bend, my = (y + ey) / 2 + Math.cos(sa) * bend;
-      o.path = [[x, y], [mx, my], [ex, ey]];
-      if (!o.rep) { x = ex; y = ey; ang = sa; } else ang = sa + Math.PI;
+      const L = o.len === 1 ? 0.26 + r() * 0.06 : 0.36 + r() * 0.08; let bestS = null;
+      for (let k = 0; k < 36; k++) {
+        const sa = ang + (r() - 0.5) * 1.6 + k * 0.5, ex = x + Math.cos(sa) * L / PW, ey = y + Math.sin(sa) * L / PH;
+        if (!inF(ex, ey)) continue;
+        const bend = (r() - 0.5) * 0.5 * L, mx = (x + ex) / 2 - Math.sin(sa) * bend / PW, my = (y + ey) / 2 + Math.cos(sa) * bend / PH;
+        const path = [[x, y], [mx, my], [ex, ey]], c = clear([0.25, 0.5, 0.75, 1].map((q) => bez(path, q)), o.b);
+        if (!bestS || c > bestS.c) bestS = { path, sa, c };
+        if (c >= MINSEP) break;
+      }
+      o.path = bestS.path; x = o.path[2][0]; y = o.path[2][1]; ang = bestS.sa;
     }
-    prev = o;
+    placed.push(o); prev = o;
   }
-  objs.push({ kind: 'spin', b: 1e6, len: 0, t: 1e9, tEnd: 1e9, u: 0, v: 0, n: 0, col: COLS[0] }); // spinner retired (kept as a never-due stub)
-  return objs;
 }
+export function buildMap(lvl, tut, seed = 1) {
+  let last;
+  for (let k = 0; k < 24; k++) { // a seed whose layout can't satisfy the rules just rolls the next one (deterministic)
+    const r = mulberry((seed + k * 0x9e3779b9) >>> 0), objs = rhythm(lvl, tut, r); place(objs, tut, r);
+    const v = validateMap(objs, lvl); last = { objs, v };
+    if (v.ok) break;
+  }
+  if (!last.v.ok && QA) throw new Error('knock map breaks its rules: ' + last.v.bad.slice(0, 4).join('; '));
+  last.objs.rules = last.v;
+  last.objs.push({ kind: 'spin', b: 1e6, len: 0, t: 1e9, tEnd: 1e9, u: 0, v: 0, n: 0, col: COLS[0] }); // spinner retired (kept as a never-due stub)
+  return last.objs;
+}
+const bez = (p, s) => { const [a, b, c] = p, k = 1 - s; return [k * k * a[0] + 2 * k * s * b[0] + s * s * c[0], k * k * a[1] + 2 * k * s * b[1] + s * s * c[1]]; };
 const sliderAt = (o, t) => { const span = (o.tEnd - o.t) / (o.rep + 1); let s = clamp((t - o.t) / span, 0, o.rep + 1); const leg = Math.min(o.rep, Math.floor(s)); s -= leg; if (leg % 2) s = 1 - s; return bez(o.path, clamp(s)); };
 
 export class Knock {

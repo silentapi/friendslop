@@ -280,8 +280,8 @@ function* knockG() {
       const t = knockBeat(bar * 4 + s / 4), on = s % 4 === 0;
       if (sec === 'in') { if (on) put(t, m('rim', rim), s ? 0.55 : 0.8); if (s === 0 || (bar === 1 && s === 8)) put(t, m('k', oKick), 0.7); if (s % 2 === 0) put(t, m('h', () => oHat()), 0.25, 0.3); if (bar === 1 && s >= 12) put(t, m('c78', () => oCowbell(oNote(78))), 0.35 + (s - 12) * 0.1); continue; }
       if (sec === 'E') { if (s === 0) { put(t, m('k', oKick), 1); put(t, m('cy', cym), 0.9); put(t, m('cl', oClap), 0.9); put(t, o808(oNote(42), KB * 3.5, oNote(30)), 0.95); put(t, m('c85', () => oCowbell(oNote(85))), 0.7); } continue; }
-      if (sec === 'D') { // the finisher bar: stop-time stabs on 1, the "and" of 2, and 4 (the map's finishers sit on these)
-        if (s === 0 || s === 6 || s === 12) { put(t, m('k', oKick), 1); put(t, m('cl', oClap), 0.85); put(t, m('c78', () => oCowbell(oNote(78))), 0.7); put(t, m('c85', () => oCowbell(oNote(85))), 0.45); put(t, o808(oNote(s === 12 ? 47 : 42), KB * 1.2), 0.9); }
+      if (sec === 'D') { // the finisher bar: stop-time stabs on beats 1, 3 and 4 (the map's finishers sit on these, on the grid)
+        if (s === 0 || s === 8 || s === 12) { put(t, m('k', oKick), 1); put(t, m('cl', oClap), 0.85); put(t, m('c78', () => oCowbell(oNote(78))), 0.7); put(t, m('c85', () => oCowbell(oNote(85))), 0.45); put(t, o808(oNote(s === 12 ? 47 : 42), KB * 1.2), 0.9); }
         if (s === 0) put(t, m('cy', cym), 0.7);
         if (s >= 14) put(t, m('h', () => oHat()), 0.4);
         continue;

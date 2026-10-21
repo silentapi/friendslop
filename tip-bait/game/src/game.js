@@ -896,15 +896,16 @@ function showResults(line) {
   const bonus = ({ S: 200, A: 120, B: 70, C: 35, D: 15 }[grade] || 0) + (perfect ? 500 : 0) + (daily?.gain?.coins || 0), got = G.coins - (G.banked || 0), earned = bankCoins(bonus);
   const res = document.querySelector('#results .res');
   if (res) {
-    const w = document.createElement('div'); w.className = 'walletline';
-    w.innerHTML = `<span>🪙 +${got.toLocaleString('en-US')} coins · +${bonus} ${daily?.gain ? `bonus (daily 🔥${daily.streak})` : 'grade bonus'} → wallet</span><button class="btn ghost shopbtn" id="tomenu">⌂ MAIN MENU</button><button class="btn ghost shopbtn" id="toshop">🛒 STORE</button>`;
-    (res.querySelector('.nextup') || res.lastElementChild).before(w);
+    // rewards on one line: coins (they fly to the pouch), the battle-pass XP bar, and small menu / store buttons
+    const w = document.createElement('div'); w.className = 'walletline r3-rew';
+    w.innerHTML = `<span class="r3-coins" title="${got} picked up + ${bonus} bonus">🪙 +${(got + bonus).toLocaleString('en-US')}${daily?.gain ? ` <em>🔥${daily.streak}</em>` : ''}</span><div class="r3-xp"></div>${G.daily ? '' : '<button class="btn ghost shopbtn" id="tomenu" aria-label="Main menu">⌂</button>'}<button class="btn ghost shopbtn" id="toshop" aria-label="Store">🛒</button>`;
+    res.querySelector('.row').before(w);
     const toMenu = (shop) => { leaveRun(); finale?.dispose(); finale = null; scene.add(G.world); G.world.add(G.R.root); UI.clear(); hud = null; showTitle(); if (shop) openStore(); };
-    w.querySelector('#toshop').onclick = () => toMenu(true); w.querySelector('#tomenu').onclick = () => toMenu(false);
+    w.querySelector('#toshop').onclick = () => toMenu(true); w.querySelector('#tomenu')?.addEventListener('click', () => toMenu(false));
     const xp = runXP({ rows: rated.rows, grade, perfect, coins: G.coins, dist: G.dist }); if (daily?.gain) { xp.parts.push(['daily', daily.gain.xp]); xp.total += daily.gain.xp; }
     const aw = awardXP(store, xp.total);
-    const xw = xpWidget(document.createElement('div'), { before: aw.before, after: aw.after, gained: aw.after - aw.before, parts: xp.parts, sfx: (n, g, r) => Audio.sfx(n, g, r), onOpen: () => { toMenu(false); openPass(); } });
-    w.after(xw);
+    xpWidget(w.querySelector('.r3-xp'), { before: aw.before, after: aw.after, gained: aw.after - aw.before, parts: xp.parts, sfx: (n, g, r) => Audio.sfx(n, g, r), onOpen: () => { toMenu(false); openPass(); } });
+    w.querySelector('.xpline')?.addEventListener('click', () => { toMenu(false); openPass(); });
     UI.pouchFly({ from: w.querySelector('span'), before: store.get('wallet', 0) - (got + bonus), after: store.get('wallet', 0), n: Math.min(40, 8 + Math.round((got + bonus) / 15)) });
   }
   void earned;

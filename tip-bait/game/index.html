@@ -1105,6 +1105,38 @@ html, body { height: 100%; margin: 0; background: var(--ink); color: var(--paper
   #crateopen.cv2.multi .creveal { bottom: calc(var(--sb) + 30vh); }
 }
 /* ---- /crates v2 ---- */
+
+/* ---- results v3: one screen, no scroll ---- */
+#results { justify-content: center; padding: calc(var(--st) + 12px) var(--sr) calc(var(--sb) + 12px) var(--sl); overflow: hidden; }
+.res.r3 { max-width: 400px; gap: 10px; max-height: 100%; }
+.r3-head { display: flex; align-items: center; gap: 12px; }
+.r3-head .grade { width: 56px; height: 56px; flex: none; border-radius: var(--r2); font-size: 40px; display: grid; place-items: center; }
+.r3-score { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.r3-score small { font: 700 11px var(--body); letter-spacing: .6px; color: var(--mute); white-space: nowrap; } .r3-score small b { color: var(--kyle); }
+.r3-score span { font: 900 34px/1 var(--display); color: var(--paper); }
+.r3-tip { flex: none; text-align: right; display: flex; flex-direction: column; }
+.r3-tip small { font: 700 11px var(--body); letter-spacing: .6px; color: var(--mute); }
+.r3-tip b { font: 900 24px/1 var(--display); color: var(--kyle); } .r3-tip.won b { color: var(--gobbl); }
+.r3-tip em { font: 600 11px var(--body); font-style: normal; color: var(--mute); }
+.r3 .srows { gap: 4px; }
+.r3 .srow { grid-template-columns: 20px minmax(0, 1fr) minmax(70px, 1.2fr) 66px; gap: 8px; }
+.r3 .srow .si { font-size: 14px; } .r3 .srow .sn { font: 700 13px/1.2 var(--body); }
+.r3 .srow .bdg { font-size: 10px; padding: 3px 0; text-align: center; }
+.r3-quote { font: 600 12px/1.3 var(--body); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+.r3-rew { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--r2); }
+.r3-rew .r3-coins { flex: none; font: 900 16px var(--display); color: var(--kyle); } .r3-rew .r3-coins em { font-style: normal; font-size: 13px; }
+.r3-rew .r3-xp { flex: 1; min-width: 0; }
+.r3-rew .xpline { padding: 0; background: none; gap: 8px; }
+.r3-rew .xptier { width: 32px; height: 32px; border-radius: 8px; } .r3-rew .xptier small { display: none; } .r3-rew .xptier b { font-size: 16px; }
+.r3-rew .xptop small { display: none; } .r3-rew .xpgain { font-size: 13px; } .r3-rew .xpbar { height: 6px; }
+.r3-rew #tobp { display: none; } .r3-rew .xpline { cursor: pointer; }
+.r3-rew .shopbtn { width: 40px; height: 40px; padding: 0; font-size: 18px; flex: none; }
+.r3 .row .btn { padding: 16px; }
+@media (max-height: 700px) { .r3 .srow .sn { font-size: 12px; } .r3-score span { font-size: 28px; } .r3-head .grade { width: 46px; height: 46px; font-size: 32px; } .res.r3 { gap: 8px; } .r3 .row .btn { padding: 12px; } }
+@media (max-height: 460px) { .res.r3 { max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; row-gap: 8px; } .r3 .srows { grid-row: 1 / span 4; grid-column: 2; } .r3 .srows .srow { gap: 6px; } }
+#results { background: rgba(8,10,12,.94); }
+.r3-rew .xptier b { display: block; color: #2a1a00; line-height: 1; }
+/* ---- /results v3 ---- */
 </style>
 <div id="app">
   <canvas id="gl"></canvas>
