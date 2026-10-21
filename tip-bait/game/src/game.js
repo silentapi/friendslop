@@ -834,7 +834,7 @@ function showResults(line) {
   G.delivered++; store.set('delivered', G.delivered);
   if (!G.best || G.time < G.best) { G.best = Math.round(G.time); store.set('best', G.best); }
   // delivery bonuses on top of the live score
-  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.hallT ?? G.fin?.dogT ?? 0));
+  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0) - (G.fin?.hallT ?? G.fin?.dogT ?? 0) - (G.fin?.knockT || 0));
   const run = Math.round(G.score), timeB = Math.round(timeLeft * 25), iceB = Math.round(G.ice * 8), cleanB = G.crashes ? 0 : 1000;
   const total = run + timeB + iceB + cleanB;
   const newBest = total > (G.bestScore || 0); if (newBest) { G.bestScore = total; store.set('bestScore', total); }
