@@ -10,6 +10,7 @@ const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } })
 await ctx.route('https://cdn.jsdelivr.net/npm/three@0.169.0/**', (route) => { const p = route.request().url().replace('https://cdn.jsdelivr.net/npm/three@0.169.0/', ''); const f = join('/home/user/friendslop/tip-bait/node_modules/three', p); existsSync(f) ? route.fulfill({ body: readFileSync(f), contentType: 'application/javascript' }) : route.fulfill({ status: 404 }); });
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.addInitScript((o) => { try { localStorage.setItem('tipbait:order', String(o)); } catch {} }, Number(order));
+if (process.env.AKIRA_FAIL) await ctx.addInitScript(() => { globalThis.__akiraFail = true; });
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => { errors.push(e.message); console.log('[pageerror]', e.message, (e.stack || '').split('\n').slice(1, 3).join(' | ')); });
@@ -43,6 +44,8 @@ if (mode === 'ramp') {
 const pilot = () => page.evaluate((crashMode) => {
   const g = window.__G, LANES = g.LANES;
   if (g.state !== 'run' || crashMode) return null;
+  const cap = (k) => 'Arrow' + k.slice(5, 6).toUpperCase() + k.slice(6);
+  if (g.akira && !g.akira.res) return globalThis.__akiraFail && g.akira.idx === 1 ? 'ArrowUp' === cap(g.akira.seq[1]) ? 'ArrowLeft' : 'ArrowUp' : cap(g.akira.seq[g.akira.idx]);
   if (g.qte) return (1 - g.qte.t / g.qte.dur) < 0.22 ? g.qte.key.replace('arrow', 'Arrow').replace('Arrowup', 'ArrowUp').replace('Arrowdown', 'ArrowDown').replace('Arrowleft', 'ArrowLeft').replace('Arrowright', 'ArrowRight') : null;
   { const m = g.lv.ramps.find((r) => r.mega && r.s - g.s > 0 && r.s - g.s < 45); if (m && g.lane !== 1) return g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; if (m) return null; }
   const ahead = (li) => {
@@ -85,12 +88,12 @@ while (i < 4000) {
 }
 console.log('run took', ((Date.now() - t0) / 1000).toFixed(0), 's', JSON.stringify(await G()), 'score', await page.evaluate(() => Math.round(window.__G.score) + ' coins ' + window.__G.coins + ' tricks ' + window.__G.tricks));
 if ((await G()).st === 'finale') {
-  const F = () => page.evaluate(() => { const f = window.__F; return f ? { ph: f.phase, t: +f.t.toFixed(2), meter: f.meter, look: f.glanceT > 0, on: f.inputOn, haz: f.haz ? [f.haz.key, f.hazT] : null, u: f.u, fl: f.flights } : null; });
-  for (let k = 0; k < 6; k++) { await tick(15); await shot(`fin_arrive_${k}`); }
+  const F = () => page.evaluate(() => { const f = window.__F; return f ? { ph: f.phase, t: +f.t.toFixed(2), meter: f.notice, look: f.dphase === 'looking' && f.phaseT > 0.25, on: f.inputOn, haz: f.haz ? [f.haz.key, f.hazT] : null, u: f.u, fl: f.flights } : null; });
+  for (let k = 0; k < 40 && (await F()).ph === 'arrive'; k++) { await tick(4); await shot(`fin_arrive_${String(k).padStart(2, '0')}`); }
   for (let w = 0; w < 60 && (await F()).ph !== 'locked'; w++) await tick(5);
   let k = 0, f;
   while ((f = await F()).ph === 'locked' && k < 400) {
-    if (f.on) { await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); if (f.look && k % 3 === 0) await key(' '); }
+    if (f.on) { if (f.look) await key(' '); else await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); } // wave until she looks up, then knock
     await tick(4); k++; // ~7.5 waves/s: a human mash rate
     if (k % 8 === 4) await shot(`fin_locked_${String(k).padStart(3, '0')}`);
   }

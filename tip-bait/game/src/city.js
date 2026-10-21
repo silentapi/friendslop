@@ -1,6 +1,7 @@
 // Real Downtown Orlando corridor (OpenStreetMap © contributors, ODbL): building footprints + heights, street
 // widths and surfaces (asphalt / brick), the level street with lanes and curbs, palms and twin-globe lamps.
 import { THREE, BGU, V, mat, lam, emissive, mesh, box, cyl, tex, mulberry, loadGLB, canvasTex, plane, signTex, floatGeo } from './core.js';
+import { facadeKit, STYLES, STYLE_KEYS, GF, GROUND_VARIANTS, matIndex } from './facades.js';
 
 const HERO = new Set(['615948622']); // Citi Tower is the hand-built model
 const PALETTE = [[0.93, 0.91, 0.87], [0.87, 0.83, 0.75], [0.96, 0.95, 0.93], [0.8, 0.78, 0.74], [0.84, 0.76, 0.64], [0.66, 0.64, 0.62], [0.9, 0.88, 0.82], [0.74, 0.58, 0.48]];
@@ -12,78 +13,59 @@ function heightOf(b) {
   return area > 2500 ? 22 : area > 800 ? 14 : 9;
 }
 
-// facade: procedural windows / storefronts / curtain walls on a cheap Lambert material
-function facadeMaterial() {
-  const m = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  m.onBeforeCompile = (sh) => {
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 aStyle; attribute vec3 aTint;\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vStyle; varying vec3 vTint;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vStyle = aStyle; vTint = aTint;');
-    sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>
-        varying vec3 vWP; varying vec3 vWN; varying vec4 vStyle; varying vec3 vTint;
-        float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-        // anti-aliased step: the edge is blurred over one pixel's worth of the (continuous) pattern coordinate
-        float aa(float e, float x, float w){ return smoothstep(e - w, e + w, x); }
-        float band(float a, float b, float x, float w){ return aa(a, x, w) * (1.0 - aa(b, x, w)); }`)
-      .replace('#include <map_fragment>', `
-        vec3 nW = normalize(vWN);
-        // per-building ids: interpolated varyings wobble by ~1e-7, so round before hashing (else every pixel hashes differently)
-        float idR = floor(vTint.r * 40.0 + 0.5), idG = floor(vTint.g * 31.0 + 0.5), idB = floor(vTint.b * 50.0 + 0.5), kindI = floor(vStyle.w + 0.5);
-        float isRoof = step(0.6, nW.y);
-        vec2 wd = normalize(vec2(-nW.z, nW.x) + 1e-5);
-        float u = dot(vWP.xz, wd), v = vWP.y;
-        float fh = vStyle.x, bw = vStyle.y, gr = vStyle.z, kind = vStyle.w;
-        vec2 cell = vec2(u / bw, (v - 0.4) / fh); vec2 f = fract(cell);
-        vec2 fw = max(fwidth(cell), vec2(1e-4));            // pattern units per pixel (from the continuous coordinate)
-        float far = smoothstep(0.18, 0.55, max(fw.x, fw.y)); // windows smaller than ~3 px fade to their average
-        float rid = mix(h21(floor(cell) + kindI * 7.0 + idR), 0.5, far);
-        vec2 x0 = kind > 1.5 ? vec2(0.04, 0.96) : vec2(0.5 - gr * 0.5, 0.5 + gr * 0.5);
-        vec2 y0 = kind > 1.5 ? vec2(0.05, 0.96) : kind > 0.5 ? vec2(0.3, 0.9) : vec2(0.25, 0.85);
-        float wx = band(x0.x, x0.y, f.x, fw.x * 0.8), wy = band(y0.x, y0.y, f.y, fw.y * 0.8);
-        float cover = (x0.y - x0.x) * (y0.y - y0.x);
-        float win = mix(wx * wy, cover, far);
-        float ground = 1.0 - aa(4.4, v, fwidth(v));
-        float su = u / 4.5, sw = max(fwidth(su), 1e-4);
-        float store = ground * aa(0.6, v, fwidth(v)) * mix(band(0.05, 0.95, fract(su), sw), 0.9, smoothstep(0.2, 0.5, sw));
-        float glass = (1.0 - isRoof) * max(win * (1.0 - ground), store * step(0.35, h21(vec2(floor(su), idG))));
-        vec3 sky = mix(vec3(0.55, 0.62, 0.70), vec3(0.95, 0.78, 0.6), clamp(v / 90.0, 0.0, 1.0));
-        vec3 glassC = mix(vec3(0.07, 0.1, 0.12), sky * 0.55, 0.35 + 0.4 * rid) * (kind > 1.5 ? vec3(0.85, 1.0, 1.05) : vec3(1.0));
-        float reveal = (1.0 - isRoof) * (1.0 - ground) * (1.0 - glass) * mix(wx * band(0.2, 0.92, f.y, fw.y * 0.8), 0.0, far) * (kind < 1.5 ? 1.0 : 0.0);
-        vec3 roofC = vec3(0.45, 0.45, 0.47);
-        diffuseColor.rgb = isRoof > 0.5 ? roofC : mix(vTint * (1.0 - reveal * 0.3) * (0.92 + 0.08 * h21(floor(vec2(u, v) * 0.3) + idB)), glassC, glass);`)
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += (1.0 - isRoof) * glass * sky * 0.12;');
+// style per building: parking decks, glass/office towers, and brick / stucco low- and mid-rises
+function pickStyle(b, h, i) {
+  const r = mulberry(((Number(b.id) || i + 7) * 2654435761) % 2147483647);
+  if (b.kind === 'parking') return 'parking';
+  if (h > 45) return r() < 0.6 ? 'tower' : 'office';
+  if (h > 22) return ['office', 'brickRed', 'stucco', 'office'][Math.floor(r() * 4)];
+  return ['brickOld', 'brickRed', 'stucco', 'brickOld', 'stucco'][Math.floor(r() * 5)];
+}
+const PASTEL = [[1, 0.96, 0.88], [1, 0.9, 0.82], [0.88, 0.97, 0.92], [0.88, 0.93, 1], [1, 0.98, 0.8], [0.98, 0.98, 0.98]];
+export async function buildings(scene, city) {
+  const mats = await facadeKit();
+  const parts = mats.map(() => ({ pos: [], nor: [], uv: [], col: [] }));
+  const quad = (P, a, b, y0, y1, u0, u1, v0, v1, n, col) => {
+    const q = P; const A = [a[0], y0, a[1]], B = [b[0], y0, b[1]], C = [b[0], y1, b[1]], D = [a[0], y1, a[1]];
+    for (const [p, uv] of [[A, [u0, v0]], [B, [u1, v0]], [C, [u1, v1]], [A, [u0, v0]], [C, [u1, v1]], [D, [u0, v1]]]) { q.pos.push(...p); q.nor.push(n[0], 0, n[1]); q.uv.push(...uv); q.col.push(...col); }
   };
-  m.customProgramCacheKey = () => 'facade-lambert';
-  return m;
-}
-function styleFor(b, h) {
-  const r = mulberry((Number(b.id) || 7) % 2147483647);
-  const tall = h > 45;
-  const kind = tall ? (r() < 0.55 ? 2 : r() < 0.5 ? 1 : 0) : (r() < 0.15 ? 1 : 0);
-  const tint = tall && kind === 2 ? [0.56, 0.63, 0.67] : PALETTE[Math.floor(r() * PALETTE.length)];
-  return { style: [kind === 2 ? 3.8 : 3.4, kind === 2 ? 1.6 : 2.2 + r() * 1.6, kind === 1 ? 0.95 : 0.45 + r() * 0.25, kind], tint };
-}
-export function buildings(scene, city) {
-  const geos = [];
-  // OSM often has an outline plus building:parts sharing the same walls and roofs; coplanar faces in different
-  // colours z-fight into crawling grain. Every building gets its own small inset and roof offset so none coincide.
   city.buildings.forEach((b, i) => {
     if (HERO.has(String(b.id))) return;
-    const g6 = (i * 0.6180339887) % 1, h = heightOf(b) + g6 * 0.3, base = b.min || 0, inset = 0.03 + g6 * 0.25; // unique per building
+    // OSM outlines and building:parts share walls; a unique small inset per building keeps them from z-fighting
+    const g6 = (i * 0.6180339887) % 1, h = heightOf(b) + g6 * 0.3, base = b.min || 0, inset = 0.03 + g6 * 0.25;
+    if (h - base < 1) return;
     let cx = 0, cz = 0; for (const [x, z] of b.pts) { cx += x; cz += z; } cx /= b.pts.length; cz /= b.pts.length;
-    const pts = b.pts.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1, k = Math.max(0.5, 1 - inset / d); return [cx + dx * k, cz + dz * k]; });
-    const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z)));
-    let g; try { g = new THREE.ExtrudeGeometry(shape, { depth: Math.max(1, h - base), bevelEnabled: false }); } catch { return; }
-    g.rotateX(-Math.PI / 2); g.translate(0, base, 0); g.deleteAttribute('uv');
-    g = g.index ? g.toNonIndexed() : g;
-    const n = g.attributes.position.count, { style, tint } = styleFor(b, h);
-    g.setAttribute('aStyle', new THREE.Float32BufferAttribute(new Array(n).fill(style).flat(), 4));
-    g.setAttribute('aTint', new THREE.Float32BufferAttribute(new Array(n).fill(tint).flat(), 3));
-    geos.push(g);
+    let pts = b.pts.map(([x, z]) => { const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz) || 1, k = Math.max(0.5, 1 - inset / d); return [cx + dx * k, cz + dz * k]; });
+    if (pts.length > 2 && Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) < 0.01) pts = pts.slice(0, -1);
+    const area = polyArea(pts), sign = area > 0 ? 1 : -1;
+    const key = pickStyle(b, h, i), si = STYLE_KEYS.indexOf(key), st = STYLES[key];
+    const r = mulberry(i * 977 + 13);
+    const col = key === 'stucco' ? PASTEL[Math.floor(r() * PASTEL.length)] : key === 'tower' ? [0.92 + r() * 0.08, 0.96 + r() * 0.04, 1] : [0.9 + r() * 0.1, 0.9 + r() * 0.1, 0.9 + r() * 0.1];
+    const shopTop = base === 0 ? Math.min(GF, h) : base, upper = h - shopTop;
+    const nf = Math.max(1, Math.round(upper / st.fh));
+    for (let k = 0; k < pts.length; k++) {
+      const a = pts[k], c = pts[(k + 1) % pts.length], dx = c[0] - a[0], dz = c[1] - a[1], len = Math.hypot(dx, dz);
+      if (len < 0.05) continue;
+      const n = [sign * dz / len, -sign * dx / len];
+      // whole bays per wall so windows are never sliced; very short walls show plain wall from the tile's margin
+      const nb = Math.round(len / st.bw), u1 = len < st.bw * 0.6 ? 0.06 : Math.max(1, nb) / 2, u0 = 0;
+      const [A, B] = sign > 0 ? [c, a] : [a, c];
+      if (base === 0) quad(parts[matIndex(si, 'ground', (i + k) % GROUND_VARIANTS)], A, B, 0, shopTop, u0, u1, 0, 1, n, col);
+      if (upper > 0.3) quad(parts[matIndex(si, 'upper')], A, B, shopTop, h, u0, u1, 0, upper < st.fh * 0.6 ? 0.05 : nf / 2, n, col);
+    }
+    // flat roof cap
+    const contour = pts.map(([x, z]) => new THREE.Vector2(x, z));
+    const tris = THREE.ShapeUtils.triangulateShape(contour, []), R = parts[mats.length - 1];
+    for (const t of tris) for (const j of (sign > 0 ? [t[0], t[2], t[1]] : t)) { const [x, z] = pts[j]; R.pos.push(x, h, z); R.nor.push(0, 1, 0); R.uv.push(x / 6, z / 6); R.col.push(1, 1, 1); }
   });
-  const merged = BGU.mergeGeometries(geos, false); merged.computeVertexNormals();
-  const m = mesh(merged, facadeMaterial(), { cast: true, receive: false }); // facades don't self-shadow: acne at grazing angles reads as crawling grain
+  const g = new THREE.BufferGeometry(), all = { pos: [], nor: [], uv: [], col: [] };
+  parts.forEach((p, m) => { const start = all.pos.length / 3; for (const k of ['pos', 'nor', 'uv', 'col']) all[k].push(...p[k]); const n = p.pos.length / 3; if (n) g.addGroup(start, n, m); });
+  g.setAttribute('position', new THREE.Float32BufferAttribute(all.pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(all.nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(all.uv, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(all.col, 3));
+  g.computeBoundingSphere();
+  const m = mesh(g, mats, { cast: true, receive: false });
   scene.add(m);
   return m;
 }
@@ -109,18 +91,24 @@ function ribbon(pts, w, y, uvScale = 0) {
   return g;
 }
 const asphaltM = () => { const t = tex('tex/asphalt.jpg'); return new THREE.MeshLambertMaterial({ color: 0xb4b4b6, map: t }); };
-const brickM = () => { const t = tex('tex/brick.jpg'); return new THREE.MeshLambertMaterial({ color: 0xd2b8ad, map: t }); };
+const brickM = () => { const t = tex('tex/brick.jpg'); return new THREE.MeshLambertMaterial({ color: 0xf2e6e0, map: t }); };
 export function streets(scene, city, route) {
   const asph = [], brick = [];
-  for (const r of city.roads) { if (r.pts.length < 2) continue; (r.surface === 'bricks' ? brick : asph).push(ribbon(r.pts, r.w, 0.02, 6)); }
+  const walk = [], pavers = [];
+  for (const r of city.roads) { if (r.pts.length < 2) continue; (r.surface === 'bricks' ? brick : asph).push(ribbon(r.pts, r.w, 0.02, r.surface === 'bricks' ? 2 : 6)); walk.push(ribbon(r.pts, r.w + 8, 0.008, 3)); }
   // the level street: at least 10.4 m wide so three lanes always sit on the road, surface per real street
   for (const st of route.streets) {
     const pts = []; for (let s = st.s0; s <= st.s1 + 0.01; s += 2) { const f = route.at(s); pts.push([f.x, f.z]); }
-    if (pts.length > 1) (st.surface === 'bricks' ? brick : asph).push(ribbon(pts, Math.max(10.4, st.w), 0.045, 6));
+    if (pts.length > 1) { (st.surface === 'bricks' ? brick : asph).push(ribbon(pts, Math.max(10.4, st.w), 0.045, st.surface === 'bricks' ? 2 : 6)); (st.surface === 'bricks' ? pavers : walk).push(ribbon(pts, Math.max(10.4, st.w) + 10, 0.012, 3)); }
   }
   const am = asphaltM(), bm = brickM();
   am.polygonOffset = bm.polygonOffset = true; am.polygonOffsetFactor = bm.polygonOffsetFactor = -1;
   if (asph.length) scene.add(mesh(BGU.mergeGeometries(asph), am, { cast: false }));
+  // sidewalks: concrete slabs along every street, brick pavers along Church Street (textures: Poly Haven, CC0)
+  const sw = { polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 }; // between the ground (pushed back) and the roads (pulled forward)
+  const swM = new THREE.MeshLambertMaterial({ map: tex('tex/sidewalk.jpg'), color: 0xe6e2da, ...sw }), pvM = new THREE.MeshLambertMaterial({ map: tex('tex/brick_pavers.jpg'), color: 0xf0dcd0, ...sw });
+  if (walk.length) scene.add(mesh(BGU.mergeGeometries(walk), swM, { cast: false }));
+  if (pavers.length) scene.add(mesh(BGU.mergeGeometries(pavers), pvM, { cast: false }));
   if (brick.length) scene.add(mesh(BGU.mergeGeometries(brick), bm, { cast: false }));
   // intersections along the route: other streets crossing within 9 m of the centerline
   const cross = [];

@@ -12,12 +12,16 @@ export function prefetchKyle() { return (kyleP ||= character('m/kyle.glb', KYLE_
 let recP = null;
 export function prefetchReceptionist() { return (recP ||= character('m/tourist_f.glb', { tint: { casualsuit02: 0x3a4a6a } }).then(async (C) => { await C.load('sitidle', 'idle', 'point'); return C; })); }
 function phone() { const g = new THREE.Group(); box(0.075, 0.15, 0.012, mat(0x111214, { roughness: 0.3 }), 0, 0, 0, g); box(0.065, 0.13, 0.002, new THREE.MeshBasicMaterial({ color: 0x8fd8ff }), 0, 0, 0.007, g); return g; }
+let puffTex = null;
+function canvasTexOnce() { if (puffTex) return puffTex; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 2, 32, 32, 30); g.addColorStop(0, 'rgba(235,235,235,1)'); g.addColorStop(1, 'rgba(235,235,235,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); puffTex = new THREE.CanvasTexture(c); return puffTex; }
+// the iced coffee sits in a character's right palm: offset along the hand bone, upright in world space
+function palmCup(cup, C) { const h = C.bone('RightHand'); h.updateWorldMatrix(true, false); cup.position.copy(h.localToWorld(V(0, 0.075, 0.035))).add(V(0, -0.07, 0)); cup.rotation.set(0, 0, 0); }
 function hazardProp(kind) {
   const g = new THREE.Group();
   if (kind === 'dog') { const fur = mat(0x9a6a3a, { roughness: 0.9 }); box(0.5, 0.26, 0.24, fur, 0, 0.32, 0, g); box(0.2, 0.2, 0.2, fur, 0.32, 0.48, 0, g); box(0.1, 0.08, 0.12, mat(0x2a1a10), 0.45, 0.44, 0, g); for (const [x, z] of [[-0.18, -0.08], [-0.18, 0.08], [0.18, -0.08], [0.18, 0.08]]) box(0.07, 0.22, 0.07, fur, x, 0.11, z, g); box(0.22, 0.05, 0.05, fur, -0.33, 0.42, 0, g).rotation.z = 0.6; }
   if (kind === 'wet') { const y = mat(0xffd21a, { roughness: 0.6 }); for (const sx of [-1, 1]) { const p = box(0.4, 0.62, 0.02, y, 0, 0.3, sx * 0.1, g); p.rotation.x = sx * 0.3; } box(1.0, 0.005, 0.8, mat(0x8ab8d8, { roughness: 0.02, metalness: 0.4 }), 0, 0.005, 0, g); }
   if (kind === 'bucket') { cyl(0.2, 0.17, 0.32, mat(0xffd21a, { roughness: 0.6 }), 16, 0, 0.16, 0, g); const st = cyl(0.015, 0.015, 1.2, mat(0x8a6a4a), 6, 0.05, 0.6, 0, g); st.rotation.z = 0.35; }
-  g.rotation.y = Math.PI / 2;
+  g.rotation.y = Math.PI / 2; g.scale.setScalar(1.35); // read clearly from the stairwell camera
   return g;
 }
 function interiorScene(env) {
@@ -49,6 +53,7 @@ export class Finale {
   // ---------------------------------------------------------------- locked front doors + the receptionist on her phone
   async toLocked() {
     if (this.phase !== 'arrive') return;
+    this.G.R.bike.rotation.set(0, 0, 0); this.UI.remove('akira');
     const { UI, Audio, G } = this;
     UI.remove('scene'); UI.skipChip(false); document.querySelectorAll('.place').forEach((e) => e.remove());
     this.phase = 'loadingLocked';
@@ -56,30 +61,35 @@ export class Finale {
     const out = new THREE.DirectionalLight(0xfff0dc, 1.2); out.position.set(4, 9, 14); s.add(out);
     const lob = Sets.lobby({ glass: true }); s.add(lob); this.lob = lob;
     const rec = await prefetchReceptionist(); this.rec = rec; s.add(rec.root);
-    rec.root.position.set(-2.1, 0, 0.1); rec.root.rotation.set(0, 0, 0);
+    rec.root.position.set(-1.6, 0.16, 1.72); rec.root.rotation.set(0, 0, 0);
     if (!rec.phone) rec.phone = rec.attach('RightHand', phone(), [0, 0.09, 0.03], [0.3, 0, 0], 1);
-    this.stool = cyl(0.22, 0.22, 0.62, mat(0x1b1d22), 14, -2.1, 0.31, -0.05, s);
+    this.stool = cyl(0.22, 0.22, 0.78, mat(0x1b1d22), 14, -1.6, 0.39, 1.57, s);
+    // a big readable tell over her head: 📱 = on her phone, ❗ = looking at you
+    const tell = (txt, bg) => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = bg; x.beginPath(); x.arc(64, 64, 58, 0, 7); x.fill(); x.lineWidth = 8; x.strokeStyle = '#fff'; x.stroke(); x.font = '72px system-ui, "Apple Color Emoji", "Segoe UI Emoji"'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(txt, 64, 70); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    this.tells = { phone: tell('📱', '#2b2f36'), looking: tell('❗', '#18a957'), eyeroll: tell('🙄', '#d23a2f') };
+    this.tell = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.tells.phone, depthTest: false })); this.tell.scale.set(0.42, 0.42, 1); this.tell.renderOrder = 9; s.add(this.tell);
     const R = G.R; s.add(R.root); R.bike.visible = false; R.helm.visible = false; R.cup.visible = false;
-    R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.05, 0, 5.0);
+    R.root.rotation.set(0, Math.PI, 0); R.root.position.set(1.8, 0, 5.0);
     this.cup = coldCup(); s.add(this.cup);
-    this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 48; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
-    Object.assign(this, { meter: 0, look: 0, glanceT: 0, nextGlance: 1.4 + Math.random(), lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0 });
-    this.bui = UI.buzzUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
+    this.scene = s; this.phase = 'locked'; this.t = 0; this.camera.fov = 42; this.camera.updateProjectionMatrix(); // cut straight to the shot's lens
+    Object.assign(this, { notice: 0, look: 0, dphase: 'phone', phaseT: 0, penalty: 0, lastSide: -1, knockCd: 0, waveT: 0, knockT: 0, wavePh: 0, buzzed: null, inputOn: false, rattle: 0, window: G.delivered > 1 ? 1.1 : 1.5 });
+    this.bui = UI.deskUI(); this.bui.el.style.opacity = 0; this.bui.bind(() => this.wave(this.lastSide === 0 ? 1 : 0), () => this.knock());
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (this.phase === 'locked') { if (k === 'arrowleft' || k === 'a') this.wave(0); else if (k === 'arrowright' || k === 'd') this.wave(1); else if (k === ' ' || k === 'arrowup' || k === 'w' || k === 'enter') { e.preventDefault(); this.knock(); } } else if (this.phase === 'stairs') this.stairKey(k, e); };
     window.addEventListener('keydown', this.keyH);
     Audio.music('tense');
   }
   wave(side) {
-    if (!this.inputOn || this.buzzed != null) return;
-    if (side === this.lastSide) return;
-    this.lastSide = side; this.waveT = 0.3; this.wavePh = side;
-    this.gain(0.04); this.Audio.sfx('whoosh', 0.2, 1.8);
+    if (!this.inputOn || this.buzzed != null || side === this.lastSide) return;
+    this.lastSide = side; this.waveT = 0.3; this.wavePh = side; this.Audio.sfx('whoosh', 0.2, 1.8);
+    if (this.dphase === 'phone') { this.notice = Math.min(1, this.notice + 0.075); if (this.notice >= 1) this.setDesk('looking'); }
   }
   knock() {
     if (!this.inputOn || this.buzzed != null || this.knockCd > 0) return;
-    this.knockCd = 0.32; this.knockT = 0.22; this.gain(0.1); this.Audio.sfx('knock', 1, 0.9 + Math.random() * 0.2);
+    this.knockCd = 0.3; this.knockT = 0.22; this.Audio.sfx('knock', 1, 0.9 + Math.random() * 0.2);
+    if (this.dphase === 'looking') this.buzz(this.t - this.t0 + this.penalty);
+    else if (this.dphase === 'phone') { this.setDesk('eyeroll'); this.notice = Math.max(0, this.notice - 0.4); this.penalty += 1; this.UI.pop('TOO EARLY', 'she’s ignoring you now · +1s'); this.Audio.sfx('bwomp', 0.5, 1.4); }
   }
-  gain(g) { const looking = this.glanceT > 0; this.meter = Math.min(looking ? 1 : 0.5, this.meter + g * (looking ? 2.5 : 1)); }
+  setDesk(ph) { this.dphase = ph; this.phaseT = 0; this.tell.material.map = this.tells[ph]; this.tell.material.needsUpdate = true; if (ph === 'looking') this.Audio.sfx('pop', 0.9, 1.7); }
   updateLocked(dt) {
     const t = (this.t += dt), R = this.G.R, rec = this.rec, cam = this.camera, UI = this.UI, A = this.Audio, lob = this.lob;
     // beat 1: he pushes the door. it rattles. locked.
@@ -89,25 +99,26 @@ export class Finale {
     lob.userData.doors.forEach((d, i) => { d.position.x = (i ? 0.75 : -0.75) + Math.sin(t * 70) * this.rattle * 0.02 + (this.buzzed != null ? (i ? 1 : -1) * 1.4 * smooth(seg(t - this.buzzed, 0.3, 1.1)) : 0); });
     this.knockCd = Math.max(0, this.knockCd - dt); this.waveT = Math.max(0, this.waveT - dt); this.knockT = Math.max(0, this.knockT - dt);
     if (this.inputOn && this.buzzed == null) {
-      const el = t - this.t0;
-      if (this.glanceT > 0) { this.glanceT -= dt; if (this.glanceT <= 0) this.nextGlance = el + 1.2 + Math.random() * 1.3; }
-      else if (el >= this.nextGlance) { this.glanceT = 0.95; A.sfx('pop', 0.6, 1.6); }
-      else this.meter = Math.max(0, this.meter - dt * 0.12);
+      const el = t - this.t0; this.phaseT += dt;
+      if (this.dphase === 'phone') this.notice = Math.max(0, this.notice - dt * 0.16);
+      if (this.dphase === 'looking' && this.phaseT > this.window) { this.setDesk('phone'); this.notice = 0.3; this.penalty += 0.5; UI.pop('MISSED HER', 'back to her phone'); A.sfx('bwomp', 0.4, 1.2); }
+      if (this.dphase === 'eyeroll' && this.phaseT > 0.9) this.setDesk('phone');
       if (el > 3.2 && !this.tx2) { this.tx2 = true; UI.dm(KY.pickLine(KY.LOBBY_TEXTS.slice(2))); }
-      if (this.meter >= 1 || el > 11) this.buzz(el);
+      if (el > 20) this.buzz(el + this.penalty);
     }
-    this.look = damp(this.look, this.glanceT > 0 || this.buzzed != null ? 1 : 0, 12, dt);
-    this.bui.set({ meter: this.meter, looking: this.glanceT > 0, cap: 0.5 });
+    this.look = damp(this.look, this.dphase === 'looking' || this.buzzed != null ? 1 : this.dphase === 'eyeroll' ? 0.6 : 0, 12, dt);
+    this.bui.set({ notice: this.notice, phase: this.buzzed != null ? 'looking' : this.dphase, u: this.dphase === 'looking' ? 1 - this.phaseT / this.window : 0 });
+    this.tell.position.copy(rec.boneWorld('Head')).add(V(0, 0.42, 0)); const pulse = this.dphase === 'looking' ? 1 + 0.12 * Math.sin(t * 18) : 1; this.tell.scale.set(0.55 * pulse, 0.55 * pulse, 1); this.tell.visible = this.inputOn && this.buzzed == null;
     // receptionist: seated, eyes on the phone; glances up at the door
     rec.pose(this.buzzed != null && t - this.buzzed > 0.2 && t - this.buzzed < 1.6 ? [['sitidle', 1 + t * 0.6, 0.6], ['point', 0.6 + (t - this.buzzed) * 0.5, 0.4]] : [['sitidle', 1 + t * 0.6]]);
     const hd = rec.bone('Head'), nk = rec.bone('Neck');
-    nk.rotateX(0.35 * (1 - this.look)); hd.rotateX(0.35 * (1 - this.look) - 0.05 * this.look); hd.rotateY(-0.25 * this.look); hd.updateMatrixWorld(true);
+    nk.rotateX(0.45 * (1 - this.look)); hd.rotateX(0.4 * (1 - this.look) - 0.08 * this.look); hd.rotateY(0.35 * this.look); if (this.dphase === 'eyeroll') hd.rotateZ(0.25 * Math.sin(Math.min(1, this.phaseT / 0.9) * Math.PI)); hd.updateMatrixWorld(true);
     const ph = rec.root.localToWorld(V(-0.08 + 0.06 * this.look, 1.05 - 0.2 * this.look, 0.38 - 0.1 * this.look));
     ik2(rec.bone('RightArm'), rec.bone('RightForeArm'), rec.bone('RightHand'), ph, rec.root.localToWorld(V(-0.5, 0.7, -0.2)));
     // courier: waves both arms over his head, knocks on the glass
     if (this.buzzed != null && t - this.buzzed > 0.9) {
       const k = smooth(seg(t - this.buzzed, 0.9, 1.8));
-      R.root.position.set(1.05 - k * 0.8, 0, 5.0 - k * 3.4); R.walk('jog', t * 1.4, { offset: V(0, 0, 0), yaw: 0 });
+      R.root.position.set(1.8 - k * 1.2, 0, 5.0 - k * 3.4); R.walk('jog', t * 1.4, { offset: V(0, 0, 0), yaw: 0 });
       if (t - this.buzzed > 1.9) this.toElevator();
     } else {
       R.walk('idle', t, { offset: V(0, 0, 0), yaw: 0 });
@@ -125,17 +136,18 @@ export class Finale {
     R.C.root.updateMatrixWorld(true);
     this.cup.visible = this.buzzed != null && t - this.buzzed > 0.9; this.cup.position.copy(R.C.boneWorld('LeftHand')).add(V(0, -0.1, 0));
     // camera: over his shoulder through the glass; punch in on her when she looks up
+    // camera: a two-shot through the glass — him waving on the left, her large on the right; push in when she looks up
     const zoom = smooth(this.look);
-    cam.position.copy(V(2.0, 1.8, 7.4).lerp(V(-0.1, 1.6, 6.4), zoom)); cam.lookAt(V(-0.5, 1.3, 1.6).lerp(V(-2.1, 1.22, 0.3), zoom));
-    cam.fov = damp(cam.fov, 48 - zoom * 20, 6, dt); cam.updateProjectionMatrix();
+    cam.position.copy(V(0.25, 1.75, 8.4).lerp(V(-1.3, 1.6, 7.0), zoom)); cam.lookAt(V(0.1, 1.35, 2.9).lerp(V(-1.4, 1.45, 2.2), zoom)); // zoom lines up between the door mullions
+    cam.fov = damp(cam.fov, 42 - zoom * 10, 6, dt); cam.updateProjectionMatrix();
   }
   buzz(el) {
     const { UI, A = this.Audio, G } = this;
-    this.buzzed = this.t; this.glanceT = 0; UI.remove('buzzui');
-    const g = el < 3.0 ? ['PERFECT', 600, 'she buzzed you in instantly'] : el < 6.5 ? ['GOOD', 300, 'she sighed and buzzed you in'] : ['SLOW', 100, '“ugh. fine.”'];
+    this.buzzed = this.t; UI.remove('buzzui');
+    const g = el < 4.5 ? ['PERFECT', 600, 'she buzzed you in instantly'] : el < 8 ? ['GOOD', 300, 'she sighed and buzzed you in'] : ['SLOW', 100, '“ugh. fine.”'];
     G.score += g[1]; G.fin = { ...(G.fin || {}), door: g[0], doorT: el };
     UI.pop(g[0], `${g[2]} · +${g[1]}`); A.sfx('buzz', 0.9); setTimeout(() => A.sfx('ding', 0.5), 400);
-    UI.sceneCap(el > 11 ? '“ugh. fine.”' : 'bzzzt.');
+    UI.sceneCap(el > 20 ? '“ugh. fine.”' : 'bzzzt.');
   }
   // ---------------------------------------------------------------- elevator
   toElevator() {
@@ -217,9 +229,9 @@ export class Finale {
     if (this.phase !== 'stairs' || this.climbed || this.stumble > 0) return;
     if (this.haz) return;
     const u = this.u ?? 0.5, d = Math.abs(u - 0.5), { zone, perfect } = this.zone(), A = this.Audio, G = this.G;
-    if (d <= perfect) { this.flights = Math.min(38, this.flights + 3); this.perfects++; this.ui.flash('perf'); A.sfx('step', 1, 1.2); A.sfx('ice', 0.4, 1.4); G.score += 60; this.UI.pop('PERFECT', 'two at a time', { top: 72 }); }
+    if (d <= perfect) { this.flights = Math.min(38, this.flights + 3); this.perfects++; this.ui.flash('perf'); A.sfx('step', 1, 1.2); A.sfx('ice', 0.4, 1.4); G.score += 60; this.UI.pop('PERFECT', 'two at a time', { top: 20 }); }
     else if (d <= zone) { this.flights = Math.min(38, this.flights + 2); this.ui.flash('hit'); A.sfx('step', 1, 0.9 + Math.random() * 0.2); G.score += 25; }
-    else { this.misses++; this.stumble = 0.55; this.ui.flash('miss'); A.sfx('pop', 0.6, 0.5); G.ice = Math.max(0, G.ice - 3); this.UI.pop('STUMBLE', 'off the beat', { top: 72 }); navigator.vibrate?.(30); }
+    else { this.misses++; this.flights = Math.max(0, this.flights - 1); this.stumble = 0.85; this.ui.flash('miss'); A.sfx('step', 1.2, 0.5); A.sfx('pop', 0.6, 0.5); G.ice = Math.max(0, G.ice - 3); this.UI.pop('TRIPPED', 'slid back down a step', { top: 20 }); navigator.vibrate?.(30); } // spamming costs you ground
   }
   hazPress(k) {
     const h = this.haz, q = this.hq; if (!h) return;
@@ -249,9 +261,9 @@ export class Finale {
     R.walk(moving ? 'jog' : 'idle', this.t * 1.6, { offset: V(0, 0, 0), yaw: 0 });
     if (this.stumble > 0) { const sp = R.C.bone('Spine'); sp.rotateX(0.5 * Math.sin(Math.PI * Math.min(1, this.stumble))); sp.updateMatrixWorld(true); }
     R.C.root.updateMatrixWorld(true);
-    this.cup.position.copy(R.C.boneWorld('RightHand')).add(V(0, -0.1, 0));
+    palmCup(this.cup, R.C);
     const look = R.root.position.clone().add(V(0, 0.9, 0));
-    const want = V(this.haz ? 6.5 : 9.5, R.root.position.y + (this.haz ? 1.2 : 1.6), this.haz ? R.root.position.z * 0.5 : 0.2);
+    const want = V(this.haz ? 4.6 : 9.5, R.root.position.y + (this.haz ? 1.0 : 1.6), this.haz ? R.root.position.z * 0.6 : 0.2);
     if (!this.camInit) { this.camInit = true; cam.position.copy(want); }
     cam.position.lerp(want, 1 - Math.exp(-5 * dt)); cam.lookAt(this.haz ? look : V(0.4, cam.position.y - 0.7, 0)); cam.fov = damp(cam.fov, this.haz ? 44 : 52, 6, dt); cam.updateProjectionMatrix();
     const floor = Math.min(20, 1 + Math.floor(this.sCur / 2 + 0.001));
@@ -315,7 +327,7 @@ export class Finale {
         ik2(K.bone('RightArm'), K.bone('RightForeArm'), K.bone('RightHand'), chest.lerp(mid.clone().add(V(0.04, 0.02, -0.04)), reach).lerp(mouth, sp), K.boneWorld('RightArm').add(V(0.3, -0.6, -0.4)));
         const hd = K.bone('Head'); hd.rotateX(0.22 * smooth(seg(t, take, take + 0.3)) * (1 - sp) - 0.2 * sp); hd.updateMatrixWorld(true);
       }
-      this.cup.position.copy(t < take ? R.C.boneWorld('RightHand') : K.boneWorld('RightHand')).add(V(0, -0.11, 0));
+      palmCup(this.cup, t < take ? R.C : K); // in the palm, in the hand's own frame, so it never floats off an open hand
       this.cup.visible = t < close - 0.1;
       const push = easeInOut(seg(t, 0, line)), pin = smooth(seg(t, line - 0.1, line + 0.25));
       cam.position.copy(V(-1.05, 1.12, Sets.DOOR_Z + 0.75).lerp(V(-0.7, 1.2, Sets.DOOR_Z + 0.6), push));
@@ -333,14 +345,138 @@ export class Finale {
       const base = R.root.position;
       cam.position.copy(base.clone().add(V(0.55, 1.5, -1.9).lerp(V(0.4, 1.55, -1.35), easeInOut(clamp(u / 3))))); cam.lookAt(base.clone().add(V(0, 1.4, 0))); cam.fov = 56; cam.updateProjectionMatrix();
       K.root.visible = false; this.cup.visible = false; this.d.leaf.rotation.y = 0;
-      if (!this.tp) { this.tp = true; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') }); }
+      if (!this.tp) { this.tp = true; R.bag.visible = false; /* set the bag down at the cut so the facepalm can't swing it through his head */ A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') }); }
       if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('trombone', 1); UI.sceneCap('every. single. <em>time.</em>', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') + `<div class="tipchg"><s>${UI.money(this.G.tip)}</s><b>$0.00</b></div>` }); }
       if (u > 3.3 && !this.fin) { this.fin = true; UI.remove('scene'); UI.skipChip(false); this.phase = 'post'; this.onDone(this.line); }
     }
   }
   updatePost(dt) { const R = this.G.R; this.t += dt; R.walk('facepalm', 2.2, { offset: V(0, 0, 0), yaw: 0, loop: false }); }
   // ---------------------------------------------------------------- arrive (in the city scene)
+  // ---------------------------------------------------------------- the parking slide (or the wipeout)
+  slideFx() {
+    const g = new THREE.Group(); this.world.add(g);
+    const add = (color, additive, extra = {}) => { const m = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide, vertexColors: true, ...(additive ? { blending: THREE.AdditiveBlending } : {}), ...extra })); m.frustumCulled = false; g.add(m); return m; };
+    const tail = add(0xff1a28, true), head = add(0xfff2c0, true, { opacity: 0.55 });
+    const ground = { opacity: 0.7, polygonOffset: true, polygonOffsetFactor: -10, polygonOffsetUnits: -20 };
+    const skids = [add(0x0c0c0c, false, ground), add(0x0c0c0c, false, ground), add(0x241a14, false, ground)]; // front tyre, rear tyre, boot
+    const puffT = canvasTexOnce();
+    const puffs = Array.from({ length: 36 }, () => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffT, transparent: true, depthWrite: false, opacity: 0 })); g.add(sp); return { sp, age: 9 }; });
+    // sparks: short additive line streaks with gravity
+    const N = 220, sp = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    sp.geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 6), 3)); sp.geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(N * 6), 3)); sp.frustumCulled = false; g.add(sp);
+    const sparks = Array.from({ length: N }, () => ({ p: V(), v: V(), life: 0, max: 1 }));
+    return { g, tail, head, skids, puffs, sparks, sp, trails: { tail: [], head: [] }, gnd: [[], [], []], nextPuff: 0, nextSpark: 0 };
+  }
+  ribbon(mesh, pts, half, vertical) {
+    if (pts.length < 2) return;
+    const pos = [], col = [], idx = [];
+    pts.forEach((p, i) => { const q = pts[Math.min(pts.length - 1, i + 1)], o = pts[Math.max(0, i - 1)], dx = q.x - o.x, dz = q.z - o.z, L = Math.hypot(dx, dz) || 1, a = i / (pts.length - 1);
+      if (vertical) pos.push(p.x, p.y - half, p.z, p.x, p.y + half, p.z); else pos.push(p.x - dz / L * half, p.y, p.z + dx / L * half, p.x + dz / L * half, p.y, p.z - dx / L * half);
+      col.push(a, a, a, a, a, a); if (i) { const k = (i - 1) * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } });
+    const g = mesh.geometry; g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeBoundingSphere();
+  }
+  // the rider during the slide: hips hang off the low side, torso counter-leans, the left leg reaches out and the boot
+  // drags on the road, hands stay on the bars, and he looks at the lens as it comes to a stop
+  slidePose(R, k, look, bootW) {
+    const C = R.C, root = R.root;
+    C.root.position.x += 0.2 * k; C.root.position.y -= 0.1 * k; C.root.updateMatrixWorld(true);
+    const sp = C.bone('Spine'); sp.rotateZ(0.5 * k); sp.rotateX(0.15 * k); sp.updateMatrixWorld(true);
+    const hd = C.bone('Head'); hd.rotateY(0.7 * look); hd.rotateZ(0.25 * k); hd.updateMatrixWorld(true);
+    for (const [s, side] of [[1, 'Left'], [-1, 'Right']]) ik2(C.bone(side + 'Arm'), C.bone(side + 'ForeArm'), C.bone(side + 'Hand'), root.localToWorld(V(s * 0.215, 1.0, 0.25)), root.localToWorld(V(s * 0.7, 0.75, -0.3)));
+    ik2(C.bone('RightUpLeg'), C.bone('RightLeg'), C.bone('RightFoot'), root.localToWorld(V(-0.13, 0.42, -0.02)), root.localToWorld(V(-0.15, 0.9, 1.2)));
+    if (k > 0.01) ik2(C.bone('LeftUpLeg'), C.bone('LeftLeg'), C.bone('LeftFoot'), C.boneWorld('LeftFoot').lerp(bootW, k), root.localToWorld(V(0.6, 0.8, 0.9)));
+  }
+  updateSlide(dt, ok) {
+    const G = this.G, R = G.R, route = G.route, cam = this.camera, A = this.Audio, UI = this.UI;
+    if (!this.sl) {
+      const D = Math.max(12, Math.min(26, route.length - 4 - G.s));
+      this.sl = { s0: G.s, lat0: G.lat, D, t: 0, hold: 0, held: false, fx: this.slideFx() };
+      A.sfx('skid', 1.2, 0.7); A.sfx('skid', 0.9, 0.5);
+    }
+    const S = this.sl, FX = S.fx;
+    if (S.hold > 0) { // freeze on the shot (sparks hang in the air), a slow push in
+      S.hold -= dt; cam.fov = damp(cam.fov, 36, 1.5, dt); cam.updateProjectionMatrix();
+      if (S.hold <= 0) UI.remove('akira');
+      return;
+    }
+    const slow = ok && S.t > 0.3 && S.t < 1.55 ? 0.33 : 1, sdt = dt * slow; // slow-mo through the heart of the slide
+    S.t += sdt;
+    const t = S.t, u = clamp(t / (ok ? 2.0 : 1.3));
+    const sNow = S.s0 + S.D * (1 - Math.pow(1 - u, 2.4)), f = route.at(sNow), lat = S.lat0 * (1 - u) + (ok ? 0.8 : 0.4) * u;
+    let yaw, roll, bikeRoll = 0, k = 0, look = 0;
+    if (ok) {
+      const whip = smooth(seg(t, 0.03, 0.4)), settle = smooth(seg(t, 1.8, 2.35));
+      yaw = 1.48 * whip * (1 - 0.3 * settle);
+      roll = -(1.0 * whip + 0.035 * Math.sin(t * 47) * (1 - settle)) * (1 - settle); // laid low, shuddering on the tyres
+      k = smooth(seg(t, 0.08, 0.4)) * (1 - 0.6 * settle); look = smooth(seg(t, 1.2, 1.9));
+    } else { yaw = 0.8 * smooth(seg(t, 0.05, 0.5)) + 0.3 * Math.sin(t * 17) * seg(t, 0.25, 0.8) * (1 - seg(t, 0.8, 0.9)); roll = t < 0.8 ? -0.45 * smooth(seg(t, 0.05, 0.4)) + 0.22 * Math.sin(t * 21) * seg(t, 0.3, 0.8) : 0; bikeRoll = t < 0.8 ? 0 : -1.45 * easeOut(seg(t, 0.8, 1.15)); }
+    route.world(sNow, lat, 0, R.root.position); R.root.rotation.set(0, f.yaw + yaw, 0);
+    R.bike.rotation.set(0, 0, bikeRoll);
+    const by = f.yaw + yaw, bf = V(Math.sin(by), 0, Math.cos(by)), lean = V(Math.cos(by), 0, -Math.sin(by)), tf = V(f.fx, 0, f.fz);
+    const bootW = R.root.position.clone().addScaledVector(lean, 0.95).addScaledVector(bf, 0.35).setY(0.06);
+    if (ok || t < 0.8) { R.ride(G.dist + S.D * u, { lean: ok ? 0.35 : 0.4, bank: roll, look: 0 }); if (ok) this.slidePose(R, k, look, bootW); }
+    else { // thrown off: tumble along the road, lie there a beat, up to a knee, back on his feet
+      const tu = seg(t, 0.8, 1.5), land = V(-0.5, 0, 1.6);
+      const off = V(0, 0, 0).lerp(land, easeOut(tu)); off.y = Math.sin(Math.PI * tu) * 0.5;
+      if (t < 1.5) { R.walk('falling', 0.3 + (t - 0.8) * 1.4, { offset: off, yaw: 0.6, loop: false }); R.C.root.rotation.x = easeOut(tu) * Math.PI * 1.5; }
+      else if (t < 2.4) { R.walk('idle', 1, { offset: land.clone().add(V(0, 0.12, 0)), yaw: 0.6 }); R.C.root.rotation.x = -Math.PI / 2 + Math.sin(t * 3) * 0.03; }
+      else if (t < 3.2) { R.walk('defeated', 0.4 + (t - 2.4) * 0.8, { offset: land, yaw: 0.6, loop: false }); R.C.root.rotation.x = -Math.PI / 2 * (1 - smooth(seg(t, 2.4, 2.75))); }
+      else { R.walk('idle', t, { offset: land, yaw: 0.6 }); R.C.root.rotation.x = 0; }
+      R.C.root.updateMatrixWorld(true);
+    }
+    R.root.updateMatrixWorld(true);
+    // fx: light streaks (long-exposure look), three skid lines with smoke — front tyre, rear tyre, boot — and sparks
+    const sliding = u < 0.97;
+    if (sliding) {
+      const contacts = [R.root.localToWorld(V(0, 0.02, 0.555)), R.root.localToWorld(V(0, 0.02, -0.555)), ok && k > 0.3 ? R.C.boneWorld('LeftFoot') : null];
+      contacts.forEach((c, i) => { if (c) { FX.gnd[i].push(c.clone().setY(0.055 + i * 0.002)); this.ribbon(FX.skids[i], FX.gnd[i], i === 2 ? 0.06 : 0.07, false); } });
+      if (ok) {
+        for (const [key, mesh, local] of [['tail', FX.tail, V(0, 0.8, -0.95)], ['head', FX.head, V(0, 0.95, 0.72)]]) { const tr = FX.trails[key]; tr.push(R.root.localToWorld(local)); if (tr.length > (key === 'head' ? 40 : 80)) tr.shift(); this.ribbon(mesh, tr, key === 'head' ? 0.022 : 0.06, true); }
+      }
+      if ((FX.nextPuff -= sdt) <= 0) { FX.nextPuff = 0.035; contacts.forEach((c) => { if (!c) return; const p = FX.puffs.find((q) => q.age > 1.2); if (p) { p.age = 0; p.sp.position.copy(c).setY(0.25); } }); }
+      if (ok && k > 0.5 && u < 0.9) { // sparks off the low side as it scrapes the road
+        FX.nextSpark -= sdt; const src = R.root.localToWorld(V(0.34, 0.2, 0.1)); src.y = Math.max(0.05, src.y);
+        while (FX.nextSpark <= 0) { FX.nextSpark += 0.004; const sk = FX.sparks.find((q) => q.life <= 0); if (!sk) break;
+          sk.p.copy(src).add(V((Math.random() - 0.5) * 0.4, 0, (Math.random() - 0.5) * 0.4)); sk.max = sk.life = 0.25 + Math.random() * 0.35;
+          sk.v.copy(tf).multiplyScalar(-2 - Math.random() * 5).addScaledVector(lean, 1 + Math.random() * 3).add(V((Math.random() - 0.5) * 3, 1.5 + Math.random() * 3.5, (Math.random() - 0.5) * 3)); }
+      }
+    }
+    const P = FX.sp.geometry.attributes.position.array, Cc = FX.sp.geometry.attributes.color.array;
+    FX.sparks.forEach((q, i) => {
+      if (q.life > 0) { q.life -= sdt; q.v.y -= 9.8 * sdt; q.p.addScaledVector(q.v, sdt); if (q.p.y < 0.02) { q.p.y = 0.02; q.v.y *= -0.35; q.v.multiplyScalar(0.7); } }
+      const a = Math.max(0, q.life / q.max), tailP = q.p.clone().addScaledVector(q.v, -0.03);
+      P.set([q.p.x, q.p.y, q.p.z, tailP.x, tailP.y, tailP.z], i * 6); Cc.set([1 * a, 0.85 * a, 0.4 * a, 1 * a, 0.35 * a, 0.05 * a], i * 6);
+    });
+    FX.sp.geometry.attributes.position.needsUpdate = FX.sp.geometry.attributes.color.needsUpdate = true;
+    for (const p of FX.puffs) { p.age += sdt; const a = clamp(p.age / 1.2); p.sp.material.opacity = a < 1 ? 0.5 * (1 - a) : 0; p.sp.scale.setScalar(0.4 + a * 2.4); p.sp.position.y += sdt * 0.45; }
+    // camera: low, close to the bike's front axis — the lean reads in frame while it slides toward the lens
+    const toCentre = route.world(sNow, 0, 0).sub(R.root.position);
+    const side = bf.clone(); if (side.dot(toCentre) < -0.5) side.negate();
+    const dir = side.multiplyScalar(0.8).addScaledVector(tf, 0.65).normalize();
+    const camP = R.root.position.clone().addScaledVector(dir, ok ? 3.6 : 6.8).setY(ok ? 0.5 : 1.3), lookP = R.root.position.clone().add(V(0, 0.6, 0));
+    if (!S.camInit) { S.camInit = true; S.cp = cam.position.clone(); S.lk = lookP.clone(); }
+    S.cp.lerp(camP, 1 - Math.exp(-4 * dt)); S.lk.lerp(lookP, 1 - Math.exp(-8 * dt)); cam.position.copy(S.cp); cam.lookAt(S.lk);
+    S.dutch = damp(S.dutch || 0, ok && t > 0.4 ? 0.12 : 0, 4, dt); cam.rotateZ(S.dutch);
+    if (ok && slow < 1) { cam.position.y += Math.sin(t * 61) * 0.01; } // tyre chatter
+    cam.fov = damp(cam.fov, ok ? 48 : 56, 3, dt); cam.updateProjectionMatrix();
+    this.sun.target.position.copy(R.root.position); this.sun.position.copy(R.root.position).add(V(-80, 60, 90));
+    if (ok && t > 1.15 && !S.held) { S.held = true; S.hold = 1.4; A.sfx('boom', 0.8, 0.8); UI.holdFrame(); }
+    if (!ok && t > 0.85 && !S.wiped) { S.wiped = true; A.sfx('crash', 1); UI.pop('WIPEOUT', 'fumbled the slide · +6s'); setTimeout(() => UI.dm('did u just eat it in front of my building 💀', { tone: 'angry' }), 900); }
+    const tEnd = ok ? 2.5 : 3.7;
+    if (t > tEnd) { // hop off and jog to the doors
+      R.bike.rotation.set(0, 0, bikeRoll); R.root.rotation.set(0, R.root.rotation.y, 0);
+      if (!S.walk0) { S.walk0 = true; R.ride(0, { footDown: 1 }); R.bike.rotation.z = bikeRoll; S.doorL = R.root.worldToLocal(this.door.clone().add(V(-0.8, 0, 0))); S.startL = ok ? V(0.6, 0, 0.2) : V(-0.5, 0, 1.6); }
+      const wt = t - tEnd, run = seg(wt, 0.2, 2.6);
+      R.C.root.rotation.x = 0;
+      const head = this.corner.clone().add(V(-17.8, 1.7, -8.7)), tgt = V(this.sign.x, 3.0, this.sign.z - 1.6), k2 = easeInOut(seg(wt, 0, 1.4));
+      cam.position.copy(S.cp.clone().lerp(head, k2)); cam.lookAt(S.lk.clone().lerp(tgt, k2)); cam.fov = damp(cam.fov, 70, 2, dt); cam.updateProjectionMatrix();
+      R.walk('jog', wt * 1.3, { offset: S.startL.clone().lerp(S.doorL, easeOut(run) * 0.92), yaw: Math.atan2(S.doorL.x - S.startL.x, S.doorL.z - S.startL.z) });
+      if (wt > 0.6 && !this.placed) { this.placed = true; UI.place('Citi Tower', '101 Lake Ave · Church St', 3000); }
+      if (wt > 2.0) { FX.g.removeFromParent(); this.toLocked(); }
+    }
+  }
   updateArrive(dt) {
+    if (this.G.akira?.res) return this.updateSlide(dt, this.G.akira.res === 'ok');
     const t = (this.t += dt), R = this.G.R, cam = this.camera;
     const door = this.door, sign = this.sign, stop = this.stop;
     if (t < 1.0) { R.ride(this.G.dist + easeOut(t) * 3, { lean: 0.3, footDown: smooth(seg(t, 0.4, 0.9)) }); }
@@ -359,7 +495,8 @@ export class Finale {
     if (t > 2.6) this.toLocked();
   }
   skip() {
-    if (this.phase === 'arrive') this.toLocked();
+    if (this.phase === 'arrive' && !this.G.akira?.res) this.toLocked();
+    else if (this.phase === 'arrive' && this.sl?.hold > 0) this.sl.hold = 0.01;
     else if (this.phase === 'elevator') this.toStairs();
     else if (this.phase === 'door' && this.t < 3.6) { this.t = 3.6; this.UI.remove('scene'); this.cup.visible = false; this.Audio.sfx('boom', 0.4); }
     else if (this.phase === 'door' && this.t < 6.8) { this.t = 6.85; }
@@ -375,7 +512,7 @@ export class Finale {
   render() { this.renderer.render(this.scene, this.camera); }
   dispose() {
     window.removeEventListener('keydown', this.keyH);
-    const R = this.G.R; R.bike.visible = true; R.helm.visible = true; R.cup.visible = true; R.root.visible = true;
+    const R = this.G.R; R.bike.visible = true; R.helm.visible = true; R.cup.visible = true; R.root.visible = true; R.bike.rotation.set(0, 0, 0); R.bag.visible = true; this.sl?.fx.g.removeFromParent();
     if (this.K) this.K.root.removeFromParent();
     this.cup?.removeFromParent();
     this.active = false;

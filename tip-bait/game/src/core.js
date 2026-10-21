@@ -68,6 +68,7 @@ export function tex(p, { srgb = true, repeat = true } = {}) {
   });
 }
 export const loadTex = (p, o) => tex(p, o).userData.ready;
+export const loadImage = (p) => once('img:' + p, () => track(new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('image ' + p)); i.src = ASSETS + p; })));
 
 // ---------------------------------------------------------------- mesh helpers
 export const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...o });

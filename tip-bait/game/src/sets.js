@@ -51,7 +51,7 @@ export function lobby(ctx) {
   // sidewalk outside
   const walk = mesh(new THREE.PlaneGeometry(20, 10), pbr('concrete', { color: 0xb8b2a8 }), { cast: false }); walk.rotation.x = -Math.PI / 2; walk.position.set(0, 0.005, 9.3); g.add(walk);
   // front desk + monitor + plant
-  const desk = new THREE.Group(); desk.position.set(-2.1, 0, 0.9); g.add(desk);
+  const desk = new THREE.Group(); desk.position.set(-1.6, 0, 2.5); g.add(desk); // close to the glass so you can read her
   box(3.0, 1.08, 0.75, mat(0x2a221c, { roughness: 0.6 }), 0, 0.54, 0, desk);
   box(3.1, 0.06, 0.85, pbr('marble', { color: 0xeeeae2 }), 0, 1.11, 0, desk);
   box(2.8, 0.12, 0.02, emissive(0xffd8a8, 1.5), 0, 0.95, 0.39, desk);

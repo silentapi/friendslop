@@ -26,8 +26,7 @@ const res = await page.evaluate(async ([N, order]) => {
       if (o.merge) { solid.push({ s: o.meet, len: o.len + 4, lats: [o.to] }); continue; } // it has left its own lane by the time you reach it
       if (o.kind === 'bus' && !o.parked) { solid.push({ s: o.s, len: o.len + 6, lats: [o.pull] }); continue; }
       if (o.parked) continue; // jumped by the mega ramp
-      const drift = o.v ? o.v * 40 / Math.max(4, window.__G.base - o.v) : 0;
-      solid.push({ s: o.s + drift, len: o.len + (o.v ? 6 : 0), lats: [o.lat] });
+      solid.push({ s: o.v ? (o.meet ?? o.s) : o.s, len: o.len + (o.v ? 6 : 0), lats: [o.lat] });
     }
     let reach = new Set([0, 1, 2]), lastFree = 0;
     for (let s = 30; s < L - 30; s += 1) {
@@ -43,13 +42,17 @@ const res = await page.evaluate(async ([N, order]) => {
     }
     // coins: none inside solids
     for (const c of lv.coins) for (const o of lv.obs) if (!o.v && Math.abs(o.s - c.s) < o.len / 2 + 0.3 && Math.abs(o.lat - c.lat) < o.w / 2 && c.y < o.h + 0.3) probs.push(`coin in ${o.kind} @${c.s.toFixed(0)}`);
+    // pacing: the longest stretch with nothing to dodge, jump or hit
+    const ev = [...lv.obs.map((o) => o.meet ?? o.s), ...lv.ramps.map((o) => o.s), ...lv.pads.map((o) => o.s), ...lv.groups.map((o) => o.s)].filter((x) => x > 30 && x < L - 30).sort((a, b) => a - b);
+    let gap = 0, at = 0; for (let k = 1; k < ev.length; k++) if (ev[k] - ev[k - 1] > gap) { gap = ev[k] - ev[k - 1]; at = ev[k - 1]; }
     const kinds = lv.slots.map((q) => q.kind).join(',');
-    out.push({ seed, probs: probs.slice(0, 4), n: probs.length, coins: lv.coins.length, obs: lv.obs.length, kinds: kinds.slice(0, 160) });
+    out.push({ seed, gap: Math.round(gap), gapAt: Math.round(at), probs: probs.slice(0, 4), n: probs.length, coins: lv.coins.length, obs: lv.obs.length, kinds: kinds.slice(0, 160) });
   }
   return out;
 }, [Number(N), Number(order)]);
 let bad = 0; for (const r of res) { if (r.n) { bad++; console.log('seed', r.seed, r.n, r.probs.join(' | ')); } }
 console.log(`order ${order}: ${res.length - bad}/${res.length} layouts clean · avg coins ${Math.round(res.reduce((a, r) => a + r.coins, 0) / res.length)} · avg obstacles ${Math.round(res.reduce((a, r) => a + r.obs, 0) / res.length)}`);
 console.log('sample:', res[0].kinds);
+const gaps = res.map((r) => r.gap).sort((a, b) => a - b); console.log('longest empty stretch: median', gaps[gaps.length >> 1], 'm · worst', gaps.at(-1), 'm @', res.find((r) => r.gap === gaps.at(-1)).gapAt);
 const ov = warns.filter((w) => w.includes('[level]')); console.log('overlap warnings', ov.length, ov.slice(0, 6));
 await browser.close();

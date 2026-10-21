@@ -1,0 +1,7 @@
+# Asset credits
+
+- Map data © OpenStreetMap contributors (ODbL)
+- Wall, sidewalk, brick-paver and roof textures: [Poly Haven](https://polyhaven.com) (CC0)
+  - brick_wall_02, large_red_bricks, white_stucco, concrete_slab_wall, concrete_wall_007, concrete_pavement, concrete_pavers_02, brick_pavement, gravel_concrete
+- Skies: Poly Haven kloofendal_48d_partly_cloudy_puresky and kloofendal_overcast_puresky (CC0)
+- Traffic cars (k_*.json): [Kenney Car Kit](https://kenney.nl/assets/car-kit) (CC0)

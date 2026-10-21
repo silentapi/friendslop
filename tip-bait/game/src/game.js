@@ -73,12 +73,16 @@ window.__regen = (seed, order = G.order) => buildLevel(null, G.route, { order, s
 window.__frameMs = () => ({ ms: Math.round(frameMs), calls: renderer.info.render.calls, tris: renderer.info.render.triangles, q: quality });
 
 const sky = { tex: null, env: null };
-async function initSky() {
-  const t = await loadTex('tex/sky.jpg', { repeat: false });
-  t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace;
-  sky.tex = t; scene.background = t; scene.backgroundIntensity = 0.95;
-  const pm = new THREE.PMREMGenerator(renderer); sky.env = pm.fromEquirectangular(t).texture; scene.environment = sky.env; scene.environmentIntensity = 0.55; pm.dispose();
-  scene.fog = new THREE.Fog(0xcdbba6, 160, 700);
+async function initSky() { // Poly Haven pure-sky panoramas (CC0): partly cloudy, and overcast for storm orders
+  const pm = new THREE.PMREMGenerator(renderer);
+  for (const [k, file] of [['clear', 'tex/sky.jpg'], ['storm', 'tex/sky_storm.jpg']]) {
+    const t = await loadTex(file, { repeat: false });
+    t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace;
+    sky[k] = { tex: t, env: pm.fromEquirectangular(t).texture };
+  }
+  pm.dispose();
+  scene.background = sky.clear.tex; scene.environment = sky.clear.env; scene.backgroundIntensity = 1; scene.environmentIntensity = 0.55;
+  scene.fog = new THREE.Fog(0xc4d2de, 170, 750);
 }
 
 // ---------------------------------------------------------------- world build per order
@@ -90,7 +94,7 @@ async function buildWorld(n) {
   const route = new Route(routes[G.def.route]); G.route = route;
   const end = route.world(route.length);
   City.ground(world, end);
-  City.buildings(world, cityData);
+  await City.buildings(world, cityData);
   G.streetInfo = City.streets(world, cityData, route);
   const skip = [];
   G.rail = G.def.route === 'sunrail' ? City.sunrail(world, cityData, route) : null;
@@ -107,9 +111,10 @@ async function buildWorld(n) {
   resetRun();
 }
 function setWeather(storm) {
-  scene.backgroundIntensity = storm ? 0.45 : 0.95; scene.environmentIntensity = storm ? 0.35 : 0.55;
+  const k = storm ? sky.storm : sky.clear; scene.background = k.tex; scene.environment = k.env;
+  scene.backgroundIntensity = storm ? 0.8 : 1; scene.environmentIntensity = storm ? 0.4 : 0.55;
   sun.intensity = storm ? 0.5 : 2.8; hemi.intensity = storm ? 1.0 : 1.7;
-  scene.fog.color.set(storm ? 0x6d757e : 0xcdbba6); scene.fog.near = storm ? 40 : 160; scene.fog.far = storm ? 320 : 700;
+  scene.fog.color.set(storm ? 0x8a929a : 0xc4d2de); scene.fog.near = storm ? 40 : 160; scene.fog.far = storm ? 320 : 700;
   rain.visible = storm;
 }
 // rain: streaks around the camera
@@ -126,13 +131,13 @@ function updateRain(t) {
 }
 
 function resetRun(atS = 0) {
-  G.s = atS; G.lat = 0; G.lane = 1; G.y = 0; G.vy = 0; G.v = 0; G.runT = 0; G.boostT = 0; G.slowT = 0; G.invT = 0; G.crashT = 0; G.slowmo = 1; G.cine = 0; G.camK = 0; G.airKind = null; G.qte = null; G.trick = null; G.trickGrade = null; G.qteAt = null; UI.remove('qte');
+  G.s = atS; G.lat = 0; G.lane = 1; G.y = 0; G.vy = 0; G.v = 0; G.runT = 0; G.boostT = 0; G.slowT = 0; G.invT = 0; G.crashT = 0; G.slowmo = 1; G.cine = 0; G.camK = 0; G.airKind = null; G.qte = null; G.trick = null; G.trickGrade = null; G.qteAt = null; UI.remove('qte'); UI.remove('combo'); G.akira = null; G.akK = 0;
   if (atS === 0) {
     G.base = Math.min(18.5, 13.2 + (G.order - 1) * 0.9);
     G.eta = Math.round(G.route.length / (G.base * 0.9) + 10); G.etaTotal = G.eta; G.time = 0; G.ice = 100; G.crashes = 0; G.nearMiss = 0; G.boostCharge = 0.34; G.tip = G.def.tip; G.dmDone = new Set();
     G.score = 0; G.mult = 1; G.combo = 0; G.comboT = 0; G.coins = 0; G.powers = []; G.lateT = 0; G.tricks = 0; G.smashes = 0; G.bestMult = 1; G.fin = {};
     const rr = mulberry(G.seed * 13 + 5); G.rideTexts = K.RIDE_TEXTS.map(([p, a]) => [p, K.pickLine(a, rr)]);
-    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.act = false; }
+    for (const o of G.lv.obs) { o.dead = false; o.s0 ??= o.s; o.s = o.s0; o.lat0 ??= o.lat; o.lat = o.lat0; o.passed = false; o.t0 = null; o.mt = null; o.on = false; }
     for (const ic of G.lv.ice) ic.got = false;
     for (const c of G.lv.coins) { c.got = false; c.s0 ??= c.s; c.lat0 ??= c.lat; c.y0 ??= c.y; c.s = c.s0; c.lat = c.lat0; c.y = c.y0; }
     for (const p of G.lv.pickups) p.got = false;
@@ -146,6 +151,7 @@ function resetRun(atS = 0) {
 const input = { x0: 0, y0: 0, t0: 0, active: false };
 function onSwipe(dir) {
   if (G.state !== 'run') return;
+  if (G.akira && !G.akira.res) { akiraPress(dir); return; }
   if (G.qte) { qtePress(dir); return; }
   if (dir === 'L') G.lane = Math.max(0, G.lane - 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'R') G.lane = Math.min(2, G.lane + 1), Audio.sfx('whoosh', 0.35, 1.6);
@@ -174,6 +180,7 @@ window.addEventListener('keydown', (e) => {
   if ((k === 'escape' || k === 'p') && (G.state === 'run' || G.state === 'paused')) { G.state === 'run' ? pause() : resume(); return; }
   if (G.state === 'paused') { if (k === 'r') { resume(); startOrder(true); } return; }
   if (G.state === 'finale' && (k === 'enter' || k === ' ' || k === 'escape')) { e.preventDefault(); finale?.skip(); return; }
+  if (G.state === 'run' && G.akira && !G.akira.res) { if (akiraPress(k)) { e.preventDefault(); return; } }
   if (G.state === 'run' && G.qte) { if (qtePress(k)) { e.preventDefault(); return; } }
   if (['arrowleft', 'a'].includes(k)) onSwipe('L'); else if (['arrowright', 'd'].includes(k)) onSwipe('R');
   else if (['arrowup', 'w', ' '].includes(k)) onSwipe('U'); else if (['arrowdown', 's', 'shift'].includes(k)) onSwipe('D');
@@ -202,6 +209,31 @@ function grabPower(p) {
   p.got = true; const d = POWERS[p.kind];
   G.powers = G.powers.filter((w) => w.id !== p.kind); G.powers.push({ id: p.kind, t: d.dur, dur: d.dur, icon: d.icon });
   addScore(50); addCombo(2); UI.pop(d.name, d.sub); Audio.sfx('jingle', 0.6, 1.3); Audio.sfx('ding', 0.5, 1.5);
+}
+// ---------------------------------------------------------------- the Akira slide into Citi Tower's front spot
+function startAkira() {
+  const first = !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
+  const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = QA ? mulberry(G.seed + 3) : Math.random;
+  const seq = ['arrowdown']; for (let k = 1; k < (first ? 3 : 4); k++) { let n; do n = pool[Math.floor(rr() * 4)]; while (n === seq[k - 1]); seq.push(n); }
+  G.akira = { seq, idx: 0, t: 0, dur: first ? 4.2 : 3.0, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
+  const st = G.pop.stepper; if (st) { st.t = 0; st.c.root.visible = true; }
+  Audio.sfx('skid', 1, 0.8); Audio.rate(0.7); UI.coach(null);
+}
+function updateAkira(dt) {
+  const a = G.akira; a.t += dt; a.ui.set(a.idx, 1 - a.t / a.dur);
+  if (a.t >= a.dur) resolveAkira('fail', 'too slow');
+}
+function akiraPress(k) {
+  k = QALIAS[k] || k; if (!QKEYS.includes(k)) return false;
+  const a = G.akira;
+  if (k === a.seq[a.idx]) { a.idx++; Audio.sfx('pop', 0.8, 1 + a.idx * 0.15); if (a.idx >= a.seq.length) resolveAkira('ok'); }
+  else resolveAkira('fail', 'wrong key');
+  return true;
+}
+function resolveAkira(res, why = '') {
+  const a = G.akira; a.res = res; a.resT = G.time; a.ui.result(res === 'ok', res === 'ok' ? '' : why);
+  if (res === 'ok') { G.score += 1500; Audio.sfx('skid', 1.2, 0.6); } else { breakCombo(); Audio.sfx('bwomp', 0.7); }
+  G.fin = { ...(G.fin || {}), akira: res === 'ok' ? 'NAILED' : 'WIPEOUT', akiraT: res === 'ok' ? 0 : 6 };
 }
 // ---------------------------------------------------------------- quick-time tricks on big jumps
 const QKEYS = ['arrowup', 'arrowleft', 'arrowright', 'arrowdown'];
@@ -321,7 +353,8 @@ function update(dt, t) {
   G.onRamp = rh > 0; G.lastRh = rh;
   // quick-time trick: slow-mo while the prompt is up, then ease back to full speed
   if (G.qteAt != null && G.time >= G.qteAt) { G.qteAt = null; startQTE(G.airKind); }
-  if (G.qte) { G.slowmo = damp(G.slowmo, 0.26, 14, dt); updateQTE(dt); }
+  if (G.akira && !G.akira.res) G.slowmo = damp(G.slowmo, 0.12, 10, dt);
+  else if (G.qte) { G.slowmo = damp(G.slowmo, 0.26, 14, dt); updateQTE(dt); }
   else if (G.slowmo < 1) { G.slowmo = damp(G.slowmo, 1, 5, dt); if (G.slowmo > 0.98) { G.slowmo = 1; Audio.rate(1); } }
   G.camK = damp(G.camK, G.airKind && (G.y > 0.25 || G.qte || G.qteAt != null) ? 1 : 0, G.airKind ? 3 : 1.8, dt);
   // pads, ice, puddles
@@ -348,8 +381,8 @@ function update(dt, t) {
   for (const o of G.lv.obs) {
     if (o.dead) continue;
     if (o.v && o.kind !== 'bus') { // traffic waits until you're close, then drives — and brakes for anything ahead in its lane
-      if (!o.act && o.s - G.s < PHYS.ACT) o.act = true;
-      if (o.act) { o.s += followSpeed(o) * sdt; if (o.s > L - 40) o.dead = true; }
+      if (!o.on && o.s - G.s < (o.act ?? PHYS.ACT)) o.on = true;
+      if (o.on) { o.s += followSpeed(o) * sdt; if (o.s > L - 40) o.dead = true; }
     }
     if (o.merge) { // blinker on from far away; it cuts over with a fixed reaction window regardless of speed
       if (o.mt == null && o.s - G.s > 0 && o.s - G.s < (G.v - o.v) * 1.9 + 6) { o.mt = 0; Audio.sfx('skid', 0.25, 1.5); }
@@ -391,7 +424,12 @@ function update(dt, t) {
   if (G.def.storm && prog > 0.16 && !G.dmDone.has('storm')) { G.dmDone.add('storm'); UI.dm(K.pickLine(K.STORM_TEXTS)); }
   for (const st of route.streets) if (G.s > st.s0 + 2 && !G.dmDone.has(st.name)) { G.dmDone.add(st.name); UI.place(st.name, 'Downtown Orlando'); }
   if (G.rail && G.s > G.rail.s - 60 && !G.dmDone.has('station')) { G.dmDone.add('station'); UI.place('Church Street Station', 'SunRail · since 1889', 3000); Audio.sfx('bell', 0.8); }
-  if (G.s >= L - 0.5) return arrive();
+  // Citi Tower: heads-up, then a tourist steps out in front of the spot → the Akira slide
+  if (G.s > L - 125 && !G.dmDone.has('park')) { G.dmDone.add('park'); UI.dm('📍 Citi Tower is right up ahead — get ready to park!', { who: 'gobbl', tone: 'sys', ttl: 4200 }); UI.thought('there it is. floor 20. time to park in style.'); Audio.sfx('ding', 0.7); }
+  if (G.s > L - 34 && !G.akira) startAkira();
+  if (G.akira && !G.akira.res) { updateAkira(dt); if (G.state !== 'run') return; }
+  if (G.akira?.res && G.time - G.akira.resT > 0.35) return arrive();
+  if (G.s >= L - 0.5) { if (!G.akira) G.akira = { res: 'ok', resT: G.time, seq: [] }; return arrive(); }
   // rider pose
   const f = route.at(G.s);
   R.root.position.copy(route.world(G.s, G.lat, G.y));
@@ -485,9 +523,11 @@ function animateLevel(t, dt) {
     if (!near) continue;
     const f = route.at(w.s); route.world(w.s, w.lat, 0, w.c.root.position);
     const walking = w.t != null && w.t > w.delay && !w.stopped;
-    w.c.root.rotation.y = f.yaw + (walking ? (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : Math.PI);
+    w.c.root.rotation.y = f.yaw + (walking ? (w.dir > 0 ? -Math.PI / 2 : Math.PI / 2) : Math.PI); // face the way they walk (+lat is the route's right)
     w.c.pose(walking ? [['walk', w.ph + (w.t || 0) * 1.4]] : [['point', 0.5 + (t % 2)]]);
   }
+  // the curb-stepping tourist
+  const st = P.stepper; if (st && st.t != null) { st.t += dt * G.slowmo; st.lat = Math.max(0.6, st.lat0 - st.t * 1.6); const f = route.at(st.s); route.world(st.s, st.lat, 0, st.c.root.position); st.c.root.rotation.y = f.yaw + (st.lat > 0.62 ? -Math.PI / 2 : Math.PI); st.c.pose(st.lat > 0.62 ? [['walk', st.t * 1.2]] : [['point', 0.6 + st.t]]); }
   // SunRail: gates + train
   if (G.rail) {
     const rail = G.rail, near = G.s > rail.s - 110 && G.s < rail.s + 60;
@@ -554,6 +594,8 @@ function applyCam(shot, dt, { snap = false, scale = 1, lookScale = scale } = {})
 }
 function runCamera(dt) {
   let shot = chaseShot();
+  G.akK = damp(G.akK || 0, G.akira ? 1 : 0, 3, dt);
+  if (G.akK > 0.002) { const h = halfAt(G.s); shot = orbitMix(shot, { ds: 7, lat: -(h - 1.2), y: 0.9, lds: 1, llat: G.lat + 0.8, ly: 1.0, fov: baseFov() - 2 }, smooth(clamp(G.akK)), 5); }
   if (G.camK > 0.002) { G.lastAir = G.airKind || G.lastAir; shot = orbitMix(shot, jumpShot(), smooth(clamp(G.camK)), 4.5); }
   applyCam(shot, dt, G.camK > 0.002 ? { scale: 1.8, lookScale: 0.5 } : {});
 }
@@ -607,7 +649,7 @@ function showResults(line) {
   G.delivered++; store.set('delivered', G.delivered);
   if (!G.best || G.time < G.best) { G.best = Math.round(G.time); store.set('best', G.best); }
   // delivery bonuses on top of the live score
-  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5);
+  const timeLeft = Math.max(0, G.etaTotal - G.time - (G.fin?.doorT || 0) - (G.fin?.stairT || 0) * 0.5 - (G.fin?.akiraT || 0));
   const run = Math.round(G.score), timeB = Math.round(timeLeft * 25), iceB = Math.round(G.ice * 8), cleanB = G.crashes ? 0 : 1000;
   const total = run + timeB + iceB + cleanB;
   const per = total / G.route.length, grade = per >= 26 ? 'S' : per >= 18 ? 'A' : per >= 11 ? 'B' : per >= 6 ? 'C' : 'D';
@@ -615,7 +657,7 @@ function showResults(line) {
   G.lastTotal = total; G.lastGrade = grade;
   Audio.music('chill');
   UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, promised: G.def.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line,
-    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, door: G.fin?.door, stairs: G.fin?.stairs },
+    score: { run, timeB, iceB, cleanB, total, grade, newBest, best: G.bestScore, coins: G.coins, tricks: G.tricks, bestMult: G.bestMult || 1, door: G.fin?.door, stairs: G.fin?.stairs, akira: G.fin?.akira },
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(true); },
     onShare: () => { const txt = `Scored ${total.toLocaleString('en-US')} (${grade}) delivering Kyle S his coffee to Citi Tower floor 20. He promised ${UI.money(G.def.tip)}. He tipped $0.00. Again. 🙄 #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
 }

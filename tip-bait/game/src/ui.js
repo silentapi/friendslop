@@ -153,6 +153,21 @@ export function qte({ key, label = '' }) {
     remove() { el.remove(); },
   };
 }
+// multi-key combo prompt (the parking slide): keys in order against a draining timer
+export function combo({ seq, label }) {
+  remove('combo');
+  const el = layer('combo', `<div class="cbox"><div class="clab">${label}</div><div class="ckeys">${seq.map((k, i) => `<div class="ck" id="ck${i}">${KEYCAP[k] || k}</div>`).join('')}</div><div class="ctime"><i id="ctf"></i></div></div>`);
+  return {
+    set(idx, u) { seq.forEach((_, i) => { const c = el.querySelector('#ck' + i); c.classList.toggle('done', i < idx); c.classList.toggle('now', i === idx); }); el.querySelector('#ctf').style.width = `${Math.max(0, u) * 100}%`; },
+    result(ok, sub = '') { el.querySelector('.cbox').classList.add(ok ? 'ok' : 'bad'); el.querySelector('.clab').innerHTML = `<b>${ok ? 'NAILED IT' : 'FUMBLED'}</b>${sub ? ' · ' + sub : ''}`; setTimeout(() => el.remove(), 900); },
+    remove() { el.remove(); },
+  };
+}
+// the hold frame: just letterbox bars — the shot speaks for itself
+export function holdFrame() {
+  remove('akira');
+  return layer('akira', `<div class="lbx t"></div><div class="lbx b"></div>`);
+}
 export function countdown(n) { remove('count'); const el = layer('count', `<div class="count">${n}</div>`); el.style.padding = 0; setTimeout(() => el.remove(), 700); }
 export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl); }
 
@@ -213,23 +228,25 @@ export function stairsUI({ onTap }) {
     },
   };
 }
-// front-door minigame: get the receptionist to look up from her phone
-export function buzzUI() {
+// front-door minigame: wave to get noticed, then knock while she's looking up
+export function deskUI() {
   const el = layer('buzzui', `
     <div class="buzz">
+      <div class="knocknow" id="knocknow"><div class="qring" id="kring"></div><b>KNOCK NOW!</b><small>${TOUCH ? 'tap KNOCK' : 'press Space'}</small></div>
       <div class="bstat" id="bstat">📱 she’s on her phone</div>
-      <div class="bbar"><i id="bm"></i><b id="bcap"></b></div>
-      <div class="bhint">${TOUCH ? 'Tap <b>WAVE</b> fast · <b>KNOCK</b> when she looks up 👀' : 'Mash <b>←</b> <b>→</b> to wave · <b>Space</b> to knock · go hard when she looks up 👀'}</div>
+      <div class="bbar"><i id="bm"></i><em>GET NOTICED</em></div>
+      <div class="bhint">${TOUCH ? '<b>WAVE</b> fast to get noticed · <b>KNOCK</b> only when she looks up' : 'Mash <b>←</b> <b>→</b> to wave · when she looks up, <b>Space</b> to knock · knock early and she ignores you'}</div>
       ${TOUCH ? '<div class="stairs"><button id="bw">👋 WAVE</button><button id="bk">✊ KNOCK</button></div>' : ''}
     </div>`);
+  const st = el.querySelector('#bstat'), kn = el.querySelector('#knocknow'), ring = el.querySelector('#kring');
   return {
     el,
     bind(onWave, onKnock) { el.querySelector('#bw')?.addEventListener('pointerdown', (e) => { e.preventDefault(); onWave(); }); el.querySelector('#bk')?.addEventListener('pointerdown', (e) => { e.preventDefault(); onKnock(); }); },
-    set({ meter, looking, cap }) {
-      el.querySelector('#bm').style.width = `${Math.round(meter * 100)}%`;
-      el.querySelector('#bcap').style.left = `${Math.round(cap * 100)}%`; el.querySelector('#bcap').style.opacity = looking ? 0 : 1;
-      const st = el.querySelector('#bstat'); const txt = looking ? '👀 SHE’S LOOKING — NOW!' : '📱 she’s on her phone';
-      if (st.textContent !== txt) { st.textContent = txt; st.classList.toggle('look', looking); }
+    set({ notice, phase, u }) {
+      el.querySelector('#bm').style.width = `${Math.round(notice * 100)}%`;
+      const txt = phase === 'looking' ? '❗ SHE’S LOOKING' : phase === 'eyeroll' ? '🙄 knocked too early — she’s ignoring you' : '📱 she’s on her phone';
+      if (st.textContent !== txt) { st.textContent = txt; st.className = 'bstat ' + phase; }
+      kn.classList.toggle('on', phase === 'looking'); ring.style.transform = `translate(-50%,-50%) scale(${0.6 + u * 1.4})`;
     },
   };
 }
@@ -273,8 +290,8 @@ export function results({ next, nextN, tip, promised, pay, time, eta, ice, crash
       </div>
       <div class="ledger1">Kyle promised <s>${money(promised ?? tip)}</s> · tipped <b>$0.00</b> · you earned <b>${money(pay)}</b></div>
       <div class="kv">
-        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS<b>${S.coins}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div>
-        <div>TRICKS<b>${S.tricks}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div>
+        <div>TIME<b>${fmtTime(time)}${onTime ? ' ✓' : ''}</b></div><div>COINS · TRICKS<b>${S.coins} · ${S.tricks}</b></div><div>BEST COMBO<b>x${S.bestMult}</b></div>
+        <div>SLIDE PARK<b>${S.akira || '—'}</b></div><div>FRONT DESK<b>${S.door || '—'}</b></div><div>STAIRS<b>${S.stairs || '—'}</b></div>
       </div>
       <div class="small" style="color:#cfd6dc">Kyle S: “${line}” · ${crashes ? `${crashes} crash${crashes > 1 ? 'es' : ''}` : 'no crashes'} · ${nearMiss} near misses · ice ${Math.round(ice)}%</div>
       <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail' : ''}</div>
