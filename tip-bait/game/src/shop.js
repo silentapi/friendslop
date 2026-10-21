@@ -14,7 +14,6 @@ const RC = (r) => RARITY[r].color;
 const rank = (r) => RARITY[r].rank;
 const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
 const crateArt = (c, big = false) => `<div class="crateart look-${c.look}${big ? ' big' : ''}"><div class="clid"></div><div class="cbody"><b>gobbl</b><i>${c.rolls > 1 ? '×' + c.rolls : c.look === 'prem' ? 'PREMIUM' : 'CRATE'}</i></div><div class="cseam"></div></div>`;
-const cardHTML = (it, extra = '') => `<div class="lcard r-${it.r}" style="--rc:${RC(it.r)}">${extra}<span class="sw" style="background:${it.sw}">${it.icon || ''}</span><span class="nm">${it.name}</span><i>${RARITY[it.r].name}</i></div>`;
 
 export function openShop({ store, cos, onClose, sfx = () => {} }) {
   // storage: 'wallet' coins · 'owned' item ids (pre-crate purchases carry over as-is) · 'equipped' per slot · 'pity'
@@ -276,8 +275,8 @@ function runOpening(crate, pulls, ctx) {
   const crateScale = Math.min(1, halfW / 1.9);
 
   // ---- the wheel (single pulls): cards on a cylinder; the needle sits at the front
-  const CWID = 1.3, CHGT = 1.6, GAP = 0.14, R = 7.5, STEP = (CWID + GAP) / R;
-  const wheel = new THREE.Group(); wheel.position.set(0, 0.25, -R); wheel.visible = false; scene.add(wheel);
+  const CWID = 1.3, CHGT = 1.6, GAP = 0.14, R = 9, FZ = 3, STEP = (CWID + GAP) / R; // FZ: the front of the wheel sits a little toward the camera
+  const wheel = new THREE.Group(); wheel.position.set(0, 0.25, FZ - R); wheel.visible = false; scene.add(wheel);
   const cardGeo = keep(new THREE.PlaneGeometry(CWID, CHGT)); const cards = [];
   let W = 0, plan = null;
   const makeCard = (it, parent) => {
@@ -303,7 +302,7 @@ function runOpening(crate, pulls, ctx) {
     plan = { mode, from, peak: (W + peak) * STEP, to: (W + off) * STEP, dur: mode === 'edge' ? 5.4 : 4.6 + Math.random() * 0.5, pw: mode === 'edge' ? 5.2 : 4 };
   }
   // needle: a glowing line + two pips, just in front of the front card
-  const needle = new THREE.Group(); needle.position.set(0, 0.25, 0.06); needle.visible = false; scene.add(needle);
+  const needle = new THREE.Group(); needle.position.set(0, 0.25, FZ + 0.06); needle.visible = false; scene.add(needle);
   const nM = keep(new THREE.MeshBasicMaterial({ color: 0xffd23b, transparent: true, depthWrite: false }));
   const nl = add(new THREE.PlaneGeometry(0.05, CHGT + 0.5), nM, needle);
   for (const s of [1, -1]) { const tri = add(new THREE.ConeGeometry(0.14, 0.24, 3), nM, needle); tri.position.y = s * (CHGT / 2 + 0.32); tri.rotation.z = s > 0 ? Math.PI : 0; }
@@ -411,7 +410,7 @@ function runOpening(crate, pulls, ctx) {
   }
   // reveal pose: the winner flies forward and flips, then parks where it doesn't cover the courier
   const isPortrait = () => innerWidth < innerHeight * 0.9;
-  const parkAt = () => (isPortrait() ? toWorld(innerWidth / 2, innerHeight * 0.2, 1) : toWorld(innerWidth * 0.2, innerHeight * 0.42, 1));
+  const parkAt = () => (isPortrait() ? toWorld(innerWidth / 2, innerHeight * 0.19, 1) : toWorld(innerWidth - Math.min(innerWidth * 0.17, 210), innerHeight * 0.21, 1));
   let hero = null;
   function reveal(wasSkip = false) {
     if (phase === 'reveal') return;
@@ -434,14 +433,14 @@ function runOpening(crate, pulls, ctx) {
   }
   function stepReveal(dt) {
     revealT += dt;
-    rays.rotation.z += dt * (0.2 + top * 0.1); const ro = [0.18, 0.3, 0.5, 0.75, 0.9][top];
+    rays.rotation.z += dt * (0.2 + top * 0.1); const ro = [0.18, 0.3, 0.5, 0.75, 0.9][top] * (hero ? 1 - 0.45 * clamp01((revealT - 1.0) / 0.6) : 1);
     rays.material.opacity = lerp(rays.material.opacity, ro, Math.min(1, dt * 4)); halo.material.opacity = lerp(halo.material.opacity, 0.35 + top * 0.12, Math.min(1, dt * 4));
     if (hero) {
       const u = clamp01(revealT / 0.7), e = 1 - Math.pow(1 - u, 3), park = parkAt(), v = clamp01((revealT - 1.0) / 0.6), pe = v * v * (3 - 2 * v);
-      const mid = new THREE.Vector3(0, 0.4, 3.2);
+      const mid = new THREE.Vector3(0, 0.4, FZ + 2.4);
       hero.g.position.copy(hero.from).lerp(mid, e).lerp(park, pe);
-      hero.g.rotation.y = Math.PI * 2 * e + Math.sin(revealT * 1.6) * 0.18 * pe; hero.g.scale.setScalar(lerp(1, 1.25, e) * lerp(1, isPortrait() ? 0.85 : 1.05, pe));
-      rays.position.set(hero.g.position.x, hero.g.position.y, -3); halo.position.set(hero.g.position.x, hero.g.position.y, -2.5);
+      hero.g.rotation.y = Math.PI * 2 * e + Math.sin(revealT * 1.6) * 0.18 * pe; hero.g.scale.setScalar(lerp(1, 1.25, e) * lerp(1, isPortrait() ? 0.8 : 0.66, pe));
+      rays.position.set(hero.g.position.x, hero.g.position.y, -3); halo.position.set(hero.g.position.x, hero.g.position.y, -2.5); rays.scale.setScalar(lerp(16, 8, pe)); halo.scale.setScalar(lerp(7, 4.5, pe));
       wheel.position.y = lerp(0.25, -halfH * 1.4, clamp01(revealT / 0.8)); for (const c of cards) { c.sharp.material.opacity *= 1 - Math.min(1, dt * 3); c.blur.material.opacity = 0; }
     } else {
       // ×5: the row slides to the bottom; the selected card rises and glows
