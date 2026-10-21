@@ -1,6 +1,6 @@
 // The delivery finale: pull up at the CITITOWER 101 canopy (real-life vs in-game panel) → elevator OUT OF ORDER
 // → climb 20 floors (alternate LEFT/RIGHT taps) → Kyle S opens 2004, takes it, sips, complains → takes the tip.
-import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, ASSETS, box, cyl, mat } from './core.js';
+import { THREE, V, clamp, lerp, seg, smooth, easeOut, easeInOut, damp, box, cyl, mat } from './core.js';
 import { character, ik2, coldCup } from './chars.js';
 import * as Sets from './sets.js';
 
@@ -24,6 +24,7 @@ export class Finale {
   }
   start() {
     const { G, UI, Audio } = this;
+    UI.skipChip(true).addEventListener('click', () => this.skip());
     prefetchKyle();
     Audio.music('chill'); Audio.sfx('skid', 0.9);
     this.c0 = this.camera.position.clone(); this.l0 = new THREE.Vector3(); this.camera.getWorldDirection(this.l0); this.l0.multiplyScalar(10).add(this.c0);
@@ -33,20 +34,9 @@ export class Finale {
     this.yaw0 = G.R.root.rotation.y;
 
   }
-  showReal() {
-    if (this.phase !== 'arrive') return;
-    const { UI } = this;
-    this.render(); // grab the in-game view right after drawing it
-    let shot = '';
-    try { shot = this.renderer.domElement.toDataURL('image/jpeg', 0.8); } catch {}
-    const el = UI.sceneCap('real Downtown Orlando.<br><em>real buildings.</em>', { tap: 'tap to go up', extra: UI.realPanel(ASSETS + 'tex/citi_photo.jpg', shot) });
-    el.addEventListener('pointerdown', () => this.toElevator(), { once: true });
-    this.autoT = setTimeout(() => this.toElevator(), 7000);
-  }
   // ---------------------------------------------------------------- elevator
   toElevator() {
     if (this.phase !== 'arrive') return;
-    clearTimeout(this.autoT);
     const { UI, Audio, G } = this;
     UI.remove('scene');
     this.phase = 'elevator'; this.t = 0;
@@ -61,7 +51,6 @@ export class Finale {
     this.cup = coldCup(); s.add(this.cup);
     Audio.sfx('ding', 0.4);
     this.done = false;
-    UI.layer('scene', '').addEventListener('pointerdown', () => { if (this.t > 1.2) this.toStairs(); });
   }
   updateElevator(dt) {
     const t = (this.t += dt), R = this.G.R, cam = this.camera, UI = this.UI, A = this.Audio;
@@ -85,8 +74,8 @@ export class Finale {
     }
     cam.updateProjectionMatrix();
     if (t > sign + 0.2 && !this.c1) { this.c1 = true; UI.sceneCap('elevator: <em>out of order.</em>'); }
-    if (t > line && !this.c2) { this.c2 = true; UI.sceneCap('…20 floors.', { tap: 'tap to climb' }).addEventListener('pointerdown', () => this.toStairs()); }
-    if (t > 5.2) this.toStairs();
+    if (t > line && !this.c2) { this.c2 = true; UI.sceneCap('…20 floors.'); }
+    if (t > (this.G.delivered > 0 ? 4.0 : 5.0)) this.toStairs();
   }
   // ---------------------------------------------------------------- stairs mini-game
   toStairs() {
@@ -106,6 +95,7 @@ export class Finale {
     const R = G.R; s.add(R.root);
     this.cup.removeFromParent(); s.add(this.cup);
     this.taps = 0; this.next = 0; this.sCur = 0; this.timeLeft = 11; this.stumble = 0;
+    UI.skipChip(false);
     Audio.music('full');
     this.ui = UI.stairsUI({ onTap: (side) => this.tap(side) });
     this.keyH = (e) => { if (e.repeat) return; const k = e.key.toLowerCase(); if (k === 'arrowleft' || k === 'a') this.tap(0); if (k === 'arrowright' || k === 'd') this.tap(1); };
@@ -156,6 +146,7 @@ export class Finale {
     R.root.position.set(0.15, 0, Sets.DOOR_Z - 0.15); R.root.rotation.set(0, Math.PI / 2, 0);
     this.cup.removeFromParent(); s.add(this.cup);
     this.scene = s; this.phase = 'door'; this.t = 0;
+    UI.skipChip(true).addEventListener('click', () => this.skip());
     const late = G.time + (G.stairTime || 10) > G.etaTotal + 11;
     this.line = G.ice < 20 ? 'it’s literally soup' : late ? 'took u long enough' : G.crashes >= 2 ? 'why does it look like u fell' : 'kinda melted ngl';
     Audio.music('tense'); Audio.sfx('creak', 0.9);
@@ -199,7 +190,7 @@ export class Finale {
       K.root.visible = false; this.cup.visible = false; this.d.leaf.rotation.y = 0;
       if (!this.tp) { this.tp = true; A.sfx('ding', 1); UI.sceneCap('', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') }); }
       if (u > 0.7 && !this.zr) { this.zr = true; A.music(null); A.sfx('trombone', 1); UI.sceneCap('every. single. <em>time.</em>', { extra: UI.notif('Kyle S changed your tip', 'thanks for the delivery! 🙂') + `<div class="tipchg"><s>${UI.money(this.G.tip)}</s><b>$0.00</b></div>` }); }
-      if (u > 3.3 && !this.fin) { this.fin = true; UI.remove('scene'); this.phase = 'post'; this.onDone(this.line); }
+      if (u > 3.3 && !this.fin) { this.fin = true; UI.remove('scene'); UI.skipChip(false); this.phase = 'post'; this.onDone(this.line); }
     }
   }
   updatePost(dt) { const R = this.G.R; this.t += dt; R.walk('facepalm', 2.2, { offset: V(0, 0, 0), yaw: 0, loop: false }); }
@@ -220,7 +211,13 @@ export class Finale {
     cam.fov = damp(cam.fov, 70, 3, dt); cam.updateProjectionMatrix();
     this.sun.target.position.copy(this.corner); this.sun.position.copy(this.corner).add(V(-80, 60, 90));
     if (t > 0.9 && !this.placed) { this.placed = true; this.UI.place('Citi Tower', '101 Lake Ave · Church St', 4200); this.UI.dm('fl 20. hurry 🙄'); this.Audio.sfx('pop', 0.7); }
-    if (t > 1.9 && !this.realShown) { this.realShown = true; this.showReal(); }
+    if (t > 2.6) this.toElevator();
+  }
+  skip() {
+    if (this.phase === 'arrive') this.toElevator();
+    else if (this.phase === 'elevator') this.toStairs();
+    else if (this.phase === 'door' && this.t < 3.6) { this.t = 3.6; this.UI.remove('scene'); this.cup.visible = false; this.Audio.sfx('boom', 0.4); }
+    else if (this.phase === 'door' && this.t < 6.8) { this.t = 6.85; }
   }
   update(dt, T) {
     if (this.phase === 'arrive') this.updateArrive(dt);

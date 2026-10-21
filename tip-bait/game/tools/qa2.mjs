@@ -22,10 +22,10 @@ const key = (k) => page.evaluate((k) => window.dispatchEvent(new KeyboardEvent('
 const G = () => page.evaluate(() => { const g = window.__G; return { st: g.state, s: +g.s.toFixed(1), L: Math.round(g.route.length), lane: g.lane, y: +g.y.toFixed(2), v: +g.v.toFixed(1), ice: Math.round(g.ice), boost: +g.boostCharge.toFixed(2), crashes: g.crashes, nm: g.nearMiss, eta: Math.round(g.eta), time: Math.round(g.time) }; });
 await shot('00_title');
 await page.click('#play');
-await page.waitForSelector('#hold', { timeout: 180000 });
+await page.waitForSelector('#accept', { timeout: 180000 });
 await tick(3); await shot('01_order');
-const hb = await page.locator('#hold').boundingBox();
-await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up();
+await page.click('#accept');
+
 await page.waitForTimeout(600); await shot('02_count');
 await page.waitForFunction(() => window.__G.state === 'run', null, { timeout: 15000 });
 if (mode === 'ramp') {
@@ -56,9 +56,9 @@ const pilot = () => page.evaluate((crashMode) => {
   if (!act && g.rail) { const r = g.lv.ramps.find((r) => r.rail); if (r && r.s - g.s < 30 && r.s - g.s > 0 && g.lane !== 1) act = g.lane < 1 ? 'ArrowRight' : 'ArrowLeft'; }
   if (!act && g.boostCharge >= 1) act = 'Shift';
   return act;
-}, mode === 'crash');
+}, mode === 'crash' || mode === 'coach');
 if (mode === 'finale') await page.evaluate(() => { const g = window.__G; g.s = g.route.length - 30; g.invT = 999; g.runT = 5; g.v = g.base; });
-let i = 0, crashedOnce = false;
+let i = 0, crashedOnce = false; const seen = new Set();
 const t0 = Date.now();
 while (i < 4000) {
   const act = await pilot(); if (act) await key(act);
@@ -67,6 +67,7 @@ while (i < 4000) {
   const g = await G();
   if (i % 90 === 0) { console.log(i, JSON.stringify(g)); }
   if (i % 150 === 0) await shot(`run_${String(i).padStart(4, '0')}`);
+  if (mode === 'coach') { const c = await page.evaluate(() => document.querySelector('.coach')?.textContent || ''); if (c && !seen.has(c)) { seen.add(c); console.log('COACH', c); await shot(`coach_${seen.size}`); } if (i > 900) break; }
   if (g.st === 'crashing') { await tick(12); await shot(`crash_${i}`); }
   if (g.st === 'crashed') {
     await shot(`crashui_${i}`);
@@ -86,7 +87,7 @@ if ((await G()).st === 'finale') {
   for (let k = 0; k < 6; k++) { await tick(18); await shot(`fin_elev_${k}`); }
   for (let w = 0; w < 30 && !(await page.evaluate(() => !!document.getElementById('sl'))); w++) await tick(10);
   for (let k = 0; k < 46; k++) { await key(k % 2 ? 'ArrowRight' : 'ArrowLeft'); await tick(4); if (k % 12 === 6) await shot(`fin_stairs_${k}`); }
-  for (let k = 0; k < 40; k++) { await tick(6); if (await page.evaluate(() => !!window.__G && document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
+  for (let k = 0; k < 90; k++) { await tick(6); if (await page.evaluate(() => !!window.__G && document.querySelector('#results'))) break; if (k % 3 === 0) await shot(`fin_door_${String(k).padStart(2, '0')}`); }
   await tick(10); await shot('fin_results');
 }
 console.log('errors', errors.length, errors.slice(0, 5));

@@ -67,13 +67,13 @@ export async function buildLevel(scene, route, { order, cross, rail = null, stor
   const railS = rail ? rail.s : -999;
   const start = 34, end = L - 46;
   // tourist crossings at the first two intersections after the start (Orange & Church is always one)
-  for (const c of cross.filter((c) => c > start + 10 && c < end && Math.abs(c - railS) > 40).slice(0, 2 + Math.round(d))) groups.push({ s: c, n: 4 + Math.round(r() * 2 + d * 2), seed: r() });
+  for (const c of cross.filter((c) => c > start + 10 && c < end && Math.abs(c - railS) > 40).slice(0, 1 + Math.round(d * 2))) groups.push({ s: c, n: 3 + Math.round(r() + d * 3), seed: r() });
   // the SunRail crossing: gates + a ramp in the middle lane, boost pad before it, train scripted to the player
   if (rail) { ramps.push({ s: railS - 13, lat: 0, rail: true }); pads.push({ s: railS - 40, lat: 0 }); obs.push({ kind: 'gate', s: railS - 6, lat: 0, len: 0.6, w: 9, h: 1.25, v: 0 }); }
   // the rhythm: a pattern every 22–34 m, denser with difficulty
   let s = start;
   while (s < end) {
-    s += lerpN(34, 20, d) + r() * 10;
+    s += lerpN(42, 22, d) + r() * 10;
     if (s > end) break;
     if (Math.abs(s - railS) < 50 || groups.some((g) => Math.abs(g.s - s) < 22)) continue;
     const pick = r();

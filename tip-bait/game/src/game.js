@@ -134,9 +134,9 @@ function onSwipe(dir) {
   if (dir === 'R') G.lane = Math.min(2, G.lane + 1), Audio.sfx('whoosh', 0.35, 1.6);
   if (dir === 'U' && G.y <= 0.02) { G.vy = 7.2; Audio.sfx('pop', 0.6, 0.7); }
   if (dir === 'D') useBoost();
-  G.hintT = 0; G.swiped = true;
+  G.hintT = 0; G.swiped = true; G.coachSlow = 0; UI.coach(null);
 }
-canvas.parentElement.addEventListener('pointerdown', (e) => { Audio.unlock(); input.active = true; input.x0 = e.clientX; input.y0 = e.clientY; input.t0 = performance.now(); input.fired = false; }, { passive: true });
+canvas.parentElement.addEventListener('pointerdown', (e) => { Audio.unlock(); if (e.pointerType === 'mouse') return; input.active = true; input.x0 = e.clientX; input.y0 = e.clientY; input.t0 = performance.now(); input.fired = false; }, { passive: true });
 canvas.parentElement.addEventListener('pointermove', (e) => {
   if (!input.active || input.fired) return;
   const dx = e.clientX - input.x0, dy = e.clientY - input.y0, th = Math.max(26, Math.min(window.innerWidth, 500) * 0.06);
@@ -154,15 +154,52 @@ window.addEventListener('keydown', (e) => {
   if (G.state === 'crashed' && k === 'r') { document.getElementById('rs')?.click(); return; }
   if (G.state === 'results' && k === 'enter') { document.getElementById('next')?.click(); return; }
   if (k === 'm') { Audio.unlock(); Audio.setMuted(!Audio.muted); UI.toast(Audio.muted ? 'Sound off' : 'Sound on', 900); return; }
+  if ((k === 'escape' || k === 'p') && (G.state === 'run' || G.state === 'paused')) { G.state === 'run' ? pause() : resume(); return; }
+  if (G.state === 'paused') { if (k === 'r') { resume(); startOrder(true); } return; }
+  if (G.state === 'finale' && (k === 'enter' || k === ' ' || k === 'escape')) { e.preventDefault(); finale?.skip(); return; }
   if (['arrowleft', 'a'].includes(k)) onSwipe('L'); else if (['arrowright', 'd'].includes(k)) onSwipe('R');
   else if (['arrowup', 'w', ' '].includes(k)) onSwipe('U'); else if (['arrowdown', 's', 'shift'].includes(k)) onSwipe('D');
   if (G.state !== 'run' && k === ' ') e.preventDefault();
 });
+// pause: Esc / P, and automatically when the window loses focus mid-run
+function pause() {
+  if (G.state !== 'run') return;
+  G.state = 'paused'; Audio.music(null);
+  UI.pauseMenu({ onResume: resume, onRestart: () => { resume(); startOrder(true); }, onQuit: () => { UI.clear(); hud = null; G.state = 'title'; showTitle(); } });
+}
+function resume() { if (G.state !== 'paused') return; UI.remove('pause'); G.state = 'run'; Audio.music('full'); }
+window.addEventListener('blur', pause);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 function useBoost() { if (G.boostCharge >= 1 && G.state === 'run') { G.boostCharge = 0; startBoost('BOOST!'); } }
 function startBoost(label) { G.boostT = 2.2; UI.pop(label, '2× speed'); Audio.sfx('boom', 0.6); Audio.sfx('whoosh', 0.9, 0.8); navigator.vibrate?.(30); }
 
 // ---------------------------------------------------------------- run update
 const tmp = V(), tmp2 = V(), m4 = new THREE.Matrix4(), qq = new THREE.Quaternion(), UP = V(0, 1, 0), ONE = V(1, 1, 1);
+const TUT = store.get('tut', {});
+const COACH = {
+  dodge: { text: TOUCH_EARLY() ? 'Swipe ⟵ ⟶ to switch lanes' : 'Press <b>←</b> <b>→</b> to switch lanes', slow: true },
+  jump: { text: TOUCH_EARLY() ? 'Swipe ↑ to jump the cones' : 'Press <b>↑</b> or <b>Space</b> to jump the cones', slow: true },
+  pad: { text: 'Ride over <b>green pads</b> for a speed boost' },
+  ramp: { text: 'Hit the <b>ramp</b> to launch over traffic' },
+  boost: { text: TOUCH_EARLY() ? 'BOOST is charged · tap the button' : 'BOOST is charged · press <b>Shift</b>' },
+  tourists: { text: 'Tourists don\'t look both ways. <b>Pick a gap.</b>' },
+};
+function coach(key) {
+  if (TUT[key] || G.coachT > 0) return;
+  TUT[key] = 1; store.set('tut', TUT);
+  UI.coach(COACH[key].text); G.coachT = 2.2;
+  if (COACH[key].slow) { G.coachSlow = 1.1; }
+}
+function tutorial() {
+  const LN = LANES[G.lane];
+  const ahead = (pred, d) => G.lv.obs.some((o) => !o.dead && pred(o) && o.s - G.s > 0 && o.s - G.s < d && Math.abs(o.lat - LN) < 1.4);
+  if (!TUT.dodge && ahead((o) => o.h > 1.0, 32)) coach('dodge');
+  else if (!TUT.jump && ahead((o) => o.h <= 1.0, 24)) coach('jump');
+  else if (!TUT.pad && G.lv.pads.some((p) => p.s - G.s > 0 && p.s - G.s < 34)) coach('pad');
+  else if (!TUT.ramp && G.lv.ramps.some((p) => p.s - G.s > 0 && p.s - G.s < 34)) coach('ramp');
+  else if (!TUT.tourists && G.pop.walkers.some((w) => w.s - G.s > 0 && w.s - G.s < 40)) coach('tourists');
+  else if (!TUT.boost && G.boostCharge >= 1) coach('boost');
+}
 const DMS = [[0.08, 'where r u'], [0.3, 'i can see u on the map 👀'], [0.55, 'my ice is melting 😤'], [0.78, 'hurry up i have a zoom call'], [0.93, 'fl 20. elevators r broken btw']];
 function rampHeight(s, lat) {
   let best = 0;
@@ -171,7 +208,10 @@ function rampHeight(s, lat) {
 }
 function update(dt, t) {
   const R = G.R, route = G.route, L = route.length;
-  const sdt = dt * G.slowmo;
+  G.coachT = Math.max(0, (G.coachT || 0) - dt);
+  if (G.coachSlow > 0) G.coachSlow -= dt;
+  tutorial();
+  const sdt = dt * G.slowmo * (G.coachSlow > 0 ? 0.45 : 1);
   G.time += dt; G.eta -= dt;
   G.ice = Math.max(0, G.ice - sdt * (G.def.storm ? 0.9 : 1.15));
   // speed
@@ -348,11 +388,13 @@ async function startOrder(restart = false) {
   G.state = 'order';
   Audio.music('chill');
   const def = G.def;
-  UI.orderCard({ tip: def.tip, note: def.note, pickup: def.pickup, dropoff: 'Citi Tower · 101 Lake Ave', eta: G.eta, onAccept: () => { Audio.sfx('ding'); UI.remove('order'); countdownGo(); } });
+  UI.orderCard({ n: G.order, tip: def.tip, note: def.note, pickup: def.pickup, dropoff: 'Citi Tower · 101 Lake Ave', eta: G.eta, onAccept: () => { Audio.sfx('ding'); UI.remove('order'); countdownGo(); } });
   Audio.sfx('ding', 0.8);
 }
 function countdownGo() {
-  G.state = 'count'; hud = UI.hud(); hud.onBoost(useBoost); hud.hint(true);
+  const marks = G.route.streets.slice(1).map((st) => [st.s0 / G.route.length, st.name.replace(/^(East|West|South|North) /, '')]);
+  if (G.rail) marks.push([G.rail.s / G.route.length, 'SunRail']);
+  G.state = 'count'; hud = UI.hud(marks); hud.onBoost(useBoost); hud.hint(true);
   hud.update({ eta: G.eta, prog: 0, ice: G.ice, boost: G.boostCharge, tip: G.tip, speed: 0 });
   let n = 3; const step = () => { if (n > 0) { UI.countdown(n); Audio.sfx('pop', 0.8, 0.8 + (3 - n) * 0.15); n--; setTimeout(step, 600); } else { UI.countdown('GO!'); Audio.sfx('boom', 0.7); Audio.music('full'); G.state = 'run'; G.runT = 0; setTimeout(() => hud?.hint(false), 4200); } };
   step();
@@ -368,7 +410,7 @@ function showResults(line) {
   G.delivered++; store.set('delivered', G.delivered);
   if (!G.best || G.time < G.best) { G.best = Math.round(G.time); store.set('best', G.best); }
   Audio.music('chill');
-  UI.results({ tip: G.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line,
+  UI.results({ next: orderDef(G.order + 1), nextN: G.order + 1, tip: G.tip, pay: 3.25 + Math.round(G.dist / 100) * 0.25, time: G.time, eta: G.etaTotal, ice: G.ice, crashes: G.crashes, nearMiss: G.nearMiss, order: G.order, line,
     onNext: () => { G.order++; store.set('order', G.order); finale?.dispose(); finale = null; scene.add(G.world); startOrder(); },
     onShare: () => { const txt = `Kyle S promised me a ${UI.money(G.tip)} tip and took it back. Again. 🙄 Delivered on Lake Ave in ${UI.fmtTime(G.time)}. tag your Kyle 👇 #TIPBAIT`; navigator.clipboard?.writeText(txt).then(() => UI.toast('Copied. Go tag your Kyle.'), () => UI.toast(txt, 4000)); } });
 }
@@ -422,8 +464,12 @@ async function boot() {
   } catch (e) { console.error(e); ld.set(0); document.querySelector('#load .tagline').textContent = 'Could not load the city. Check your connection and reload.'; return; }
   UI.remove('load');
   G.state = 'title';
-  UI.title({ best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
+  showTitle();
   window.__ready = true;
+}
+function showTitle() {
+  G.state = 'title';
+  UI.title({ best: G.best ? UI.fmtTime(G.best) : null, orders: G.delivered, muted: Audio.muted, onPlay: () => { Audio.unlock(); UI.remove('title'); startOrder(); }, onMute: () => { Audio.unlock(); Audio.setMuted(!Audio.muted); return Audio.muted; } });
 }
 requestAnimationFrame(frame);
 boot();

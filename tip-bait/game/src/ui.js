@@ -32,39 +32,34 @@ export function title({ best, orders, muted, onPlay, onMute }) {
   return el;
 }
 
-export function orderCard({ tip, note, pickup, dropoff, eta, onAccept }) {
+export function orderCard({ tip, note, pickup, dropoff, eta, n, onAccept }) {
   const el = layer('order', `
     <div class="card">
-      <div class="hd">gobbl <span>NEW ORDER</span></div>
+      <div class="hd">gobbl <span>ORDER #${n}</span></div>
       <div class="bd">
         <div class="who"><div class="av">K</div><div class="nm">Kyle S<small>Citi Tower · floor 20 · 101 Lake Ave</small></div></div>
         <div class="tip">${money(tip)}<small>TIP 🤑</small></div>
         <div class="note">“${note}”</div>
         <div class="route"><i style="background:#00704a"></i><span>Pickup · ${pickup}</span><i style="background:#ffc83d"></i><span>Dropoff · ${dropoff}</span></div>
-        <div class="small" style="color:#5b6470">ETA ${fmtTime(eta)} · 1 iced caramel macchiato</div>
-        <button class="btn hold" id="hold"><i class="fill"></i><span>HOLD TO ACCEPT${TOUCH ? '' : ' · SPACE'}</span></button>
+        <div class="small" style="color:#5b6470">Deliver in ${fmtTime(eta)} · 1 iced caramel macchiato</div>
+        <button class="btn" id="accept">ACCEPT ORDER${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">⏎</small>'}</button>
       </div>
     </div>`);
-  const b = el.querySelector('#hold'), fill = b.querySelector('.fill');
-  let t0 = 0, raf = 0, done = false;
-  const tick = () => { const k = Math.min(1, (performance.now() - t0) / 650); fill.style.width = `${k * 100}%`; if (k >= 1 && !done) return accept(); raf = requestAnimationFrame(tick); };
-  const down = (e) => { e.preventDefault(); if (done) return; t0 = performance.now(); raf = requestAnimationFrame(tick); };
-  const accept = () => { if (done) return; done = true; fill.style.width = '100%'; b.querySelector('span').textContent = 'ACCEPTED ✓'; setTimeout(onAccept, 250); };
-  const up = () => { if (done || !t0) return; cancelAnimationFrame(raf); if (performance.now() - t0 >= 650) return accept(); t0 = 0; fill.style.width = '0'; };
-  b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointerleave', up); b.addEventListener('pointercancel', up);
-  const kd = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); down(e); } };
-  const ku = (e) => { if (e.key === 'Enter' || e.key === ' ') up(); };
-  window.addEventListener('keydown', kd); window.addEventListener('keyup', ku);
-  const obs = new MutationObserver(() => { if (!el.isConnected) { window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); obs.disconnect(); } });
-  obs.observe(root(), { childList: true });
+  const b = el.querySelector('#accept');
+  let done = false;
+  const accept = () => { if (done) return; done = true; b.textContent = 'ACCEPTED ✓'; cleanup(); setTimeout(onAccept, 220); };
+  const kd = (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); accept(); } };
+  const cleanup = () => window.removeEventListener('keydown', kd);
+  b.addEventListener('click', accept); window.addEventListener('keydown', kd);
+  setTimeout(() => b.focus({ preventScroll: true }), 50);
   return el;
 }
 
-export function hud() {
+export function hud(marks = []) {
   const el = layer('hud', `
     <div class="hudtop">
       <div class="pill" id="eta"><small>ETA</small><span>0:00</span></div>
-      <div class="prog"><i id="progf"></i><em style="left:0">☕</em><em style="left:100%">🏢</em></div>
+      <div class="prog"><i id="progf"></i><em style="left:0">☕</em>${marks.map(([p, name]) => `<span class="mk" style="left:${(p * 100).toFixed(1)}%"><b></b>${name}</span>`).join('')}<em style="left:100%">🏢</em><span class="me" id="me">🚲</span></div>
       <div class="pill tipv"><small>TIP</small><b id="tipv">$50.00</b></div>
     </div>
     <div class="icem" id="icem"><div class="tube"><i id="icef"></i></div><span>ICE</span></div>
@@ -73,13 +68,13 @@ export function hud() {
     <div class="hint" id="hint">${TOUCH ? 'Swipe <b>⟵ ⟶</b> to switch lanes · <b>↑</b> to jump' : '<b>← →</b> or <b>A D</b> switch lanes · <b>↑ W Space</b> jump · <b>Shift</b> boost'}</div>
     <button class="boostb" id="boost" aria-label="Boost"><span>BOOST${TOUCH ? '' : '<br><small>SHIFT</small>'}</span></button>`);
   const q = (s) => el.querySelector(s);
-  const etaEl = q('#eta'), etaS = q('#eta span'), prog = q('#progf'), ice = q('#icef'), icem = q('#icem'), boost = q('#boost'), tipv = q('#tipv'), speed = q('#speed');
+  const me = q('#me'), etaEl = q('#eta'), etaS = q('#eta span'), prog = q('#progf'), ice = q('#icef'), icem = q('#icem'), boost = q('#boost'), tipv = q('#tipv'), speed = q('#speed');
   let last = {};
   return {
     el,
     update({ eta, prog: p, ice: ic, boost: bo, tip, speed: sp }) {
       const e = fmtTime(eta); if (e !== last.e) { etaS.textContent = e; etaEl.classList.toggle('late', eta <= 10); last.e = e; }
-      prog.style.width = `${(p * 100).toFixed(1)}%`;
+      prog.style.width = `${(p * 100).toFixed(1)}%`; me.style.left = `${(p * 100).toFixed(1)}%`;
       ice.style.height = `${Math.max(0, ic)}%`; icem.classList.toggle('low', ic < 25);
       boost.style.setProperty('--p', `${Math.min(100, bo * 100)}%`); boost.classList.toggle('ready', bo >= 1);
       if (tip !== last.tip) { tipv.textContent = money(tip); last.tip = tip; }
@@ -104,6 +99,26 @@ export function pop(text, sub = '', { top = 34 } = {}) {
 export function place(name, sub, ttl = 2600) {
   const el = h(`<div class="place"><i>📍</i><div><b>${name}</b><small>${sub}</small></div></div>`);
   root().appendChild(el); setTimeout(() => el.remove(), ttl);
+}
+export function coach(html) {
+  root().querySelectorAll('.coach').forEach((c) => c.remove());
+  if (!html) return;
+  const el = h(`<div class="coach">${html}</div>`); root().appendChild(el); setTimeout(() => el.remove(), 2600);
+}
+export function pauseMenu({ onResume, onRestart, onQuit }) {
+  const el = layer('pause', `<div class="pausebox"><div class="ptitle">Paused</div>
+    <button class="btn" id="presume">RESUME${TOUCH ? '' : ' <small style="opacity:.6;font-size:14px">Esc</small>'}</button>
+    <button class="btn dark" id="prestart">Restart order${TOUCH ? '' : ' (R)'}</button>
+    <button class="btn ghost" id="pquit">Quit to title</button>
+    <div class="small">${TOUCH ? '' : '← → lanes · ↑ jump · Shift boost · M mute'}</div></div>`);
+  el.querySelector('#presume').onclick = onResume; el.querySelector('#prestart').onclick = onRestart; el.querySelector('#pquit').onclick = onQuit;
+  return el;
+}
+export function skipChip(show) {
+  let el = document.getElementById('skipchip');
+  if (!show) { el?.remove(); return; }
+  if (!el) { el = h(`<button class="skipchip" id="skipchip">Skip ▶${TOUCH ? '' : ' <small>Space</small>'}</button>`); root().appendChild(el); }
+  return el;
 }
 export function countdown(n) { remove('count'); const el = layer('count', `<div class="count">${n}</div>`); el.style.padding = 0; setTimeout(() => el.remove(), 700); }
 export function toast(text, ttl = 1800) { const el = h(`<div class="toast">${text}</div>`); root().appendChild(el); setTimeout(() => el.remove(), ttl); }
@@ -147,9 +162,6 @@ export function sceneCap(html, { tap = null, extra = '' } = {}) {
   const el = layer('scene', `${extra}<div class="cap">${html}</div>${tap ? `<div class="tapc">${tap}</div>` : ''}`);
   return el;
 }
-export function realPanel(photo, gameShot) {
-  return `<div class="real"><figure><img src="${photo}" alt="Citi Tower, real life"><figcaption>📷 REAL LIFE</figcaption></figure><figure><img src="${gameShot}" alt="Citi Tower, in game"><figcaption>🎮 IN GAME</figcaption></figure></div>`;
-}
 export function stairsUI({ onTap }) {
   const el = layer('stairsui', `
     <div class="tbar"><i id="tb" style="width:100%"></i></div>
@@ -169,7 +181,7 @@ export function stairsUI({ onTap }) {
   };
 }
 export function notif(title, body) { return `<div class="notif"><div class="ic">g</div><div><b>${title}</b><small>${body}</small></div></div>`; }
-export function results({ tip, pay, time, eta, ice, crashes, nearMiss, order, line, onNext, onShare }) {
+export function results({ next, nextN, tip, pay, time, eta, ice, crashes, nearMiss, order, line, onNext, onShare }) {
   const onTime = time <= eta;
   const el = layer('results', `
     <div class="res">
@@ -186,6 +198,7 @@ export function results({ tip, pay, time, eta, ice, crashes, nearMiss, order, li
         <div>ADS WATCHED<b>${crashes}</b></div><div>KYLE'S RATING<b>⭐ 4.1</b></div>
       </div>
       <div class="small" style="color:#cfd6dc">Kyle S: “${line}”</div>
+      <div class="nextup">Next · Order #${nextN} · Kyle promises <b>${money(next.tip)}</b> · “${next.note}”${next.storm ? ' · 🌧 storm' : ''}${next.route === 'sunrail' ? ' · 🚆 SunRail crossing' : ''}</div>
       <div class="row"><button class="btn" id="next">NEXT ORDER${TOUCH ? '' : ' ⏎'}</button></div>
       <div class="row"><button class="btn ghost" id="share">Copy “tag your Kyle”</button></div>
     </div>`);
