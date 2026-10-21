@@ -89,7 +89,7 @@ export class Knock {
       <div class="kn-shout"></div><div class="kn-big"></div>
       <div class="kn-card"><small>Kyle’s door · apt 2004</small><h2>PLAY THE SECRET KNOCK</h2><p>${touch ? 'tap the circles as the rings close · hold sliders' : 'click the circles as the rings close · or <kbd>Z</kbd> <kbd>X</kbd> anywhere · hold for sliders'}</p><p class="kn-warn">drop the HP bar and he won’t open · <b>+2.5 s</b> per retry</p></div>
       <div class="kn-rank"></div>`);
-    this.el.classList.add('kn-on');
+    this.el.classList.add('kn-on'); document.getElementById('dms')?.remove();
     this.cv = this.el.querySelector('.kn-cv'); this.cx = this.cv.getContext('2d');
     this.$ = (s) => this.el.querySelector(s);
     this.hpEl = this.$('.kn-hp i'); this.scEl = this.$('.kn-sc b'); this.accEl = this.$('.kn-sc em'); this.pieEl = this.$('.kn-pie'); this.comboEl = this.$('.kn-combo b'); this.keyEls = [...this.el.querySelectorAll('.kn-keys span')];

@@ -342,8 +342,16 @@ function runOpening(crate, pulls, ctx) {
     const u = k / back; return lerp(peak, to, plan.mode === 'over' ? (1 - Math.cos(u * Math.PI)) / 2 : u * u * (3 - 2 * u));
   }
   const spinEnd = () => plan.dur + (plan.mode === 'plain' ? 0 : plan.mode === 'over' ? 0.75 : 0.5);
+  // under ?qa=1 the show only advances through api.advance() (software GL is far too slow for real time)
+  const QAMODE = new URLSearchParams(location.search).has('qa');
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (!QAMODE) update(dt);
+    renderer.render(scene, cam);
+    raf = requestAnimationFrame(frame);
+  }
+  function update(dt) {
+    t += dt;
     if (t > 0.8 && !skipOK) { skipOK = true; el.classList.add('canskip'); }
     const cs = crateScale;
     if (phase === 'fly' || phase === 'build') {
@@ -395,8 +403,6 @@ function runOpening(crate, pulls, ctx) {
     if (shake > 0) { shake = Math.max(0, shake - dt * 1.4); cam.position.x = (Math.random() - 0.5) * shake * 0.3; cam.position.y = 0.35 + (Math.random() - 0.5) * shake * 0.3; } else { cam.position.x = 0; cam.position.y = 0.35; }
     if (phase === 'reveal' && top >= 3 && Math.random() < 0.35) emit(1, new THREE.Vector3((Math.random() - 0.5) * halfW * 2, -halfH, 0), KT ? 'rainbow' : glowCol(best.r), 2, 2.4, 3, 0);
     stepParticles(dt); stepConfetti(dt);
-    renderer.render(scene, cam);
-    raf = requestAnimationFrame(frame);
   }
   function flipCard(i) {
     const c = mcards[i]; c.flipT = t; const p = c.p, r = rank(p.r);
@@ -482,6 +488,6 @@ function runOpening(crate, pulls, ctx) {
       else if (k === 'r') done(true);
       else if (multi && (k === 'arrowleft' || k === 'arrowright' || k === 'a' || k === 'd')) showCard((selI + (k === 'arrowleft' || k === 'a' ? pulls.length - 1 : 1)) % pulls.length);
     },
-    skip, state: () => phase, plan: () => plan && { ...plan, W, STEP, offset: plan.to / STEP - W },
+    skip, state: () => phase, advance(sec) { for (let i = 0; i < Math.round(sec * 30); i++) update(1 / 30); renderer.render(scene, cam); }, plan: () => plan && { ...plan, W, STEP, offset: plan.to / STEP - W },
   };
 }

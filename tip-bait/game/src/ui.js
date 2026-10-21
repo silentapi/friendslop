@@ -103,6 +103,7 @@ export function hud(marks = []) {
 }
 // Kyle's texts: phone-style notifications that slide in at the top-right, out of the way of the road
 export function dm(text, { who = 'Kyle S', ttl = 4200, tone = '' } = {}) {
+  if (document.querySelector('.kn-on')) return; // nothing lands on top of the secret knock
   let box = document.getElementById('dms');
   if (!box) { box = h('<div class="dms" id="dms"></div>'); root().appendChild(box); }
   const el = h(`<div class="dm ${tone}"><div class="av">${who === 'Kyle S' ? 'K' : 'g'}</div><div class="bub"><small><b>${who}</b> · now</small>${text}</div></div>`);
