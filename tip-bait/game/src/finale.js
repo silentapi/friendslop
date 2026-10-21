@@ -150,11 +150,13 @@ export class Finale {
     // camera: over his shoulder through the glass; punch in on her when she looks up
     // camera: a two-shot through the glass — him waving on the left, her large on the right; push in when she looks up
     const zoom = smooth(this.look);
-    // narrow screens (portrait phones): widen the lens and back off until him + her + desk fit across, then lift them above the desk UI
-    const nar = clamp((1.2 - cam.aspect) / 0.75, 0, 1), look = V(0.1, 1.35, 2.9).lerp(V(-1.4, 1.45, 2.2), zoom), dir = V(0.15, 0.4, 5.5).lerp(V(0.1, 0.15, 4.8), zoom); // zoom lines up between the door mullions
-    cam.fov = damp(cam.fov, lerp(42 - zoom * 10, 58 - zoom * 12, nar), 6, dt); cam.updateProjectionMatrix();
-    const tanV = Math.tan(cam.fov * Math.PI / 360), d = Math.max(dir.length(), lerp(2.5, 1.15, zoom) / (tanV * cam.aspect)); // half-width in metres that must stay in frame
-    cam.position.copy(look).addScaledVector(dir.normalize(), d); const lift = Math.max(nar * 0.32, clamp((620 - innerHeight) / 250, 0, 1) * 0.3); cam.lookAt(look.x, look.y - lift * d * tanV, look.z); // short landscape phones: lift them clear of the desk UI too
+    const pos = V(0.25, 1.75, 8.4).lerp(V(-1.3, 1.6, 7.0), zoom), look = V(0.1, 1.35, 2.9).lerp(V(-1.4, 1.45, 2.2), zoom); // zoom lines up between the door mullions
+    // portrait phones can't fit a side-by-side two-shot: go over his shoulder from the right so he (front) and she (behind the desk) stack in a narrow frame
+    const nar = clamp((1.2 - cam.aspect) / 0.75, 0, 1);
+    if (nar > 0) { pos.lerp(V(3.2, 1.9, 9.5).lerp(V(1.0, 1.65, 7.4), zoom), nar); look.lerp(V(0.3, 1.2, 3.1).lerp(V(-1.45, 1.4, 2.1), zoom), nar); }
+    cam.fov = damp(cam.fov, lerp(42 - zoom * 10, 50 - zoom * 10, nar), 6, dt); cam.updateProjectionMatrix();
+    const lift = clamp((620 - innerHeight) / 250, 0, 1) * 0.3 * (1 - nar); // short landscape phones: lift them clear of the desk UI
+    cam.position.copy(pos); cam.lookAt(look.x, look.y - lift * pos.distanceTo(look) * Math.tan(cam.fov * Math.PI / 360), look.z);
   }
   buzz(el) {
     const { UI, A = this.Audio, G } = this;
