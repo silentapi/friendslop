@@ -232,7 +232,7 @@ function startAkira() {
   const first = !TUT.akira; if (first) { TUT.akira = 1; store.set('tut', TUT); }
   const pool = ['arrowleft', 'arrowdown', 'arrowright', 'arrowup'], rr = QA ? mulberry(G.seed + 3) : Math.random;
   const seq = ['arrowdown']; for (let k = 1; k < (first ? 3 : 4); k++) { let n; do n = pool[Math.floor(rr() * 4)]; while (n === seq[k - 1]); seq.push(n); }
-  G.akira = { seq, idx: 0, t: 0, dur: first ? 2.8 : 1.8, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
+  G.akira = { seq, idx: 0, t: 0, dur: first ? 3.6 : 2.7, res: null, ui: UI.combo({ seq, label: first ? 'A TOURIST STEPS OUT — <b>SLIDE IN!</b><br><small style="font-size:16px">press the keys in order, fast</small>' : 'TOURIST! <b>SLIDE IN!</b>' }) };
   const st = G.pop.stepper; if (st) { st.t = 0; st.c.root.visible = true; }
   Audio.sfx('skid', 1, 0.8); Audio.rate(0.7); UI.coach(null);
 }
@@ -257,7 +257,7 @@ function startTech(o) {
   const first = !TUT.tech; if (first) { TUT.tech = 1; store.set('tut', TUT); }
   let dir = Math.random() < 0.5 ? -1 : 1; if (G.lane + dir < 0 || G.lane + dir > 2) dir = -dir;
   const key = dir < 0 ? 'arrowleft' : 'arrowright';
-  G.tech = { o, dir, key, t: 0, dur: first ? 0.45 : 0.3, ui: UI.qte({ key, label: 'TECH IT!' }) };
+  G.tech = { o, dir, key, t: 0, dur: first ? 0.85 : 0.65, ui: UI.qte({ key, label: 'TECH IT!' }) };
   G.slowmo = 0.06; Audio.rate(0.6); Audio.sfx('skid', 0.9, 1.4); G.shake = 0.15;
 }
 function updateTech(dt) { const q = G.tech; q.t += dt; q.ui.set(1 - q.t / q.dur); if (q.t >= q.dur) endTech(false); }
@@ -279,16 +279,20 @@ function startQTE(kind) {
   const rr = QA ? mulberry(Math.floor(G.s * 7)) : Math.random, first = !TUT.qte; if (first) { TUT.qte = 1; store.set('tut', TUT); }
   const n = (kind === 'rail' ? 2 : 3) + (G.order >= 4 ? 1 : 0), seq = []; for (let i = 0; i < n; i++) { let k; do k = QKEYS[Math.floor(rr() * 4)]; while (k === seq[i - 1]); seq.push(k); }
   const key = seq[n - 1];
-  G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.5 : 0.95) + n * 0.12, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
+  G.qte = { kind, key, seq, idx: 0, t: 0, dur: (first ? 1.6 : 1.0) + n * 0.32, ui: UI.combo({ seq, label: first ? 'TRICK COMBO — punch them in, <b>fast</b>' : kind === 'rail' ? 'TRICK OVER THE TRACKS!' : 'TRICK OVER THE BUS!' }) };
   Audio.rate(0.7); Audio.sfx('whoosh', 0.8, 0.5); UI.coach(null);
 }
 function updateQTE(dt) { const q = G.qte; q.t += dt; q.ui.set(q.idx, 1 - q.t / q.dur); if (q.t >= q.dur) endQTE('MISS', 'too slow'); }
 function qtePress(k) {
   k = QALIAS[k] || k; if (!QKEYS.includes(k)) return false;
-  const q = G.qte, u = 1 - q.t / q.dur;
-  if (k !== q.seq[q.idx]) { endQTE('MISS', 'wrong key'); return true; }
-  q.idx++; Audio.sfx('pop', 0.8, 1 + q.idx * 0.15);
-  if (q.idx >= q.seq.length) endQTE(u > 0.42 ? 'PERFECT' : 'GOOD');
+  const q = G.qte, u = 1 - q.t / q.dur, now = performance.now();
+  if (k !== q.seq[q.idx]) {
+    // forgiving on speed: a stray key in the first beat (still mashing from the ramp) or a double-tap of the key you just hit doesn't count
+    if (q.t < 0.15 || (k === q.seq[q.idx - 1] && now - (q.lastAt || 0) < 160)) return true;
+    endQTE('MISS', 'wrong key'); return true;
+  }
+  q.idx++; q.lastAt = now; Audio.sfx('pop', 0.8, 1 + q.idx * 0.15);
+  if (q.idx >= q.seq.length) endQTE(u > 0.35 ? 'PERFECT' : 'GOOD');
   return true;
 }
 function endQTE(grade, why = '') {

@@ -12,7 +12,8 @@ import { character, ik2 } from './chars.js';
 
 const HC = { c0: 3.0, c: -1.5, cx: 0.25 }, DOOR_Z = -9;
 // reaction windows, tight; a touch more lenient on your very first delivery
-export const hallWindows = (G) => (G.delivered === 0 ? [0.6, 0.48, 0.4] : [0.52, 0.42, 0.34]);
+// reaction windows for every hallway encounter: tight enough to need attention, always humanly doable (~0.25 s to react + a key)
+export const hallWindows = (G) => (G.delivered === 0 ? [1.05, 0.95, 0.85] : [0.9, 0.8, 0.72]);
 const DODGE_X = { arrowleft: -0.52, arrowright: 0.52 };
 const KEYMAP = { a: 'arrowleft', d: 'arrowright', w: 'arrowup', ' ': 'arrowup', s: 'arrowdown' };
 const GRADES = {
@@ -349,7 +350,7 @@ async function buildMop(F, scene) {
             q?.set(1 - s.t / s.W);
             if (Math.abs(h.b) >= 1) E.fall(s.t >= s.W * 0.98 ? 'too slow' : 'went over');
           } else {
-            h.bv += (Math.sin(F.t * 2.3) * 0.6 + (Math.random() - 0.5) * 2.2) * dt + h.b * 1.1 * dt; h.bv *= Math.exp(-2.2 * dt); h.b += h.bv * dt;
+            h.bv += (Math.sin(F.t * 2.3) * 0.45 + (Math.random() - 0.5) * 1.6) * dt + h.b * 0.8 * dt; h.bv *= Math.exp(-2.6 * dt); h.b += h.bv * dt;
             if (Math.abs(h.b) >= 1) E.fall('lost it');
             // a slip: your foot finds a puddle, the needle gets kicked
             if (h.nextSlip < 3 && h.t >= h.slips[h.nextSlip]) {
@@ -538,7 +539,7 @@ async function buildBeam(F, scene) {
           const s = h.lurch; s.t += dt; h.bv = (s.side * 1.05 - s.b0) / s.W; h.b += h.bv * dt; q?.set(1 - s.t / s.W);
           if (Math.abs(h.b) >= 1) E.fall(s.t >= s.W * 0.98 ? 'too slow' : 'went over');
         } else {
-          h.bv += (Math.sin(F.t * 2.9) * 0.9 + (Math.random() - 0.5) * 2.6) * dt + h.b * 1.6 * dt; h.bv *= Math.exp(-2.0 * dt); h.b += h.bv * dt;
+          h.bv += (Math.sin(F.t * 2.9) * 0.6 + (Math.random() - 0.5) * 1.8) * dt + h.b * 1.0 * dt; h.bv *= Math.exp(-2.5 * dt); h.b += h.bv * dt;
           if (Math.abs(h.b) >= 1) E.fall('lost your balance');
           if (h.next < 3 && h.t >= h.at[h.next]) {
             const side = Math.abs(h.b) > 0.2 ? Math.sign(h.b) : (Math.random() < 0.5 ? -1 : 1), W = hallWindows(G)[h.next];

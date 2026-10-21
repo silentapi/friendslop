@@ -127,7 +127,7 @@ const BAGS = {
   },
   bag_fridge: (A) => {
     const g = new THREE.Group(), white = std(0xdfe5ec, { roughness: 0.28, metalness: 0.1 }), steel = new THREE.MeshStandardMaterial({ color: 0xd8dde3, metalness: 1, roughness: 0.2, envMap: chromeEnv() }), seam = std(0x9aa3ad, { roughness: 0.5 });
-    g.scale.setScalar(0.62); g.position.y = -0.1; g.rotation.x = -0.55;
+    g.scale.setScalar(0.62); g.position.y = -0.1; g.rotation.x = 0.55; // upright against his riding lean
     M(new RoundedBoxGeometry(0.62, 1.1, 0.5, 3, 0.04), white, 0, 0.28, 0.12, g);
     M(B(0.56, 1.0, 0.02), glow(0xe8f6ff, 1.2), 0, 0.28, 0.375, g);
     for (const [y, c] of [[0.05, 0xff3b30], [0.32, 0x2ecc71], [0.58, 0xffd60a]]) M(B(0.1, 0.16, 0.1), std(c), 0.12 - y * 0.3, y, 0.3, g); // snacks on the shelves
@@ -146,7 +146,7 @@ const BAGS = {
       [['#ffd23b', 60, 170], ['#3b8bff', 196, 158], ['#ff3bd4', 200, 352], ['#2ecc71', 56, 362], ['#ff3b30', 128, 412]].forEach(([c, mx, my]) => { x.fillStyle = c; x.beginPath(); x.arc(mx, my, 22, 0, 7); x.fill(); x.fillStyle = 'rgba(255,255,255,.5)'; x.beginPath(); x.arc(mx - 4, my - 4, 4, 0, 7); x.fill(); });
       x.fillStyle = '#3a3f46'; x.font = '900 16px system-ui'; x.textAlign = 'center'; x.fillText('★ ICE MAKER ★', 128, 132);
     });
-    M(new THREE.PlaneGeometry(0.58, 1.02), new THREE.MeshStandardMaterial({ map: face, roughness: 0.35 }), -0.31, 0.28, 0.0315, door);
+    M(new THREE.PlaneGeometry(0.58, 1.02), new THREE.MeshStandardMaterial({ map: face, roughness: 0.35, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }), -0.31, 0.28, 0.05, door); // stands proud of the door so it never z-fights at a distance
     A.push((t) => { door.rotation.y = -0.18 - Math.max(0, Math.sin(t * 1.6)) * 0.35; }); // swings ajar, the light flickers out
     return g;
   },
@@ -207,9 +207,9 @@ const BAGS = {
     return g;
   },
   bag_citi: (A) => { // Citi Tower in miniature: lit window grid, setback crown with uplights, a spire and a beacon
-    const g = new THREE.Group(); g.scale.setScalar(0.66); g.position.y = -0.06; g.rotation.x = 0.55;
-    const win = canvasTex('cos_citi', 128, 512, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#3a6a9a'); gr.addColorStop(1, '#1d3550'); x.fillStyle = gr; x.fillRect(0, 0, w, h); for (let j = 6; j < h - 6; j += 12) for (let i = 5; i < w - 5; i += 10) { const r = Math.random(); x.fillStyle = r < 0.45 ? '#ffe7a8' : r < 0.6 ? '#bfe4ff' : '#2c4866'; x.fillRect(i, j, 7, 8); } x.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < w; i += 20) x.fillRect(i, 0, 2, h); });
-    const tm = new THREE.MeshStandardMaterial({ map: win, color: 0x7f9bb8, emissive: 0xffffff, emissiveMap: win, emissiveIntensity: 0.32, roughness: 0.2, metalness: 0.35 });
+    const g = new THREE.Group(); g.scale.setScalar(0.66); g.position.y = -0.06; g.rotation.x = 0.55; /* upright against his riding lean */
+    const win = canvasTex('cos_citi', 128, 512, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#24496f'); gr.addColorStop(1, '#122438'); x.fillStyle = gr; x.fillRect(0, 0, w, h); for (let j = 6; j < h - 6; j += 12) for (let i = 5; i < w - 5; i += 10) { const r = Math.random(); x.fillStyle = r < 0.45 ? '#ffe7a8' : r < 0.6 ? '#bfe4ff' : '#2c4866'; x.fillRect(i, j, 7, 8); } x.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < w; i += 20) x.fillRect(i, 0, 2, h); });
+    const tm = new THREE.MeshStandardMaterial({ map: win, color: 0x3d5c80, emissive: 0xffffff, emissiveMap: win, emissiveIntensity: 0.55, roughness: 0.2, metalness: 0.35 });
     const stone = std(0x9a948a, { roughness: 0.6 }), crownM = glow(0x6fc4ff, 1.6);
     M(new RoundedBoxGeometry(0.46, 0.18, 0.38, 2, 0.03), stone, 0, -0.13, 0.14, g);
     M(B(0.34, 1.1, 0.28), tm, 0, 0.5, 0.14, g);

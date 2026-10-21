@@ -120,6 +120,7 @@ export async function buildEvents(scene, route, lv) {
       C.attach('Head', helmet(0xff5a1f), [0, 0.095, 0], [-0.12, 0, 0], 0.88);
       C.attach('Spine2', dashBag(), [0, 0.02, -0.25], [0, Math.PI, 0], 0.82);
       const root = new THREE.Group(), sc = scooter(); root.add(sc, C.root); root.visible = false; scene.add(root);
+      root.traverse((o) => { if (o.isMesh) o.frustumCulled = false; });
       const fx = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true })); fx.scale.set(0.7, 0.7, 1); fx.renderOrder = 9; fx.visible = false; scene.add(fx);
       out.push({ ev, root, C, sc, bubble: fx });
     } else if (ev.kind === 'crane') {
@@ -213,19 +214,19 @@ export function createEvents(ctx) {
     if (ev.bi >= ev.beats.length) { rivalFinish(ev); return; }
     const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length;
     ev.st = 'gap'; ev.t = 0; ev.gap = (0.4 + Math.random() * 0.55) * (ev.bi === 0 ? 1.5 : 1);
-    ev.W = (ev.first && k === 0 ? 0.5 : [0.4, 0.35, 0.3][Math.min(2, k)]) * (1 - d * 0.15);
+    ev.W = (ev.first && k === 0 ? 1.1 : [0.95, 0.88, 0.8][Math.min(2, k)]) * (1 - d * 0.1);
     ev.pressed = null;
   }
   // his moves: a shove (counter TOWARD him), a grab at your bag (↓ yank it back), a kick at your front wheel (↑ hop)
   const HITS = { shove: { label: 'SHOVE', ok: 'countered' }, grab: { label: 'GRAB', ok: 'bag saved' }, kick: { label: 'KICK', ok: 'hopped it' } };
   function startCombo(ev) {
-    const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(4, 2 + k + (d > 0.6 ? 1 : 0));
+    const d = clamp(0.12 + (G.order - 1) / 5), k = ev.res.length, n = Math.min(3, 2 + (k >= 1 ? 1 : 0)) + (d > 0.8 && k >= 2 ? 1 : 0);
     ev.combo = [{ type: 'shove' }]; for (let i = 1; i < n; i++) { const opts = ['shove', 'grab', 'kick'].filter((t) => t !== ev.combo[i - 1].type); ev.combo.push({ type: opts[Math.floor(Math.random() * opts.length)] }); }
     for (const h of ev.combo) h.key = h.type === 'shove' ? ev.toward : h.type === 'grab' ? 'arrowdown' : 'arrowup';
     ev.hit = 0; ev.late = 0; ev.W0 = ev.W; nextHit(ev, true);
   }
   function nextHit(ev, first = false) {
-    const h = ev.combo[ev.hit]; ev.t = 0; ev.W = ev.W0 * Math.pow(0.88, ev.hit);
+    const h = ev.combo[ev.hit]; ev.t = 0; ev.W = ev.W0 * Math.pow(0.94, ev.hit);
     const tip = { shove: `${ev.side > 0 ? '→' : '←'} shove back`, grab: '↓ yank your bag back', kick: '↑ hop his kick' }[h.type];
     ev.q?.remove?.(); ev.q = UI.qte({ key: h.key, label: `<b>${HITS[h.type].label}</b> ${ev.hit + 1}/${ev.combo.length}${first && ev.first ? ' — ' + tip : ''}` });
     if (!first) Audio.sfx('whoosh', 0.6, 0.8 + ev.hit * 0.15);
@@ -256,7 +257,7 @@ export function createEvents(ctx) {
       else { ev.pressed = k; ev.q?.result('MISS', 'wrong move'); ev.q = null; resolveStrike(ev, 'SHOVED'); }
       return true;
     }
-    if ((ev.st === 'tell' || ev.st === 'feint' || ev.st === 'gap') && ev.flinchCd <= 0) {
+    if ((ev.st === 'tell' || ev.st === 'feint') && ev.flinchCd <= 0) { // only biting on a wind-up counts; idle presses are ignored
       // jumped the gun: you swerve at nothing, he laughs
       ev.flinch++; ev.flinchCd = 0.6; G.lat += (k === ev.toward ? 0.5 : -0.5) * ev.side; G.score = Math.max(0, G.score - 50); ctx.breakCombo();
       UI.pop('FLINCHED', ev.st === 'feint' ? 'he faked you out' : 'wait for the swing', { top: 30 }); Audio.sfx('bwomp', 0.5, 1.4); sayBubble(p, '😏'); ev.laughT = 0.8;
@@ -295,8 +296,8 @@ export function createEvents(ctx) {
       case 'gap': E.slow = null; lean = Math.sin(ev.t * 3) * 0.05;
         if (ev.t > ev.gap) { ev.st = 'tell'; ev.t = 0; ev.real = ev.beats[ev.bi] === 'real'; Audio.sfx('skid', 0.4, 1.8); } break;
       case 'tell': // the wind-up looks the same for real and fake: lean away, eyes on you
-        tell = smooth(clamp(ev.t / 0.24)); lean = -0.22 * tell; E.slow = 0.85;
-        if (ev.t > 0.24) {
+        tell = smooth(clamp(ev.t / 0.35)); lean = -0.22 * tell; E.slow = 0.85;
+        if (ev.t > 0.35) {
           if (ev.real) { ev.st = 'strike'; ev.t = 0; E.slow = 0.75; startCombo(ev); Audio.sfx('whoosh', 0.8, 0.6); sayBubble(p, '❗'); }
           else { ev.st = 'feint'; ev.t = 0; }
         } break;
@@ -328,6 +329,7 @@ export function createEvents(ctx) {
     }
     if (ev.hitStop > 0) E.slow = 0.35;
     if (ev.st === 'done') return;
+    if (!p.root.visible) p.root.visible = true; // never ride against an invisible rival
     // place him: his lane, pushed out when you shove him, in toward you when he swings
     // shoulder to shoulder (≈1.5 m off your line), swinging wide while he catches up so he never brushes the lens
     const wide = ev.st === 'approach' ? 1 - smooth(seg(ev.ds, -6, -1)) : 0;
