@@ -21,6 +21,9 @@ const END_B = (KNOCK_INTRO + KNOCK_BARS) * 4 + 2; // the ring-out stab, then str
 // per difficulty (order 1 / 2 / 3+): approach time, hit windows ±s for 300/100/50, HP drain per s, HP lost per miss
 const LV = [{ ar: 1.3, w: [0.095, 0.16, 0.22], drain: 0.0225, miss: 0.145 }, { ar: 1.1, w: [0.083, 0.14, 0.195], drain: 0.034, miss: 0.17 }, { ar: 0.95, w: [0.073, 0.13, 0.18], drain: 0.045, miss: 0.195 }];
 // ------------------------------------------------------------------ the beatmap: generated under hard rules
+// R0 (overrides the cell variety below): the map is ONE steady pulse — a circle on every beat of the one tempo, no pairs,
+// no sliders, no rests, ending on a single downbeat finisher — so locking into the beat is always the right answer.
+// Difficulty is approach time, hit windows and jump distance, never rhythm.
 // Every map (every level, every seed) is built bar by bar from rhythm cells and then checked by validateMap(); a map
 // that breaks a rule throws under ?qa=1 (and is regenerated with the next seed in play, so a player never sees one).
 //  R1 tempo   one BPM (KNOCK_BPM) for the whole song; every object starts on the 8th-note grid of that one tempo.
@@ -43,12 +46,8 @@ const dM = (a, b) => { const [ax, ay] = toM(a[0], a[1]), [bx, by] = toM(b[0], b[
 const MAXD = (gap) => (gap <= 0.5 ? 0.27 : gap <= 1 ? 0.42 : 0.6);
 const MIND = (gap) => (gap <= 0.5 ? 0.22 : 0.24);
 // rhythm cells, one bar each: c = circle, s = slider (beat:length), f = finisher; a = easy cells (section A)
-const CELLS = [
-  { a: ['c0 c1 c2', 'c0 c2 c3', 's0:1 c2 c3', 'c0 s2:1'], x: ['c0 c1 c2 c3', 's0:2 c3', 'c0 c1 s2:1', 'c0 c2'] },
-  { a: ['c0 c1 c2', 'c0 c2 c3', 's0:1 c2 c3', 'c0 c0.5 c2 c3'], x: ['c0 c0.5 c2 c3', 'c0 c1 c1.5 c3', 'c0 c1 c2 c2.5', 's0:1 c2 c2.5', 'c0 c1 c2 c3', 'c0 s2:1'] },
-  { a: ['c0 c0.5 c2 c3', 'c0 c1 c2 c2.5', 's0:1 c2 c3'], x: ['c0 c0.5 c1 c2 c3', 'c0 c1 c1.5 c2', 's0:1 c2 c2.5 c3', 'c0 c0.5 c2 c2.5', 'c0 c1 c2 c2.5', 'c0 c0.5 c1 s2:1'] },
-];
-const FIN = 'f0 f2 f3'; // the stop-time finisher bar (audio.js plays the stabs on these beats)
+const CELLS = [0, 1, 2].map(() => ({ a: ['c0 c1 c2 c3'], x: ['c0 c1 c2 c3'] })); // one steady pulse: a circle on every beat, every level
+const FIN = 'f0'; // the pulse lands on one big finisher hit (the downbeat stab) — nothing off the pulse
 const BARS = [['A', 3], ['B', 2], ['C', 2], ['D', 1]];
 export function validateMap(objs, lvl) {
   const n = objs.filter((o) => o.kind !== 'spin'), bad = []; let minGap = 9, maxSpeed = 0, offGrid = 0, overlaps = 0;
@@ -78,16 +77,12 @@ export function validateMap(objs, lvl) {
     }
     if (o.b >= A0 && o.nc !== (i === 0 || Math.floor(o.b / 4) !== Math.floor(p.b / 4))) bad.push(`combo not on the bar @${o.b}`);
   }
-  for (let b0 = A0; b0 < A0 + 32; b0 += 8) { // a breath in every 2 bars
-    let rest = false;
-    for (let b = b0; b < b0 + 8 && !rest; b++) rest = !n.some((o) => (o.b >= b && o.b < b + 1) || (o.b < b && o.b + o.len > b));
-    if (!rest) bad.push(`no rest beat in bars at ${b0}`);
-  }
+  for (let i = 1; i < n.length; i++) if (n[i].b - n[i - 1].b !== 1 && n[i].b > A0) bad.push(`pulse broken @${n[i].b}`); // R0: one object per beat, always
   return { ok: !bad.length, bad, minGap, maxSpeed: +maxSpeed.toFixed(3), offGrid, overlaps, notes: n.length };
 }
 function rhythm(lvl, tut, r) {
   const objs = [], add = (b0, tok, nc) => { const m = /^([csf])([\d.]+)(?::([\d.]+))?$/.exec(tok); objs.push({ kind: m[1] === 's' ? 'slider' : 'circle', fin: m[1] === 'f', b: b0 + +m[2], len: m[3] ? +m[3] : 0, rep: 0, nc }); };
-  if (tut) [3, 5, 7].forEach((b, i) => add(b, 'c0', i === 0));
+  if (tut) [A0 - 3, A0 - 2, A0 - 1].forEach((b, i) => add(b, 'c0', i === 0)); // tutorial notes already on the pulse
   let bar = KNOCK_INTRO, prevCell = '';
   const cellsFor = (sec) => (sec === 'A' ? CELLS[lvl].a : [...CELLS[lvl].a, ...CELLS[lvl].x, ...CELLS[lvl].x]);
   for (const [sec, nb] of BARS) for (let k = 0; k < nb; k++, bar++) {
