@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CHAINED · the daily fast-food guessing game</title>
+<meta name="description" content="5 photos of chain food a day. No logos, no packaging. Which chain made it?">
+<meta name="theme-color" content="#fbf7ee">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/game.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="icon" id="btn-help" aria-label="How to play" title="How to play">?</button>
+    <div class="brandmark">
+      <span class="logo" id="site-name">CHAINED</span>
+      <span class="meta" id="puzzle-meta">loading…</span>
+    </div>
+    <div class="top-right">
+      <button class="icon" id="btn-archive" aria-label="Archive" title="Archive">▤</button>
+      <button class="icon" id="btn-stats" aria-label="Your stats" title="Your stats">▮▮</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <main id="view-game" hidden>
+    <ol class="progress" id="progress" aria-label="Rounds"></ol>
+    <div class="round-label" id="round-label"></div>
+    <figure class="photo" id="photo-frame">
+      <img id="photo" alt="">
+      <figcaption class="zoom-hint" id="zoom-hint">tap to zoom</figcaption>
+    </figure>
+    <div class="options" id="options" role="group" aria-label="Which chain made it?"></div>
+    <section class="reveal" id="reveal" hidden aria-live="polite">
+      <div class="reveal-head">
+        <span class="verdict" id="verdict"></span>
+        <span class="crowd" id="crowd"></span>
+      </div>
+      <div class="reveal-item" id="reveal-item"></div>
+      <div class="reveal-tell" id="reveal-tell"></div>
+      <button class="primary" id="btn-next">Next →</button>
+    </section>
+  </main>
+
+  <main id="view-done" hidden>
+    <section class="receipt" id="receipt"></section>
+    <div class="done-actions">
+      <button class="primary" id="btn-share">Share receipt</button>
+      <button class="secondary" id="btn-review">Review rounds</button>
+    </div>
+    <p class="next-in" id="next-in"></p>
+  </main>
+
+  <main id="view-empty" hidden>
+    <section class="empty">
+      <h2 id="empty-title">No puzzle yet</h2>
+      <p id="empty-body"></p>
+      <button class="secondary" id="btn-empty-archive">Play the archive</button>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p>Not affiliated with, endorsed or sponsored by any restaurant named here. All trademarks belong to their owners; names are used only to identify the food.</p>
+    <p><button class="link" id="btn-about">About &amp; photo credits</button></p>
+  </footer>
+</div>
+
+<dialog id="dlg-help" class="sheet">
+  <h2>How to play</h2>
+  <ol class="rules">
+    <li><b>5 rounds a day.</b> Each one is a photo of a chain-restaurant item, unwrapped on a plain plate. No logos, no packaging.</li>
+    <li><b>Pick the chain.</b> Four options, one tap, no take-backs. Tap the photo to zoom in on the crust, the breading, the bun.</li>
+    <li><b>It gets harder.</b> Round 1 is a warm-up. Round 5 is the boss.</li>
+    <li><b>Learn the tells.</b> Every answer shows you what gives it away, and how everyone else guessed.</li>
+    <li><b>Same 5 for everyone.</b> New puzzle at midnight your time. Share the receipt, not the answers.</li>
+  </ol>
+  <form method="dialog"><button class="primary">Let's eat</button></form>
+</dialog>
+
+<dialog id="dlg-stats" class="sheet">
+  <h2>Your stats</h2>
+  <div class="stat-row" id="stat-row"></div>
+  <h3>Score distribution</h3>
+  <div class="dist" id="dist"></div>
+  <p class="small">Stats live on this device only.</p>
+  <form method="dialog"><button class="secondary">Close</button></form>
+</dialog>
+
+<dialog id="dlg-archive" class="sheet">
+  <h2>Archive</h2>
+  <p class="small">Replays don't count toward your streak or the day's stats.</p>
+  <ul class="archive" id="archive-list"></ul>
+  <form method="dialog"><button class="secondary">Close</button></form>
+</dialog>
+
+<dialog id="dlg-about" class="sheet">
+  <h2>About</h2>
+  <p>Every photo is real food, bought from the chain and shot the same way: same plate, same light, packaging removed. Nothing is AI-generated and nothing is a brand's marketing photo.</p>
+  <p>Not affiliated with, endorsed or sponsored by any restaurant brand. All trademarks belong to their owners; names are used only to identify.</p>
+  <h3>Photo credits</h3>
+  <ul class="credits" id="credits"><li class="small">Loading…</li></ul>
+  <form method="dialog"><button class="secondary">Close</button></form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

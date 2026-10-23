@@ -37,7 +37,7 @@ The simulation also says to:
 
 ---
 
-## 2. The catalog (`data/catalog.json` now → `catalog.db` later)
+## 2. The catalog (`data/catalog.json` seeds `var/chained.db`)
 
 The seed catalog is checked in. It was built from the research in `RESEARCH.md` §3. **Menus change constantly:** verify each chain's live menu before a shoot.
 
@@ -47,7 +47,7 @@ category  { id, name, emoji, group, difficulty 1-5, launch, brands[],
             lookalikes[[...]], giveaways[], tells }
 ```
 
-When we have real photos, move this into SQLite (`catalog.db`) with these tables:
+The running game keeps this in SQLite (`var/chained.db`), seeded from the JSON on first run and edited in `/admin` → Catalog afterwards. The exact schema is in `app/db.py`; in outline:
 
 ```sql
 brand    (id PK, name, scope, region, us_units, status)          -- status: active|shrinking|gone

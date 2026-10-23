@@ -129,12 +129,20 @@ def simulate(brands, cats, photos, max_days, seed=1):
     return days, s, None
 
 
-def plan(brands, cats, ndays):
-    """Shot list: how many distinct photos each item needs for ndays with no repeats."""
-    days, s, why = simulate(brands, cats, ndays, ndays)
+def shot_list(brands, cats, ndays):
+    """(category, brand) -> distinct photos needed for ndays with no repeats.
+    Raises ValueError if the rules can't be met even with unlimited photos."""
+    _, s, why = simulate(brands, cats, ndays, ndays)
     if why:
-        raise SystemExit(f"rules can't be met even with unlimited photos: {why}")
-    need = s.answers
+        raise ValueError(f"rules can't be met even with unlimited photos: {why}")
+    return s.answers
+
+
+def plan(brands, cats, ndays):
+    try:
+        need = shot_list(brands, cats, ndays)
+    except ValueError as e:
+        raise SystemExit(str(e))
     total = sum(need.values())
     print(f"{ndays} days -> {total} photos across {len(need)} items "
           f"(of {sum(len(c['brands']) for c in cats)} in the catalog)")

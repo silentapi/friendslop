@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHAINED admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/admin.css">
+<script src="/static/admin.js" defer></script>
+</head>
+<body class="admin">
+<header class="atop">
+  <span class="logo">CHAINED</span><span class="atitle">kitchen</span>
+  <nav id="tabs">
+    <button data-tab="dash" class="on">Dashboard</button>
+    <button data-tab="upload">Upload</button>
+    <button data-tab="qa">QA queue <span class="badge" id="qa-count"></span></button>
+    <button data-tab="library">Library</button>
+    <button data-tab="shots">Shot list</button>
+    <button data-tab="schedule">Schedule</button>
+    <button data-tab="catalog">Catalog</button>
+  </nav>
+  <a class="play" href="/" target="_blank">Play ↗</a>
+</header>
+
+<section class="tab" id="tab-dash">
+  <div class="cards" id="dash-cards"></div>
+  <div class="cols">
+    <div class="panel">
+      <h2>Settings</h2>
+      <label>Site name <input id="set-name" maxlength="40"></label>
+      <label class="check"><input type="checkbox" id="set-demo"> Fill items that have no real photos with labelled demo placeholders</label>
+      <label>Launch date (puzzle #1) <input type="date" id="set-launch"></label>
+      <p class="hint">The launch date locks once anyone has played, because puzzle numbers come from it.</p>
+      <button class="primary" id="set-save">Save settings</button>
+    </div>
+    <div class="panel">
+      <h2>Players, last 14 days</h2>
+      <div class="spark" id="dash-players"></div>
+      <h2>Before launch</h2>
+      <ul class="checklist">
+        <li>Bank ≥ 120 days of puzzles (~600 approved photos). Check <b>Shot list</b> with 120 days.</li>
+        <li>Turn demo placeholders <b>off</b>.</li>
+        <li>Set the launch date to day 1.</li>
+        <li>Pick a real name (CHAINED is too close to guessthechain.com).</li>
+        <li>Put it behind HTTPS (see README: Caddy in front of port 7090).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="tab" id="tab-upload" hidden>
+  <div class="cols">
+    <div class="panel">
+      <h2>What is it?</h2>
+      <label>Category <select id="up-cat"></select></label>
+      <label>Brand <select id="up-brand"></select></label>
+      <div class="row">
+        <label>Angle <select id="up-angle"><option value="hero">A · hero 45°</option><option value="top">B · top-down</option><option value="detail">C · detail / cut</option></select></label>
+        <label>Taken <input type="date" id="up-taken"></label>
+      </div>
+      <div class="row">
+        <label>Purchase id <input id="up-purchase" placeholder="same burger = same id"></label>
+        <button class="secondary small-btn" id="up-newpurchase" type="button">New purchase</button>
+      </div>
+      <div class="row">
+        <label>City <input id="up-city"></label>
+        <label>State <input id="up-state" maxlength="2"></label>
+      </div>
+      <label>Source <select id="up-source">
+        <option value="own">Own shoot</option><option value="contributor">Contributor (signed assignment)</option>
+        <option value="player">Player submission (licence granted)</option><option value="cc">Creative Commons</option>
+      </select></label>
+      <div id="up-ccfields" hidden>
+        <label>Credit <input id="up-credit" placeholder="Photographer name"></label>
+        <label>Licence <input id="up-license" placeholder="CC BY 4.0"></label>
+        <label>Source URL <input id="up-url" placeholder="https://"></label>
+      </div>
+      <label>Notes <input id="up-notes" placeholder="delivery? dine-in? anything odd"></label>
+    </div>
+    <div class="panel">
+      <h2>Photos</h2>
+      <label class="drop" id="drop">
+        <input type="file" id="up-files" accept="image/*" multiple>
+        <span><b>Drop photos here</b> or tap to choose. They're resized to 1600 px and re-encoded as JPEG in your browser, which also strips EXIF/GPS.</span>
+      </label>
+      <div class="thumbs" id="up-results"></div>
+      <details class="protocol">
+        <summary>Shoot protocol (docs/DATA.md §4)</summary>
+        <ul>
+          <li>Same matte off-white plate, same grey board, one LED panel camera-left.</li>
+          <li>Unwrap everything. No wrappers, cups, sauce cups, boxes, flags, logos.</li>
+          <li>Drinks go in our plain clear cup. Fries are poured, not arranged.</li>
+          <li>3 shots per purchase: A hero 45°, B top-down, C detail or cut in half.</li>
+          <li>Shoot within 10 minutes. Don't tidy the food.</li>
+        </ul>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="tab" id="tab-qa" hidden>
+  <p class="hint">Reject anything with readable text or a logo, the wrong item, a pre-recipe-change photo, blur, faces, the store interior, or a too-pretty styled look. Keys: <kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>1</kbd>–<kbd>5</kbd> difficulty, all acting on the first card.</p>
+  <div class="qa" id="qa-list"></div>
+</section>
+
+<section class="tab" id="tab-library" hidden>
+  <div class="filters">
+    <select id="lib-status"><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="pending">Pending</option><option value="">All</option></select>
+    <select id="lib-cat"><option value="">All categories</option></select>
+    <button class="secondary small-btn" id="lib-refresh">Refresh</button>
+  </div>
+  <div class="lib" id="lib-list"></div>
+</section>
+
+<section class="tab" id="tab-shots" hidden>
+  <div class="filters">
+    <label>Days to cover <select id="shots-days"><option>30</option><option selected>120</option><option>365</option><option>730</option></select></label>
+    <label class="check"><input type="checkbox" id="shots-gaponly" checked> only items still needed</label>
+    <button class="secondary small-btn" id="shots-refresh">Recalculate</button>
+  </div>
+  <div class="cards" id="shots-summary"></div>
+  <table class="grid" id="shots-table"><thead><tr><th>Item</th><th class="num">Need</th><th class="num">Approved</th><th class="num">Pending</th><th class="num">Gap</th><th></th></tr></thead><tbody></tbody></table>
+</section>
+
+<section class="tab" id="tab-schedule" hidden>
+  <div class="filters">
+    <button class="secondary small-btn" id="sched-regen">Regenerate unplayed future days</button>
+    <span class="hint">Approving, rejecting or editing the catalog does this automatically.</span>
+  </div>
+  <div id="sched-list"></div>
+</section>
+
+<section class="tab" id="tab-catalog" hidden>
+  <div class="filters">
+    <input id="cat-search" placeholder="filter categories or brands…">
+    <button class="secondary small-btn" id="cat-addbrand">Add a brand</button>
+  </div>
+  <div id="cat-list"></div>
+</section>
+
+<div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
