@@ -124,11 +124,11 @@ Make it look like a **receipt-and-tray-liner** world, warm and greasy, but **bra
 
 ## 9. Name shortlist
 
-Check availability before committing (domain, App Store, trademark search, any existing daily game with the name).
+Check availability before committing (domain, App Store, trademark search, any existing daily game with the name). **Never put a brand name in our name** (`RESEARCH.md` §2.2).
 
 | Name | Notes |
 |---|---|
-| **CHAINED** | "Chain" restaurants plus a daily streak. Short, punny, works as a verb ("got chained today"). |
+| **CHAINED** | "Chain" restaurants plus a daily streak. Short, punny, works as a verb ("got chained today"). ⚠️ **Too close to [guessthechain.com](https://guessthechain.com/)**, an existing daily chain game. It's the working title only. |
 | **Drive-Thru Daily** | Says exactly what it is. Longer. |
 | **Order Up** | Friendly, but generic. |
 | **Whose Fries?** | Funny, but locks the name to one food. |

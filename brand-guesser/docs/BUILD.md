@@ -67,7 +67,7 @@ Day rollover is at **local midnight** (as Wordle does). Puzzle `#n` = days since
 | Cloudflare Pages + Workers | $0–5 | ~$5–50 (Workers paid plan, ~2–3 requests per round) |
 | R2 storage (5k photos × 3 sizes ≈ 2 GB) | <$1 | <$1 (egress is free) |
 | Domain | ~$1 | ~$1 |
-| **Photo production** (`DATA.md` §5) | the real cost: about $X k once, then a trickle | same |
+| **Photo production** (`DATA.md` §4.3) | the real cost: ~$1.5–2k for the launch bank, ~$5–6k DIY (or $15–25k outsourced) for year 1, then a trickle | same |
 
 ---
 

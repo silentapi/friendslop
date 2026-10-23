@@ -1,0 +1,2395 @@
+{
+ "_note": "Seed catalog from docs/RESEARCH.md §3. Menus as of Oct 2026; verify each chain's live menu before a shoot. scope=regional chains follow the regional rules in docs/GAME.md §3. launch=true marks the launch set. difficulty is the category's base (1 easy..5 boss); a giveaway brand's item counts as 2 easier.",
+ "brands": {
+  "mcd": {
+   "name": "McDonald's",
+   "us_units": 13700,
+   "scope": "national"
+  },
+  "bk": {
+   "name": "Burger King",
+   "us_units": 6700,
+   "scope": "national"
+  },
+  "wendys": {
+   "name": "Wendy's",
+   "us_units": 5800,
+   "scope": "national"
+  },
+  "sonic": {
+   "name": "Sonic",
+   "us_units": 3500,
+   "scope": "national"
+  },
+  "dq": {
+   "name": "Dairy Queen",
+   "us_units": 4200,
+   "scope": "national"
+  },
+  "jitb": {
+   "name": "Jack in the Box",
+   "us_units": 2100,
+   "scope": "regional",
+   "region": "West/South"
+  },
+  "whataburger": {
+   "name": "Whataburger",
+   "us_units": 1100,
+   "scope": "regional",
+   "region": "TX/South"
+  },
+  "fiveguys": {
+   "name": "Five Guys",
+   "us_units": 1450,
+   "scope": "national"
+  },
+  "culvers": {
+   "name": "Culver's",
+   "us_units": 1000,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "innout": {
+   "name": "In-N-Out",
+   "us_units": 420,
+   "scope": "regional",
+   "region": "West"
+  },
+  "shakeshack": {
+   "name": "Shake Shack",
+   "us_units": 350,
+   "scope": "national"
+  },
+  "hardees": {
+   "name": "Carl's Jr./Hardee's",
+   "us_units": 2600,
+   "scope": "national"
+  },
+  "checkers": {
+   "name": "Checkers/Rally's",
+   "us_units": 750,
+   "scope": "regional",
+   "region": "South/Midwest"
+  },
+  "steaknshake": {
+   "name": "Steak 'n Shake",
+   "us_units": 450,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "freddys": {
+   "name": "Freddy's",
+   "us_units": 550,
+   "scope": "regional",
+   "region": "Plains"
+  },
+  "cookout": {
+   "name": "Cook Out",
+   "us_units": 330,
+   "scope": "regional",
+   "region": "Southeast"
+  },
+  "smashburger": {
+   "name": "Smashburger",
+   "us_units": 230,
+   "scope": "national"
+  },
+  "aandw": {
+   "name": "A&W",
+   "us_units": 500,
+   "scope": "national"
+  },
+  "cfa": {
+   "name": "Chick-fil-A",
+   "us_units": 2900,
+   "scope": "national"
+  },
+  "popeyes": {
+   "name": "Popeyes",
+   "us_units": 3100,
+   "scope": "national"
+  },
+  "kfc": {
+   "name": "KFC",
+   "us_units": 3900,
+   "scope": "national"
+  },
+  "canes": {
+   "name": "Raising Cane's",
+   "us_units": 900,
+   "scope": "national"
+  },
+  "wingstop": {
+   "name": "Wingstop",
+   "us_units": 2400,
+   "scope": "national"
+  },
+  "zaxbys": {
+   "name": "Zaxby's",
+   "us_units": 950,
+   "scope": "regional",
+   "region": "Southeast"
+  },
+  "bojangles": {
+   "name": "Bojangles",
+   "us_units": 820,
+   "scope": "regional",
+   "region": "Southeast"
+  },
+  "churchs": {
+   "name": "Church's Texas Chicken",
+   "us_units": 650,
+   "scope": "national"
+  },
+  "krispykrunchy": {
+   "name": "Krispy Krunchy Chicken",
+   "us_units": 3000,
+   "scope": "national"
+  },
+  "slims": {
+   "name": "Slim Chickens",
+   "us_units": 300,
+   "scope": "national"
+  },
+  "jollibee": {
+   "name": "Jollibee",
+   "us_units": 100,
+   "scope": "national"
+  },
+  "goldenchick": {
+   "name": "Golden Chick",
+   "us_units": 200,
+   "scope": "regional",
+   "region": "TX"
+  },
+  "dominos": {
+   "name": "Domino's",
+   "us_units": 7050,
+   "scope": "national"
+  },
+  "pizzahut": {
+   "name": "Pizza Hut",
+   "us_units": 6500,
+   "scope": "national"
+  },
+  "littlecaesars": {
+   "name": "Little Caesars",
+   "us_units": 4200,
+   "scope": "national"
+  },
+  "papajohns": {
+   "name": "Papa John's",
+   "us_units": 3400,
+   "scope": "national"
+  },
+  "marcos": {
+   "name": "Marco's Pizza",
+   "us_units": 1200,
+   "scope": "national"
+  },
+  "papamurphys": {
+   "name": "Papa Murphy's",
+   "us_units": 1000,
+   "scope": "national"
+  },
+  "hungryhowies": {
+   "name": "Hungry Howie's",
+   "us_units": 520,
+   "scope": "regional",
+   "region": "Midwest/South"
+  },
+  "jets": {
+   "name": "Jet's Pizza",
+   "us_units": 400,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "sbarro": {
+   "name": "Sbarro",
+   "us_units": 300,
+   "scope": "national"
+  },
+  "caseys": {
+   "name": "Casey's",
+   "us_units": 2900,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "fazolis": {
+   "name": "Fazoli's",
+   "us_units": 200,
+   "scope": "regional",
+   "region": "Midwest/South"
+  },
+  "tacobell": {
+   "name": "Taco Bell",
+   "us_units": 7800,
+   "scope": "national"
+  },
+  "chipotle": {
+   "name": "Chipotle",
+   "us_units": 3900,
+   "scope": "national"
+  },
+  "qdoba": {
+   "name": "Qdoba",
+   "us_units": 800,
+   "scope": "national"
+  },
+  "moes": {
+   "name": "Moe's",
+   "us_units": 650,
+   "scope": "regional",
+   "region": "Southeast"
+  },
+  "deltaco": {
+   "name": "Del Taco",
+   "us_units": 570,
+   "scope": "regional",
+   "region": "West"
+  },
+  "elpolloloco": {
+   "name": "El Pollo Loco",
+   "us_units": 500,
+   "scope": "regional",
+   "region": "West"
+  },
+  "tacojohns": {
+   "name": "Taco John's",
+   "us_units": 350,
+   "scope": "regional",
+   "region": "Midwest/Mountain"
+  },
+  "tacocabana": {
+   "name": "Taco Cabana",
+   "us_units": 130,
+   "scope": "regional",
+   "region": "TX"
+  },
+  "torchys": {
+   "name": "Torchy's Tacos",
+   "us_units": 130,
+   "scope": "regional",
+   "region": "TX"
+  },
+  "tacobueno": {
+   "name": "Taco Bueno",
+   "us_units": 100,
+   "scope": "regional",
+   "region": "TX/OK"
+  },
+  "freebirds": {
+   "name": "Freebirds",
+   "us_units": 50,
+   "scope": "regional",
+   "region": "TX"
+  },
+  "bajafresh": {
+   "name": "Baja Fresh",
+   "us_units": 100,
+   "scope": "regional",
+   "region": "West"
+  },
+  "subway": {
+   "name": "Subway",
+   "us_units": 18800,
+   "scope": "national"
+  },
+  "jerseymikes": {
+   "name": "Jersey Mike's",
+   "us_units": 3100,
+   "scope": "national"
+  },
+  "jimmyjohns": {
+   "name": "Jimmy John's",
+   "us_units": 2600,
+   "scope": "national"
+  },
+  "firehouse": {
+   "name": "Firehouse Subs",
+   "us_units": 1300,
+   "scope": "national"
+  },
+  "arbys": {
+   "name": "Arby's",
+   "us_units": 3300,
+   "scope": "national"
+  },
+  "panera": {
+   "name": "Panera",
+   "us_units": 2150,
+   "scope": "national"
+  },
+  "potbelly": {
+   "name": "Potbelly",
+   "us_units": 450,
+   "scope": "national"
+  },
+  "capriottis": {
+   "name": "Capriotti's",
+   "us_units": 200,
+   "scope": "national"
+  },
+  "jasons": {
+   "name": "Jason's Deli",
+   "us_units": 240,
+   "scope": "national"
+  },
+  "ljs": {
+   "name": "Long John Silver's",
+   "us_units": 450,
+   "scope": "national"
+  },
+  "captainds": {
+   "name": "Captain D's",
+   "us_units": 520,
+   "scope": "regional",
+   "region": "South"
+  },
+  "nathans": {
+   "name": "Nathan's Famous",
+   "us_units": 250,
+   "scope": "national"
+  },
+  "portillos": {
+   "name": "Portillo's",
+   "us_units": 100,
+   "scope": "regional",
+   "region": "Chicago"
+  },
+  "wienerschnitzel": {
+   "name": "Wienerschnitzel",
+   "us_units": 320,
+   "scope": "regional",
+   "region": "West"
+  },
+  "hotdogstick": {
+   "name": "Hot Dog on a Stick",
+   "us_units": 70,
+   "scope": "national"
+  },
+  "starbucks": {
+   "name": "Starbucks",
+   "us_units": 16900,
+   "scope": "national"
+  },
+  "dunkin": {
+   "name": "Dunkin'",
+   "us_units": 10000,
+   "scope": "national"
+  },
+  "dutchbros": {
+   "name": "Dutch Bros",
+   "us_units": 1100,
+   "scope": "regional",
+   "region": "West"
+  },
+  "timhortons": {
+   "name": "Tim Hortons",
+   "us_units": 640,
+   "scope": "regional",
+   "region": "North"
+  },
+  "krispykreme": {
+   "name": "Krispy Kreme",
+   "us_units": 400,
+   "scope": "national"
+  },
+  "shipley": {
+   "name": "Shipley Do-Nuts",
+   "us_units": 350,
+   "scope": "regional",
+   "region": "South"
+  },
+  "daylight": {
+   "name": "Daylight Donuts",
+   "us_units": 500,
+   "scope": "regional",
+   "region": "Midwest/South"
+  },
+  "crumbl": {
+   "name": "Crumbl",
+   "us_units": 1000,
+   "scope": "national"
+  },
+  "insomnia": {
+   "name": "Insomnia Cookies",
+   "us_units": 280,
+   "scope": "national"
+  },
+  "mrsfields": {
+   "name": "Mrs. Fields",
+   "us_units": 300,
+   "scope": "national"
+  },
+  "greatamerican": {
+   "name": "Great American Cookies",
+   "us_units": 350,
+   "scope": "national"
+  },
+  "auntieannes": {
+   "name": "Auntie Anne's",
+   "us_units": 1200,
+   "scope": "national"
+  },
+  "wetzels": {
+   "name": "Wetzel's Pretzels",
+   "us_units": 400,
+   "scope": "national"
+  },
+  "cinnabon": {
+   "name": "Cinnabon",
+   "us_units": 950,
+   "scope": "national"
+  },
+  "einstein": {
+   "name": "Einstein Bros",
+   "us_units": 600,
+   "scope": "national"
+  },
+  "brueggers": {
+   "name": "Bruegger's",
+   "us_units": 250,
+   "scope": "national"
+  },
+  "caribou": {
+   "name": "Caribou Coffee",
+   "us_units": 500,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "7brew": {
+   "name": "7 Brew",
+   "us_units": 400,
+   "scope": "national"
+  },
+  "scooters": {
+   "name": "Scooter's Coffee",
+   "us_units": 800,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "applebees": {
+   "name": "Applebee's",
+   "us_units": 1500,
+   "scope": "national"
+  },
+  "chilis": {
+   "name": "Chili's",
+   "us_units": 1206,
+   "scope": "national"
+  },
+  "olivegarden": {
+   "name": "Olive Garden",
+   "us_units": 938,
+   "scope": "national"
+  },
+  "texasroadhouse": {
+   "name": "Texas Roadhouse",
+   "us_units": 700,
+   "scope": "national"
+  },
+  "outback": {
+   "name": "Outback",
+   "us_units": 650,
+   "scope": "national"
+  },
+  "longhorn": {
+   "name": "LongHorn",
+   "us_units": 590,
+   "scope": "national"
+  },
+  "bww": {
+   "name": "Buffalo Wild Wings",
+   "us_units": 1200,
+   "scope": "national"
+  },
+  "redrobin": {
+   "name": "Red Robin",
+   "us_units": 500,
+   "scope": "national"
+  },
+  "redlobster": {
+   "name": "Red Lobster",
+   "us_units": 500,
+   "scope": "national"
+  },
+  "cheesecake": {
+   "name": "Cheesecake Factory",
+   "us_units": 215,
+   "scope": "national"
+  },
+  "crackerbarrel": {
+   "name": "Cracker Barrel",
+   "us_units": 650,
+   "scope": "national"
+  },
+  "ihop": {
+   "name": "IHOP",
+   "us_units": 1650,
+   "scope": "national"
+  },
+  "dennys": {
+   "name": "Denny's",
+   "us_units": 1450,
+   "scope": "national"
+  },
+  "wafflehouse": {
+   "name": "Waffle House",
+   "us_units": 1900,
+   "scope": "regional",
+   "region": "South"
+  },
+  "firstwatch": {
+   "name": "First Watch",
+   "us_units": 600,
+   "scope": "national"
+  },
+  "bobevans": {
+   "name": "Bob Evans",
+   "us_units": 450,
+   "scope": "regional",
+   "region": "Midwest"
+  },
+  "carrabbas": {
+   "name": "Carrabba's",
+   "us_units": 200,
+   "scope": "national"
+  },
+  "maggianos": {
+   "name": "Maggiano's",
+   "us_units": 50,
+   "scope": "national"
+  },
+  "famousdaves": {
+   "name": "Famous Dave's",
+   "us_units": 100,
+   "scope": "national"
+  },
+  "hooters": {
+   "name": "Hooters",
+   "us_units": 300,
+   "scope": "national"
+  },
+  "noodles": {
+   "name": "Noodles & Company",
+   "us_units": 450,
+   "scope": "national"
+  },
+  "sweetgreen": {
+   "name": "Sweetgreen",
+   "us_units": 260,
+   "scope": "national"
+  },
+  "cava": {
+   "name": "Cava",
+   "us_units": 400,
+   "scope": "national"
+  },
+  "7eleven": {
+   "name": "7-Eleven",
+   "us_units": 9000,
+   "scope": "national"
+  },
+  "circlek": {
+   "name": "Circle K",
+   "us_units": 5500,
+   "scope": "national"
+  },
+  "quiktrip": {
+   "name": "QuikTrip",
+   "us_units": 1196,
+   "scope": "regional",
+   "region": "Midwest/South"
+  },
+  "wawa": {
+   "name": "Wawa",
+   "us_units": 1189,
+   "scope": "regional",
+   "region": "Mid-Atlantic/FL"
+  },
+  "sheetz": {
+   "name": "Sheetz",
+   "us_units": 815,
+   "scope": "regional",
+   "region": "PA/OH/VA/NC"
+  },
+  "costco": {
+   "name": "Costco food court",
+   "us_units": 630,
+   "scope": "national"
+  }
+ },
+ "categories": [
+  {
+   "id": "cheeseburger",
+   "name": "Classic cheeseburger",
+   "emoji": "🍔",
+   "group": "burger",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bk",
+    "wendys",
+    "innout",
+    "fiveguys",
+    "shakeshack",
+    "whataburger",
+    "culvers",
+    "sonic",
+    "jitb",
+    "hardees",
+    "steaknshake",
+    "dq",
+    "freddys",
+    "smashburger",
+    "checkers"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "jitb",
+     "hardees"
+    ],
+    [
+     "freddys",
+     "steaknshake",
+     "smashburger",
+     "shakeshack"
+    ]
+   ],
+   "giveaways": [
+    "wendys"
+   ],
+   "tells": "Wendy's square patty; Culver's crowned buttered bun; smashed lacy edges at Freddy's/Steak 'n Shake; BK grill marks"
+  },
+  {
+   "id": "big-burger",
+   "name": "Signature big burger",
+   "emoji": "🍔",
+   "group": "burger",
+   "difficulty": 2,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bk",
+    "wendys",
+    "innout",
+    "shakeshack",
+    "whataburger",
+    "jitb",
+    "hardees",
+    "sonic",
+    "culvers"
+   ],
+   "lookalikes": [
+    [
+     "bk",
+     "whataburger",
+     "jitb"
+    ]
+   ],
+   "giveaways": [
+    "mcd",
+    "wendys"
+   ],
+   "tells": "Big Mac 3-piece bun; Whataburger 5-inch bun; Dave's square patty"
+  },
+  {
+   "id": "bacon-burger",
+   "name": "Bacon cheeseburger",
+   "emoji": "🥓",
+   "group": "burger",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "wendys",
+    "bk",
+    "mcd",
+    "sonic",
+    "fiveguys",
+    "jitb",
+    "hardees",
+    "whataburger",
+    "applebees"
+   ],
+   "lookalikes": [
+    [
+     "bk",
+     "mcd",
+     "sonic",
+     "jitb"
+    ]
+   ],
+   "giveaways": [
+    "wendys"
+   ],
+   "tells": "Baconator bacon lattice on a square patty; Western Bacon onion rings"
+  },
+  {
+   "id": "restaurant-burger",
+   "name": "Sit-down burger plate",
+   "emoji": "🍽️",
+   "group": "plates",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "applebees",
+    "chilis",
+    "redrobin",
+    "cheesecake",
+    "bww",
+    "texasroadhouse"
+   ],
+   "lookalikes": [
+    [
+     "applebees",
+     "chilis"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Plate and side style; Red Robin steak fries"
+  },
+  {
+   "id": "fries",
+   "name": "Straight-cut fries",
+   "emoji": "🍟",
+   "group": "fries",
+   "difficulty": 5,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bk",
+    "wendys",
+    "fiveguys",
+    "innout",
+    "whataburger",
+    "sonic",
+    "jitb",
+    "hardees",
+    "dq",
+    "freddys",
+    "cookout"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "jitb",
+     "sonic"
+    ],
+    [
+     "wendys",
+     "fiveguys",
+     "innout"
+    ]
+   ],
+   "giveaways": [
+    "fiveguys"
+   ],
+   "tells": "McD thin and yellow; skin-on at Five Guys/Wendy's; pale fresh-cut In-N-Out; Freddy's shoestring"
+  },
+  {
+   "id": "crinkle-fries",
+   "name": "Crinkle-cut fries",
+   "emoji": "🍟",
+   "group": "fries",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "shakeshack",
+    "culvers",
+    "canes",
+    "arbys",
+    "zaxbys"
+   ],
+   "lookalikes": [
+    [
+     "canes",
+     "zaxbys"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Cane's thick and pale"
+  },
+  {
+   "id": "seasoned-fries",
+   "name": "Seasoned / Cajun fries",
+   "emoji": "🌶️",
+   "group": "fries",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "popeyes",
+    "checkers",
+    "fiveguys",
+    "bojangles",
+    "wingstop"
+   ],
+   "lookalikes": [
+    [
+     "popeyes",
+     "bojangles"
+    ]
+   ],
+   "giveaways": [
+    "checkers"
+   ],
+   "tells": "Checkers batter coating; Popeyes red Cajun flecks"
+  },
+  {
+   "id": "specialty-potato",
+   "name": "Curly / waffle / tots",
+   "emoji": "🥔",
+   "group": "fries",
+   "difficulty": 2,
+   "launch": true,
+   "brands": [
+    "cfa",
+    "arbys",
+    "jitb",
+    "hardees",
+    "bojangles",
+    "sonic"
+   ],
+   "lookalikes": [
+    [
+     "arbys",
+     "jitb",
+     "hardees"
+    ]
+   ],
+   "giveaways": [
+    "cfa",
+    "sonic",
+    "bojangles"
+   ],
+   "tells": "Arby's curly fries darker and more paprika"
+  },
+  {
+   "id": "onion-rings",
+   "name": "Onion rings",
+   "emoji": "🧅",
+   "group": "sides",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "bk",
+    "sonic",
+    "whataburger",
+    "culvers",
+    "hardees",
+    "jitb",
+    "aandw",
+    "dq",
+    "redrobin"
+   ],
+   "lookalikes": [
+    [
+     "sonic",
+     "whataburger",
+     "culvers"
+    ]
+   ],
+   "giveaways": [
+    "bk"
+   ],
+   "tells": "BK uniform minced-onion rings; Sonic irregular hand-battered"
+  },
+  {
+   "id": "hash-browns",
+   "name": "Hash browns",
+   "emoji": "🥔",
+   "group": "breakfast",
+   "difficulty": 2,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bk",
+    "cfa",
+    "dunkin",
+    "tacobell",
+    "jitb",
+    "starbucks",
+    "whataburger",
+    "wendys",
+    "wafflehouse"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "jitb",
+     "whataburger",
+     "starbucks"
+    ]
+   ],
+   "giveaways": [
+    "mcd",
+    "bk",
+    "cfa",
+    "wendys",
+    "tacobell",
+    "wafflehouse"
+   ],
+   "tells": "Shapes: McD oval, BK coins, CFA rounds, Wendy's cubes, Taco Bell rectangle"
+  },
+  {
+   "id": "mozz-sticks",
+   "name": "Mozzarella sticks",
+   "emoji": "🧀",
+   "group": "sides",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "sonic",
+    "arbys",
+    "jitb",
+    "bww",
+    "applebees",
+    "chilis",
+    "bk"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": "Breading colour, marinara cup"
+  },
+  {
+   "id": "mac-cheese",
+   "name": "Mac & cheese",
+   "emoji": "🧀",
+   "group": "sides",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "cfa",
+    "popeyes",
+    "kfc",
+    "panera",
+    "bojangles",
+    "churchs",
+    "crackerbarrel",
+    "noodles"
+   ],
+   "lookalikes": [
+    [
+     "popeyes",
+     "kfc",
+     "churchs"
+    ]
+   ],
+   "giveaways": [
+    "panera"
+   ],
+   "tells": "Pasta shape, browned top (CFA), Panera shells"
+  },
+  {
+   "id": "mashed",
+   "name": "Mashed potatoes & gravy",
+   "emoji": "🥣",
+   "group": "sides",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "kfc",
+    "popeyes",
+    "bojangles",
+    "churchs",
+    "texasroadhouse",
+    "crackerbarrel"
+   ],
+   "lookalikes": [
+    [
+     "kfc",
+     "churchs"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Gravy colour; Popeyes Cajun gravy with meat"
+  },
+  {
+   "id": "coleslaw",
+   "name": "Coleslaw",
+   "emoji": "🥗",
+   "group": "sides",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "kfc",
+    "popeyes",
+    "bojangles",
+    "canes",
+    "culvers",
+    "churchs",
+    "ljs"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": "KFC fine chop"
+  },
+  {
+   "id": "biscuit",
+   "name": "Biscuit",
+   "emoji": "🥐",
+   "group": "bakery",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "bojangles",
+    "popeyes",
+    "kfc",
+    "hardees",
+    "churchs",
+    "cfa",
+    "whataburger",
+    "mcd",
+    "redlobster",
+    "crackerbarrel"
+   ],
+   "lookalikes": [
+    [
+     "popeyes",
+     "kfc",
+     "churchs"
+    ]
+   ],
+   "giveaways": [
+    "redlobster"
+   ],
+   "tells": "Cheddar Bay herb flecks; Church's honey-butter glaze; Bojangles tall and craggy"
+  },
+  {
+   "id": "breadsticks",
+   "name": "Breadsticks",
+   "emoji": "🥖",
+   "group": "pizza",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "pizzahut",
+    "littlecaesars",
+    "dominos",
+    "papajohns",
+    "olivegarden",
+    "marcos",
+    "fazolis"
+   ],
+   "lookalikes": [
+    [
+     "pizzahut",
+     "papajohns"
+    ]
+   ],
+   "giveaways": [
+    "littlecaesars",
+    "dominos"
+   ],
+   "tells": "Crazy Bread parmesan dust; Domino's twists; Olive Garden garlic salt"
+  },
+  {
+   "id": "pretzel",
+   "name": "Soft pretzel",
+   "emoji": "🥨",
+   "group": "sides",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "auntieannes",
+    "wetzels",
+    "sonic",
+    "wawa",
+    "sheetz",
+    "7eleven"
+   ],
+   "lookalikes": [
+    [
+     "auntieannes",
+     "wetzels"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Auntie Anne's buttery shine"
+  },
+  {
+   "id": "chips-queso",
+   "name": "Chips & queso",
+   "emoji": "🫕",
+   "group": "mexican",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "chipotle",
+    "qdoba",
+    "moes",
+    "tacobell",
+    "chilis",
+    "applebees",
+    "deltaco",
+    "torchys"
+   ],
+   "lookalikes": [
+    [
+     "chipotle",
+     "qdoba",
+     "moes"
+    ]
+   ],
+   "giveaways": [
+    "torchys"
+   ],
+   "tells": "Chipotle lime-salt crystals; Torchy's guac and cotija"
+  },
+  {
+   "id": "chicken-sandwich",
+   "name": "Crispy chicken sandwich",
+   "emoji": "🐔",
+   "group": "chicken",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "cfa",
+    "popeyes",
+    "mcd",
+    "bk",
+    "wendys",
+    "kfc",
+    "shakeshack",
+    "canes",
+    "zaxbys",
+    "bojangles",
+    "whataburger",
+    "culvers"
+   ],
+   "lookalikes": [
+    [
+     "cfa",
+     "mcd",
+     "wendys"
+    ],
+    [
+     "popeyes",
+     "kfc",
+     "bk"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Pickle count/thickness, bun shine, craggy breading"
+  },
+  {
+   "id": "spicy-chicken-sandwich",
+   "name": "Spicy chicken sandwich",
+   "emoji": "🌶️",
+   "group": "chicken",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "popeyes",
+    "cfa",
+    "wendys",
+    "mcd",
+    "bk",
+    "kfc",
+    "jitb",
+    "shakeshack"
+   ],
+   "lookalikes": [
+    [
+     "popeyes",
+     "kfc",
+     "bk"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Sauce colour; Wendy's 2026 recipe only"
+  },
+  {
+   "id": "grilled-chicken",
+   "name": "Grilled chicken sandwich",
+   "emoji": "🐔",
+   "group": "chicken",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "cfa",
+    "culvers",
+    "whataburger",
+    "wendys",
+    "panera"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "nuggets",
+   "name": "Chicken nuggets",
+   "emoji": "🍗",
+   "group": "chicken",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "cfa",
+    "wendys",
+    "bk",
+    "popeyes",
+    "kfc",
+    "jitb"
+   ],
+   "lookalikes": [
+    [
+     "wendys",
+     "bk",
+     "jitb",
+     "kfc"
+    ]
+   ],
+   "giveaways": [
+    "mcd",
+    "cfa"
+   ],
+   "tells": "McD's four shapes; CFA irregular whole-breast pieces"
+  },
+  {
+   "id": "tenders",
+   "name": "Chicken tenders",
+   "emoji": "🍗",
+   "group": "chicken",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "canes",
+    "zaxbys",
+    "cfa",
+    "popeyes",
+    "kfc",
+    "mcd",
+    "wendys",
+    "whataburger",
+    "sonic",
+    "bojangles",
+    "slims",
+    "churchs"
+   ],
+   "lookalikes": [
+    [
+     "canes",
+     "zaxbys",
+     "slims"
+    ],
+    [
+     "popeyes",
+     "kfc",
+     "churchs"
+    ]
+   ],
+   "giveaways": [
+    "canes"
+   ],
+   "tells": "Cane's smooth and pale; Popeyes very craggy; McCrispy strips skinny"
+  },
+  {
+   "id": "wings",
+   "name": "Bone-in wings",
+   "emoji": "🍗",
+   "group": "chicken",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "wingstop",
+    "bww",
+    "pizzahut",
+    "dominos",
+    "papajohns",
+    "zaxbys",
+    "hooters",
+    "littlecaesars"
+   ],
+   "lookalikes": [
+    [
+     "wingstop",
+     "bww",
+     "hooters"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Sauce sheen; Wingstop dry rubs"
+  },
+  {
+   "id": "boneless-wings",
+   "name": "Boneless wings",
+   "emoji": "🍗",
+   "group": "chicken",
+   "difficulty": 5,
+   "launch": true,
+   "brands": [
+    "wingstop",
+    "bww",
+    "applebees",
+    "chilis",
+    "pizzahut",
+    "dominos",
+    "papajohns"
+   ],
+   "lookalikes": [
+    [
+     "applebees",
+     "chilis",
+     "bww"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "fried-chicken",
+   "name": "Bone-in fried chicken",
+   "emoji": "🍗",
+   "group": "chicken",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "kfc",
+    "popeyes",
+    "churchs",
+    "bojangles",
+    "krispykrunchy",
+    "jollibee",
+    "goldenchick"
+   ],
+   "lookalikes": [
+    [
+     "kfc",
+     "churchs",
+     "krispykrunchy"
+    ]
+   ],
+   "giveaways": [
+    "kfc",
+    "popeyes"
+   ],
+   "tells": "KFC Original pebbled crust; Popeyes craggy red-orange"
+  },
+  {
+   "id": "chicken-wrap",
+   "name": "Chicken wrap",
+   "emoji": "🌯",
+   "group": "chicken",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "mcd",
+    "popeyes",
+    "cfa",
+    "subway",
+    "wawa"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": "CFA Cool Wrap cold and cut in half"
+  },
+  {
+   "id": "pepperoni-pizza",
+   "name": "Pepperoni pizza",
+   "emoji": "🍕",
+   "group": "pizza",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "dominos",
+    "pizzahut",
+    "littlecaesars",
+    "papajohns",
+    "marcos",
+    "caseys",
+    "costco",
+    "sbarro",
+    "hungryhowies",
+    "jets",
+    "7eleven",
+    "papamurphys"
+   ],
+   "lookalikes": [
+    [
+     "dominos",
+     "papajohns",
+     "marcos"
+    ],
+    [
+     "pizzahut",
+     "littlecaesars"
+    ]
+   ],
+   "giveaways": [
+    "costco",
+    "jets",
+    "pizzahut"
+   ],
+   "tells": "Pizza Hut fried pan edge; Little Caesars small edge-to-edge pepperoni; Costco giant slice; Jet's square"
+  },
+  {
+   "id": "cheese-pizza",
+   "name": "Cheese pizza",
+   "emoji": "🍕",
+   "group": "pizza",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "dominos",
+    "pizzahut",
+    "littlecaesars",
+    "papajohns",
+    "marcos",
+    "caseys",
+    "costco",
+    "sbarro"
+   ],
+   "lookalikes": [
+    [
+     "dominos",
+     "papajohns",
+     "marcos"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "cinnamon-bread",
+   "name": "Cinnamon dessert bread",
+   "emoji": "🍩",
+   "group": "pizza",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "dominos",
+    "papajohns",
+    "pizzahut",
+    "marcos",
+    "hungryhowies",
+    "littlecaesars"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "alfredo",
+   "name": "Fettuccine Alfredo",
+   "emoji": "🍝",
+   "group": "plates",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "olivegarden",
+    "fazolis",
+    "cheesecake",
+    "carrabbas",
+    "maggianos",
+    "dominos"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "crunchy-taco",
+   "name": "Crunchy taco",
+   "emoji": "🌮",
+   "group": "mexican",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "tacobell",
+    "deltaco",
+    "tacojohns",
+    "jitb",
+    "chipotle",
+    "qdoba",
+    "tacocabana",
+    "tacobueno"
+   ],
+   "lookalikes": [
+    [
+     "tacobell",
+     "deltaco",
+     "tacojohns"
+    ]
+   ],
+   "giveaways": [
+    "jitb"
+   ],
+   "tells": "JitB taco deep-fried and greasy"
+  },
+  {
+   "id": "soft-taco",
+   "name": "Soft taco",
+   "emoji": "🌮",
+   "group": "mexican",
+   "difficulty": 5,
+   "launch": true,
+   "brands": [
+    "tacobell",
+    "deltaco",
+    "chipotle",
+    "qdoba",
+    "torchys",
+    "elpolloloco",
+    "tacocabana",
+    "moes"
+   ],
+   "lookalikes": [
+    [
+     "chipotle",
+     "qdoba",
+     "moes"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "burrito",
+   "name": "Burrito (cut)",
+   "emoji": "🌯",
+   "group": "mexican",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "chipotle",
+    "qdoba",
+    "moes",
+    "tacobell",
+    "deltaco",
+    "elpolloloco",
+    "tacojohns",
+    "freebirds",
+    "bajafresh"
+   ],
+   "lookalikes": [
+    [
+     "chipotle",
+     "qdoba",
+     "moes"
+    ]
+   ],
+   "giveaways": [
+    "chipotle"
+   ],
+   "tells": "Chipotle huge; Taco Bell small"
+  },
+  {
+   "id": "burrito-bowl",
+   "name": "Burrito bowl",
+   "emoji": "🥙",
+   "group": "mexican",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "chipotle",
+    "qdoba",
+    "moes",
+    "tacobell",
+    "elpolloloco"
+   ],
+   "lookalikes": [
+    [
+     "chipotle",
+     "qdoba",
+     "moes"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "quesadilla",
+   "name": "Quesadilla",
+   "emoji": "🧀",
+   "group": "mexican",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "tacobell",
+    "chipotle",
+    "qdoba",
+    "moes",
+    "deltaco",
+    "applebees",
+    "chilis",
+    "tacojohns"
+   ],
+   "lookalikes": [],
+   "giveaways": [
+    "tacobell"
+   ],
+   "tells": "Taco Bell triangles with creamy jalapeño"
+  },
+  {
+   "id": "nachos",
+   "name": "Nachos",
+   "emoji": "🧀",
+   "group": "mexican",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "tacobell",
+    "deltaco",
+    "qdoba",
+    "moes",
+    "chilis",
+    "applebees",
+    "bww",
+    "tacojohns"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "breakfast-burrito",
+   "name": "Breakfast burrito",
+   "emoji": "🌯",
+   "group": "breakfast",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "tacobell",
+    "mcd",
+    "jitb",
+    "deltaco",
+    "sonic",
+    "whataburger",
+    "wawa",
+    "cfa",
+    "tacojohns"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "jitb",
+     "sonic"
+    ]
+   ],
+   "giveaways": [
+    "tacobell"
+   ],
+   "tells": "Breakfast Crunchwrap hexagon"
+  },
+  {
+   "id": "italian-sub",
+   "name": "Italian sub",
+   "emoji": "🥪",
+   "group": "sandwich",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "subway",
+    "jerseymikes",
+    "jimmyjohns",
+    "firehouse",
+    "potbelly",
+    "wawa",
+    "sheetz",
+    "capriottis",
+    "jasons"
+   ],
+   "lookalikes": [
+    [
+     "jerseymikes",
+     "jimmyjohns",
+     "firehouse"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Bread: Subway scored top, Jimmy John's French, Potbelly toasted"
+  },
+  {
+   "id": "turkey-sub",
+   "name": "Turkey sub",
+   "emoji": "🥪",
+   "group": "sandwich",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "subway",
+    "jerseymikes",
+    "jimmyjohns",
+    "firehouse",
+    "potbelly",
+    "wawa",
+    "panera",
+    "arbys"
+   ],
+   "lookalikes": [
+    [
+     "jerseymikes",
+     "jimmyjohns",
+     "firehouse"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "roast-beef",
+   "name": "Roast beef sandwich",
+   "emoji": "🥩",
+   "group": "sandwich",
+   "difficulty": 2,
+   "launch": true,
+   "brands": [
+    "arbys",
+    "hardees",
+    "jimmyjohns",
+    "jerseymikes",
+    "subway",
+    "potbelly"
+   ],
+   "lookalikes": [],
+   "giveaways": [
+    "arbys"
+   ],
+   "tells": "Arby's shaved beef on a sesame bun"
+  },
+  {
+   "id": "fish-sandwich",
+   "name": "Fish sandwich",
+   "emoji": "🐟",
+   "group": "sandwich",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bk",
+    "culvers",
+    "whataburger",
+    "ljs",
+    "captainds",
+    "wendys",
+    "arbys"
+   ],
+   "lookalikes": [
+    [
+     "bk",
+     "wendys",
+     "arbys"
+    ]
+   ],
+   "giveaways": [
+    "mcd"
+   ],
+   "tells": "Filet-O-Fish half slice of cheese on a steamed bun"
+  },
+  {
+   "id": "hot-dog",
+   "name": "Hot dog",
+   "emoji": "🌭",
+   "group": "sandwich",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "sonic",
+    "7eleven",
+    "wawa",
+    "sheetz",
+    "costco",
+    "nathans",
+    "portillos",
+    "dq",
+    "wienerschnitzel",
+    "fiveguys",
+    "shakeshack"
+   ],
+   "lookalikes": [
+    [
+     "7eleven",
+     "wawa",
+     "sheetz"
+    ]
+   ],
+   "giveaways": [
+    "portillos",
+    "fiveguys"
+   ],
+   "tells": "Portillo's Chicago style; Five Guys split and grilled"
+  },
+  {
+   "id": "corn-dog",
+   "name": "Corn dog",
+   "emoji": "🌭",
+   "group": "sandwich",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "sonic",
+    "dq",
+    "wienerschnitzel",
+    "hotdogstick",
+    "7eleven"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "muffin-sandwich",
+   "name": "English muffin sandwich",
+   "emoji": "🍳",
+   "group": "breakfast",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "starbucks",
+    "dunkin",
+    "jitb",
+    "timhortons",
+    "wawa"
+   ],
+   "lookalikes": [
+    [
+     "starbucks",
+     "dunkin",
+     "timhortons"
+    ]
+   ],
+   "giveaways": [
+    "mcd"
+   ],
+   "tells": "Egg McMuffin round egg"
+  },
+  {
+   "id": "breakfast-biscuit",
+   "name": "Breakfast biscuit sandwich",
+   "emoji": "🥓",
+   "group": "breakfast",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "bojangles",
+    "hardees",
+    "cfa",
+    "wendys",
+    "bk",
+    "whataburger",
+    "sonic"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "wendys"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "croissant-sandwich",
+   "name": "Croissant sandwich",
+   "emoji": "🥐",
+   "group": "breakfast",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "bk",
+    "starbucks",
+    "dunkin",
+    "jitb",
+    "panera"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "pancakes",
+   "name": "Pancakes",
+   "emoji": "🥞",
+   "group": "breakfast",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "ihop",
+    "dennys",
+    "mcd",
+    "crackerbarrel",
+    "whataburger",
+    "firstwatch",
+    "bobevans"
+   ],
+   "lookalikes": [
+    [
+     "ihop",
+     "dennys"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "french-toast-sticks",
+   "name": "French toast sticks",
+   "emoji": "🍞",
+   "group": "breakfast",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "bk",
+    "wendys",
+    "jitb",
+    "hardees"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "bagel",
+   "name": "Bagel",
+   "emoji": "🥯",
+   "group": "bakery",
+   "difficulty": 5,
+   "launch": true,
+   "brands": [
+    "einstein",
+    "panera",
+    "dunkin",
+    "brueggers",
+    "starbucks",
+    "timhortons"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "glazed-donut",
+   "name": "Glazed donut",
+   "emoji": "🍩",
+   "group": "bakery",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "krispykreme",
+    "dunkin",
+    "timhortons",
+    "shipley",
+    "wawa",
+    "sheetz",
+    "7eleven",
+    "caseys",
+    "daylight"
+   ],
+   "lookalikes": [
+    [
+     "dunkin",
+     "timhortons",
+     "7eleven"
+    ]
+   ],
+   "giveaways": [
+    "krispykreme"
+   ],
+   "tells": "Krispy Kreme translucent glaze"
+  },
+  {
+   "id": "cookie",
+   "name": "Chocolate chip cookie",
+   "emoji": "🍪",
+   "group": "bakery",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "crumbl",
+    "insomnia",
+    "subway",
+    "cfa",
+    "mcd",
+    "jimmyjohns",
+    "potbelly",
+    "panera",
+    "mrsfields",
+    "greatamerican"
+   ],
+   "lookalikes": [
+    [
+     "subway",
+     "mcd",
+     "jimmyjohns"
+    ]
+   ],
+   "giveaways": [
+    "crumbl"
+   ],
+   "tells": "Crumbl huge and thick"
+  },
+  {
+   "id": "apple-pie",
+   "name": "Fried / baked pie",
+   "emoji": "🥧",
+   "group": "bakery",
+   "difficulty": 2,
+   "launch": false,
+   "brands": [
+    "mcd",
+    "popeyes",
+    "bk",
+    "jitb"
+   ],
+   "lookalikes": [],
+   "giveaways": [
+    "mcd",
+    "popeyes"
+   ],
+   "tells": "McD baked lattice slits; Popeyes fried flaky"
+  },
+  {
+   "id": "cinnamon-roll",
+   "name": "Cinnamon roll",
+   "emoji": "🌀",
+   "group": "bakery",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "cinnabon",
+    "pizzahut",
+    "panera",
+    "wawa"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "chocolate-shake",
+   "name": "Chocolate shake",
+   "emoji": "🥤",
+   "group": "frozen",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "sonic",
+    "cfa",
+    "shakeshack",
+    "culvers",
+    "fiveguys",
+    "whataburger",
+    "jitb",
+    "bk",
+    "steaknshake",
+    "dq",
+    "freddys",
+    "cookout",
+    "wendys"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "jitb"
+    ]
+   ],
+   "giveaways": [
+    "wendys"
+   ],
+   "tells": "Wendy's Frosty spoon-thick"
+  },
+  {
+   "id": "vanilla-shake",
+   "name": "Vanilla shake",
+   "emoji": "🥤",
+   "group": "frozen",
+   "difficulty": 5,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "sonic",
+    "cfa",
+    "shakeshack",
+    "culvers",
+    "fiveguys",
+    "whataburger",
+    "jitb",
+    "bk",
+    "steaknshake",
+    "dq",
+    "freddys",
+    "cookout"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "jitb"
+    ]
+   ],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "strawberry-shake",
+   "name": "Strawberry shake",
+   "emoji": "🥤",
+   "group": "frozen",
+   "difficulty": 4,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "sonic",
+    "cfa",
+    "shakeshack",
+    "culvers",
+    "fiveguys",
+    "whataburger",
+    "jitb",
+    "bk",
+    "steaknshake",
+    "dq",
+    "freddys",
+    "cookout",
+    "innout"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk",
+     "jitb"
+    ]
+   ],
+   "giveaways": [],
+   "tells": "Pink shade, fruit bits"
+  },
+  {
+   "id": "soft-serve",
+   "name": "Soft-serve cone",
+   "emoji": "🍦",
+   "group": "frozen",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "mcd",
+    "dq",
+    "bk",
+    "culvers",
+    "cfa",
+    "freddys",
+    "sonic"
+   ],
+   "lookalikes": [
+    [
+     "mcd",
+     "bk"
+    ]
+   ],
+   "giveaways": [
+    "dq"
+   ],
+   "tells": "DQ curl on top"
+  },
+  {
+   "id": "blizzard",
+   "name": "Mix-in frozen dessert",
+   "emoji": "🍨",
+   "group": "frozen",
+   "difficulty": 3,
+   "launch": true,
+   "brands": [
+    "dq",
+    "mcd",
+    "sonic",
+    "culvers",
+    "freddys",
+    "shakeshack"
+   ],
+   "lookalikes": [
+    [
+     "culvers",
+     "freddys",
+     "shakeshack"
+    ]
+   ],
+   "giveaways": [
+    "dq"
+   ],
+   "tells": "Blizzard served upside down"
+  },
+  {
+   "id": "sundae",
+   "name": "Hot fudge sundae",
+   "emoji": "🍨",
+   "group": "frozen",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "mcd",
+    "dq",
+    "bk",
+    "culvers",
+    "sonic"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "iced-latte",
+   "name": "Iced latte",
+   "emoji": "🧋",
+   "group": "drinks",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "starbucks",
+    "dunkin",
+    "mcd",
+    "dutchbros",
+    "timhortons",
+    "wawa",
+    "7brew",
+    "caribou",
+    "scooters"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "frozen-coffee",
+   "name": "Frozen coffee",
+   "emoji": "🧋",
+   "group": "drinks",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "starbucks",
+    "mcd",
+    "dunkin",
+    "dutchbros",
+    "timhortons",
+    "caribou"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "lemonade",
+   "name": "Lemonade",
+   "emoji": "🍋",
+   "group": "drinks",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "cfa",
+    "canes",
+    "panera",
+    "sonic",
+    "wingstop"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "slushie",
+   "name": "Slushie",
+   "emoji": "🧊",
+   "group": "drinks",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "7eleven",
+    "sonic",
+    "wawa",
+    "sheetz",
+    "circlek",
+    "quiktrip",
+    "bk"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "salad",
+   "name": "Entrée salad",
+   "emoji": "🥗",
+   "group": "plates",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "cfa",
+    "wendys",
+    "panera",
+    "sweetgreen",
+    "chipotle",
+    "cava",
+    "subway",
+    "olivegarden"
+   ],
+   "lookalikes": [],
+   "giveaways": [
+    "olivegarden"
+   ],
+   "tells": "Olive Garden house salad"
+  },
+  {
+   "id": "ribs",
+   "name": "Ribs",
+   "emoji": "🍖",
+   "group": "plates",
+   "difficulty": 4,
+   "launch": false,
+   "brands": [
+    "chilis",
+    "texasroadhouse",
+    "outback",
+    "applebees",
+    "famousdaves"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "steak",
+   "name": "Sirloin steak plate",
+   "emoji": "🥩",
+   "group": "plates",
+   "difficulty": 5,
+   "launch": false,
+   "brands": [
+    "texasroadhouse",
+    "outback",
+    "longhorn",
+    "applebees",
+    "chilis"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  },
+  {
+   "id": "baked-potato",
+   "name": "Baked potato",
+   "emoji": "🥔",
+   "group": "plates",
+   "difficulty": 3,
+   "launch": false,
+   "brands": [
+    "wendys",
+    "texasroadhouse",
+    "outback",
+    "longhorn"
+   ],
+   "lookalikes": [],
+   "giveaways": [],
+   "tells": ""
+  }
+ ]
+}
